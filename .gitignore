@@ -1,0 +1,33 @@
+# Ignore compiled binaries
+pacemaker.exe
+*.out
+*.o
+*.obj
+*.a
+*.so
+*.dll
+
+# Ignore build artifacts
+/build/
+/dist/
+*.log
+
+# Ignore temporary and backup files
+*.tmp
+*.swp
+*.swo
+*.bak
+*.sav
+
+# Ignore VS Code settings
+.vscode/
+
+# Ignore Visual Studio folder
+.vs/
+
+# Ignore system-specific files
+.DS_Store
+Thumbs.db
+
+# Ignore data folder (CSV & other large files)
+data/
