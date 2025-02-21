@@ -94,7 +94,7 @@ double **import_file(const char *file_name, size_t *num_rows, size_t *num_cols)
 	free(line);
 
 	*num_rows = row;
-	printf("File loaded: %zu rows, %zu columns (max detected)\n", *num_rows, *num_cols);
+	printf("File loaded: %zu row(s), %zu column(s)\n\n", *num_rows, *num_cols);
 	return data;
 }
 
@@ -130,4 +130,57 @@ void print_data(double **data, size_t num_rows, size_t num_cols)
 		printf("\n");
 	}
 	printf("--------------------------------------------------------------\n");
+}
+
+int verify_result(double **data, size_t data_num_rows, size_t data_num_cols, const char *file)
+{
+	size_t verify_num_rows = 0; // Variable to store the number of rows read
+	size_t verify_num_cols = 0; // Variable to store the number of columns read
+	double **verify_data = import_file(file, &verify_num_rows, &verify_num_cols);
+
+	if (!verify_data)
+	{
+		printf("Error: Could not verify result.\n\n");
+		return 1;
+	}
+
+	// compare rows and columns of data and verify_data
+	if (verify_num_rows != data_num_rows)
+	{
+		printf("Error: Number of rows do not match.\n\n");
+		return 1;
+	}
+
+	printf("Row match : %zu row(s)\n", verify_num_rows);
+
+	if (verify_num_cols != data_num_cols)
+	{
+		printf("Error: Number of columns do not match.\n\n");
+		return 1;
+	}
+
+	printf("Column match : %zu column(s)\n", verify_num_cols);
+
+	// compare each row of data and verify_data
+	int count = 0;
+	for (size_t row = 0; row < data_num_rows; row++)
+	{
+		for (size_t col = 0; col < data_num_cols; col++)
+		{
+			if (data[row][col] != verify_data[row][col])
+			{
+				printf("Error: Data mismatch at row %zu, column %zu.\n\n", row, col);
+				// print the value of data
+				printf("data: %f\n", data[row][col]);
+				// print the value of verify_data
+				printf("verify_data: %f\n", verify_data[row][col]);
+
+				return 1;
+			}
+			count++;
+		}
+	}
+	printf("Data match: %d value(s) checked\n\n", count);
+
+	return 0; // Files match
 }

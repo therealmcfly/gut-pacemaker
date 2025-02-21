@@ -109,7 +109,11 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	print_data(data, num_rows, num_cols);
+	// verify result
+	if (verify_result(data, num_rows, num_cols, "MATLAB Model/verify_importfile.csv"))
+	{
+		return 1;
+	}
 
 	return 0;
 }
