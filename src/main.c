@@ -23,16 +23,17 @@ int main(int argc, char *argv[])
 			printf("Enter the file name('0' for default file(%s)): ", DEFAULT_FILE);
 			scanf("%99s", file_name); // Store user input in buffer (avoid overflow)
 
+			if (strcmp(file_name, "0") == 0)
+			{
+				printf("Opening default file: %s\n", DEFAULT_FILE);
+				strncpy(file_name, DEFAULT_FILE, sizeof(file_name) - 1);
+				break;
+			}
+
 			// Check if file name ends with file extentions
 			char *ext = strrchr(file_name, '.'); // Get last occurrence of '.'
 			if (!ext || (strcmp(ext, FILE_EXTENSIONS[0]) != 0 && strcmp(ext, FILE_EXTENSIONS[1]) != 0))
 			{
-				if (strcmp(file_name, "0") == 0)
-				{
-					printf("Opening default file: %s\n", DEFAULT_FILE);
-					strncpy(file_name, DEFAULT_FILE, sizeof(file_name) - 1);
-					break;
-				}
 				printf("Error: File must end with .csv or .bin.\n");
 				continue;
 			}
