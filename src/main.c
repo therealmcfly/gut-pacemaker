@@ -27,6 +27,7 @@ int main(int argc, char *argv[])
 			{
 				printf("Opening default file: %s\n", DEFAULT_FILE);
 				strncpy(file_name, DEFAULT_FILE, sizeof(file_name) - 1);
+				file_name[sizeof(file_name) - 1] = '\0'; // Ensure null termination
 				break;
 			}
 
