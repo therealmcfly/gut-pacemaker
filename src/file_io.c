@@ -148,6 +148,8 @@ int verify_result(double **data, size_t data_num_rows, size_t data_num_cols, con
 	if (verify_num_rows != data_num_rows)
 	{
 		printf("Error: Number of rows do not match.\n\n");
+		printf("verify_num_rows: %zu\n", verify_num_rows);
+		printf("data_num_rows: %zu\n", data_num_rows);
 		return 1;
 	}
 
@@ -156,6 +158,8 @@ int verify_result(double **data, size_t data_num_rows, size_t data_num_cols, con
 	if (verify_num_cols != data_num_cols)
 	{
 		printf("Error: Number of columns do not match.\n\n");
+		printf("verify_num_cols: %zu\n", verify_num_cols);
+		printf("data_num_cols: %zu\n", data_num_cols);
 		return 1;
 	}
 
