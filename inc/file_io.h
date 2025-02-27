@@ -7,5 +7,10 @@
 double *read_data(const char *file_name, int channel_num, size_t *num_rows);
 void print_data(double **data, size_t num_rows, size_t num_cols);
 int verify_result(double **data, size_t data_num_rows, size_t data_num_cols, const char *file);
+double **import_file(const char *file_name, size_t *num_rows, size_t *num_cols);
+void get_file_name(char *file_name, size_t file_name_size);
+int validate_file_name(const char *file_name);
+void get_channel_num(int *channel_num);
+int validate_channel_num(int channel_num);
 
 #endif
