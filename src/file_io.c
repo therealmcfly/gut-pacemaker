@@ -5,7 +5,7 @@
 
 const char *FILE_EXTENSIONS[] = {".csv", ".bin"};
 
-double **import_file(const char *file_name, size_t *num_rows, size_t *num_cols)
+float **import_file(const char *file_name, size_t *num_rows, size_t *num_cols)
 {
 
 	char file_path[200];
@@ -21,7 +21,7 @@ double **import_file(const char *file_name, size_t *num_rows, size_t *num_cols)
 	}
 
 	size_t capacity = INITIAL_CAPACITY;
-	double **data = (double **)malloc(capacity * sizeof(double *));
+	float **data = (float **)malloc(capacity * sizeof(float *));
 	if (!data)
 	{
 		printf("Error: Memory allocation failed.\n");
@@ -45,7 +45,7 @@ double **import_file(const char *file_name, size_t *num_rows, size_t *num_cols)
 		if (row >= capacity)
 		{
 			capacity *= 2;
-			double **temp = (double **)realloc(data, capacity * sizeof(double *));
+			float **temp = (float **)realloc(data, capacity * sizeof(float *));
 			if (!temp)
 			{
 				printf("Error: Memory reallocation failed.\n");
@@ -59,7 +59,7 @@ double **import_file(const char *file_name, size_t *num_rows, size_t *num_cols)
 		char *token = strtok(line, ","); // Split by comma
 
 		// Allocate memory for columns (start with 100, expand dynamically)
-		data[row] = (double *)malloc(100 * sizeof(double));
+		data[row] = (float *)malloc(100 * sizeof(float));
 		size_t col_capacity = 100;
 
 		while (token != NULL)
@@ -67,7 +67,7 @@ double **import_file(const char *file_name, size_t *num_rows, size_t *num_cols)
 			if (col >= col_capacity)
 			{
 				col_capacity *= 2;
-				double *temp_row = (double *)realloc(data[row], col_capacity * sizeof(double));
+				float *temp_row = (float *)realloc(data[row], col_capacity * sizeof(float));
 				if (!temp_row)
 				{
 					printf("Error: Column reallocation failed.\n");
@@ -94,12 +94,12 @@ double **import_file(const char *file_name, size_t *num_rows, size_t *num_cols)
 	free(line);
 
 	*num_rows = row;
-	printf("File loaded: %zu row(s), %zu column(s)\n", *num_rows, *num_cols);
+	printf("Data loaded: %zu row(s), %zu column(s)\n", *num_rows, *num_cols);
 	return data;
 }
 
 // Function to print the full dataset in a table format
-void print_data(double **data, size_t num_rows, size_t num_cols)
+void print_data(float **data, size_t num_rows, size_t num_cols)
 {
 	if (!data)
 	{
@@ -132,11 +132,11 @@ void print_data(double **data, size_t num_rows, size_t num_cols)
 	printf("--------------------------------------------------------------\n");
 }
 
-int verify_result(double **data, size_t data_num_rows, size_t data_num_cols, const char *file)
+int verify_data(float **data, size_t data_num_rows, size_t data_num_cols, const char *file)
 {
 	size_t verify_num_rows = 0; // Variable to store the number of rows read
 	size_t verify_num_cols = 0; // Variable to store the number of columns read
-	double **verify_data = import_file(file, &verify_num_rows, &verify_num_cols);
+	float **verify_data = import_file(file, &verify_num_rows, &verify_num_cols);
 
 	if (!verify_data)
 	{
