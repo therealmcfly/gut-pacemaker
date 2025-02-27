@@ -3,11 +3,7 @@
 #include <string.h>
 #include "../inc/file_io.h"
 
-#define DATA_DIRECTORY "data/" // Set to data directory from where the executable is being run
-#define INITIAL_CAPACITY 1000	 // Start memory allocation for rows
-#define DEFAULT_FILE "exp_16_output.csv"
 const char *FILE_EXTENSIONS[] = {".csv", ".bin"};
-#define MAX_CHANNEL 2000
 
 double **import_file(const char *file_name, size_t *num_rows, size_t *num_cols)
 {
@@ -232,7 +228,7 @@ void get_file_name(char *file_name, size_t file_name_size)
 	}
 }
 
-// fucntion to Validate file name from command line args
+// fucntion to validate file name from command line args
 int validate_file_name(const char *file_name)
 {
 	// Check if file name ends with valid file extensions
@@ -266,19 +262,19 @@ void get_channel_num(int *channel_num)
 			continue;
 		}
 		// Check if channel number is within the range
-		if (validate_channel_num(*channel_num))
+		if (validate_channel_num(*channel_num, MAX_CHANNEL))
 		{
-			continue;
+			continue; // Retry input
 		}
 		break;
 	}
 }
 
-int validate_channel_num(int channel_num)
+int validate_channel_num(int channel_num, int max_channel)
 {
-	if (channel_num <= 0 || channel_num > MAX_CHANNEL)
+	if (channel_num <= 0 || channel_num > max_channel)
 	{
-		printf("Error: Channel number must be between 1 and %d.\n", MAX_CHANNEL);
+		printf("Error: Channel number must be between 1 and %d.\n", max_channel);
 		return 1; // Exit with error
 	}
 	return 0;

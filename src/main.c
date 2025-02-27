@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
 		// Validate file name & channel number
 		if (validate_file_name(file_name))
 			return 1; // Exit with error
-		if (validate_channel_num(channel_num))
+		if (validate_channel_num(channel_num, MAX_CHANNEL))
 			return 1; // Exit with error
 	}
 
