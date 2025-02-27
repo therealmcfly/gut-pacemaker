@@ -1,13 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../include/file_io.h"
+#include "../inc/file_io.h"
 
-#define DATA_DIRECTORY "data/" // Set to data directory from where the executable is being run
-#define INITIAL_CAPACITY 1000	 // Start memory allocation for rows
+const char *FILE_EXTENSIONS[] = {".csv", ".bin"};
 
 double **import_file(const char *file_name, size_t *num_rows, size_t *num_cols)
 {
+
 	char file_path[200];
 	snprintf(file_path, sizeof(file_path), "%s%s", DATA_DIRECTORY, file_name);
 
@@ -16,7 +16,7 @@ double **import_file(const char *file_name, size_t *num_rows, size_t *num_cols)
 	FILE *file = fopen(file_path, "r");
 	if (!file)
 	{
-		printf("Error: Could not open file %s\n", file_path);
+		printf("Error: Could not open file %s\n", file_name);
 		return NULL;
 	}
 
@@ -94,7 +94,7 @@ double **import_file(const char *file_name, size_t *num_rows, size_t *num_cols)
 	free(line);
 
 	*num_rows = row;
-	printf("File loaded: %zu row(s), %zu column(s)\n\n", *num_rows, *num_cols);
+	printf("File loaded: %zu row(s), %zu column(s)\n", *num_rows, *num_cols);
 	return data;
 }
 
@@ -148,6 +148,8 @@ int verify_result(double **data, size_t data_num_rows, size_t data_num_cols, con
 	if (verify_num_rows != data_num_rows)
 	{
 		printf("Error: Number of rows do not match.\n\n");
+		printf("verify_num_rows: %zu\n", verify_num_rows);
+		printf("data_num_rows: %zu\n", data_num_rows);
 		return 1;
 	}
 
@@ -156,6 +158,8 @@ int verify_result(double **data, size_t data_num_rows, size_t data_num_cols, con
 	if (verify_num_cols != data_num_cols)
 	{
 		printf("Error: Number of columns do not match.\n\n");
+		printf("verify_num_cols: %zu\n", verify_num_cols);
+		printf("data_num_cols: %zu\n", data_num_cols);
 		return 1;
 	}
 
@@ -183,4 +187,96 @@ int verify_result(double **data, size_t data_num_rows, size_t data_num_cols, con
 	printf("Data match: %d value(s) checked\n\n", count);
 
 	return 0; // Files match
+}
+
+void get_file_name(char *file_name, size_t file_name_size)
+{
+	char input_buffer[100]; // Buffer for user input
+
+	while (1)
+	{
+		printf("\nEnter the file name: ");
+		if (fgets(input_buffer, sizeof(input_buffer), stdin) == NULL)
+		{
+			printf("Error reading input.\n");
+			continue;
+		}
+
+		// Remove newline character from input
+		input_buffer[strcspn(input_buffer, "\n")] = '\0';
+
+		if (strcmp(input_buffer, "0") == 0 || input_buffer[0] == '\0')
+		{
+			strncpy(file_name, DEFAULT_FILE, file_name_size - 1);
+			file_name[file_name_size - 1] = '\0'; // Ensure null termination
+			printf("Opening default file: %s\n", DEFAULT_FILE);
+			break;
+		}
+		else
+		{
+			// Validate file name
+			if (validate_file_name(input_buffer))
+			{
+				continue;
+			}
+
+			strncpy(file_name, input_buffer, file_name_size - 1);
+			file_name[file_name_size - 1] = '\0'; // Ensure null termination
+			printf("Opening file: %s\n", file_name);
+			break;
+		}
+	}
+}
+
+// fucntion to validate file name from command line args
+int validate_file_name(const char *file_name)
+{
+	// Check if file name ends with valid file extensions
+	char *ext = strrchr(file_name, '.'); // Get last occurrence of '.'
+	int valid_ext = 0;
+	for (int i = 0; i < sizeof(FILE_EXTENSIONS) / sizeof(FILE_EXTENSIONS[0]); i++)
+	{
+		if (ext && strcmp(ext, FILE_EXTENSIONS[i]) == 0)
+		{
+			valid_ext = 1;
+			return 0;
+		}
+	}
+	printf("Error: File must end with .csv or .bin.\n");
+	return 1; // Exit with error
+}
+
+void get_channel_num(int *channel_num)
+{
+	// Ask for channel number and validate input
+	while (1)
+	{
+		printf("\nEnter the channel number: ");
+
+		// Check if channel number is an integer
+		if (scanf("%d", channel_num) != 1) // Validate integer input
+		{
+			printf("Error: Invalid input. Please enter an integer.\n");
+			while (getchar() != '\n')
+				; // Clear input buffer
+			continue;
+		}
+		// Check if channel number is within the range
+		if (validate_channel_num(*channel_num, MAX_CHANNEL))
+		{
+			continue; // Retry input
+		}
+		break;
+	}
+}
+
+int validate_channel_num(int channel_num, int max_channel)
+{
+	// Check if channel number is within the range
+	if (channel_num <= 0 || channel_num > max_channel)
+	{
+		printf("Error: Channel must be an integer between 1 and %d.\n", max_channel);
+		return 1; // Exit with error
+	}
+	return 0;
 }
