@@ -199,7 +199,7 @@ void get_file_name(char *file_name, size_t file_name_size)
 
 	while (1)
 	{
-		printf("\nEnter the file name: ", DEFAULT_FILE);
+		printf("\nEnter the file name: ");
 		if (fgets(input_buffer, sizeof(input_buffer), stdin) == NULL)
 		{
 			printf("Error reading input.\n");
@@ -246,15 +246,8 @@ int validate_file_name(const char *file_name)
 			return 0;
 		}
 	}
-	if (valid_ext)
-	{
-		return 0;
-	}
-	else
-	{
-		printf("Error: File must end with .csv or .bin.\n");
-		return 1;
-	}
+	printf("Error: File must end with .csv or .bin.\n");
+	return 1; // Exit with error
 }
 
 void get_channel_num(int *channel_num)
