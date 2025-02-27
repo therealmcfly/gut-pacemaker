@@ -2,17 +2,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../inc/file_io.h"
+#include "../inc/pre_processing.h"
+#include "../inc/result_check.h"
 
-// Maximum channel number
+#define MATLAB_DIRERCTORY "MATLAB Model/"
 
 int main(int argc, char *argv[])
 {
-	char file_name[100];	// Buffer for file name
-	int channel_num;			// Buffer for channel number
-	size_t num_rows = 0;	// Variable to store the number of rows read
-	size_t num_cols = 0;	// Variable to store the number of columns read
-	double *channel_data; // Pointer to dynamically allocated array
-
+	char file_name[100];		 // Buffer for file name
+	int channel_num;				 // Buffer for channel number
+	size_t num_rows = 0;		 // Variable to store the number of rows read
+	size_t num_cols = 0;		 // Variable to store the number of columns read
+	size_t ver_num_rows = 0; // Variable to store the number of rows read
+	size_t ver_num_cols = 0; // Variable to store the number of columns read
 	// If no arguments are passed, ask for user input
 	if (argc != 3)
 	{
@@ -41,21 +43,58 @@ int main(int argc, char *argv[])
 	printf("Reading from file: %s\n", file_name);
 	printf("Channel number: %d\n", channel_num);
 	printf("----------------------------------------\n");
-	printf("\n");
 
 	// Read data from file
-	double **data = import_file(file_name, &num_rows, &num_cols);
+	printf("\nReading data from file...\n");
+	float **data = import_file(file_name, &num_rows, &num_cols);
 	if (!data)
 	{
 		printf("Error: Failed to load data.\n");
 		return 1;
 	}
+	// Verify channel data with MATLAB output
+	// if (verify_result(channel_data, num_rows, num_cols, "ver_chdata_%s_ch%d", *strtok(file_name, "."), channel_num))
+	// {
+	// 	printf("Error: Verification failed.\n");
+	// 	return 1;
+	// }
 
-	// verify result
-	if (verify_result(data, num_rows, num_cols, "MATLAB Model/verify_importfile.csv"))
+	/* ---------------------------------------------------------------------- */
+	/* ------------------------ Pre Processing --------------------------- */
+	/* ---------------------------------------------------------------------- */
+	// code below here is likely to be used in embedded systems. lib usage may be restricted, memory and resources may be limited
+
+	// Get the channel data
+	float *channel_data = get_signal(data, num_rows, num_cols, channel_num);
+	// // DEBUG: Print the first 10 samples of the channel
+	// for (size_t i = 0; i < 10 && i < num_rows; i++)
+	// {
+	// 	printf("channel[%zu] = %f\n", i, channel_data[i]);
+	// }
+
+	// Verify the channel data with MATLAB output
+	// Load the verification data from the MATLAB output file
+	printf("\nLoading verification data from MATLAB output...\n");
+	char ver_filepath[100];
+	sprintf(ver_filepath, "%sver_chdata_%s_ch%d.csv", MATLAB_DIRERCTORY, strtok(file_name, "."), channel_num);
+	float **verify_data = import_file(ver_filepath, &ver_num_rows, &ver_num_cols);
+	if (!verify_data)
 	{
+		printf("Error: Failed to load data.\n");
 		return 1;
 	}
+
+	// Verify the channel data with the MATLAB output
+	printf("\nVerifying channel data with verification data...\n");
+	verify_signals(channel_data, num_rows, verify_data, ver_num_rows, ver_num_cols);
+
+	// Free the 2D array 'data'
+	for (size_t i = 0; i < num_rows; i++)
+	{
+		free(data[i]);
+	}
+	free(data);
+	free(channel_data);
 
 	return 0;
 }
