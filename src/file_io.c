@@ -272,9 +272,10 @@ void get_channel_num(int *channel_num)
 
 int validate_channel_num(int channel_num, int max_channel)
 {
+	// Check if channel number is within the range
 	if (channel_num <= 0 || channel_num > max_channel)
 	{
-		printf("Error: Channel number must be between 1 and %d.\n", max_channel);
+		printf("Error: Channel must be an integer between 1 and %d.\n", max_channel);
 		return 1; // Exit with error
 	}
 	return 0;
