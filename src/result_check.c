@@ -2,30 +2,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int verify_signals(float *signal, size_t num_of_data, float **verify_data, size_t verify_num_rows, size_t verify_num_cols)
+int verify_signals(float *signal, size_t num_of_data, float **verify_data, size_t *verify_num_rows, size_t *verify_num_cols)
 {
-	int start_row = 5;
+	int start_row = 0;
 	int end_row = 10;
 	// compare rows and columns of data and verify_data
-	if (verify_num_rows != num_of_data)
+	if (*verify_num_rows != num_of_data)
 	{
 		printf("Error: Number of rows do not match.\n\n");
-		printf("verify_num_rows: %zu\n", verify_num_rows);
+		printf("verify_num_rows: %zu\n", *verify_num_rows);
 		printf("num_of_data: %zu\n", num_of_data);
 		return 1;
 	}
 
-	printf("Row match : %zu row(s)\n", verify_num_rows);
+	printf("Row match : %zu row(s)\n", *verify_num_rows);
 
-	if (verify_num_cols != 1)
+	if (*verify_num_cols != 1)
 	{
 		printf("Error: Number of columns do not match.\n\n");
-		printf("verify_num_cols: %zu\n", verify_num_cols);
+		printf("verify_num_cols: %zu\n", *verify_num_cols);
 		printf("data_num_cols: %d\n", 1);
 		return 1;
 	}
 
-	printf("Column match : %zu column(s)\n", verify_num_cols);
+	printf("Column match : %zu column(s)\n", *verify_num_cols);
 
 	// Print Table Header
 	printf("\n---------------------------------------------------\n");
@@ -53,6 +53,8 @@ int verify_signals(float *signal, size_t num_of_data, float **verify_data, size_
 		{
 			printf("---------------------------------------------------\n");
 			printf("Error: Data mismatch at row %zu.\n\n", row);
+			printf("signal in row %zu: %f\n", row, signal[row]);
+			printf("verify_data in row %zu: %f\n", row, verify_data[row][0]);
 			return 1;
 		}
 

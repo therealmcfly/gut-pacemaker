@@ -6,6 +6,7 @@
 #include "../inc/result_check.h"
 
 #define MATLAB_DIRERCTORY "MATLAB Model/"
+#define DEBUG 1
 
 int main(int argc, char *argv[])
 {
@@ -60,12 +61,13 @@ int main(int argc, char *argv[])
 	// }
 
 	/* ---------------------------------------------------------------------- */
-	/* ------------------------ Pre Processing --------------------------- */
+	/* -------------------------- Pre Processing ---------------------------- */
 	/* ---------------------------------------------------------------------- */
 	// code below here is likely to be used in embedded systems. lib usage may be restricted, memory and resources may be limited
 
+	/* ------------------------ Channel Data Retrieval --------------------------- */
 	// Get the channel data
-	float *channel_data = get_signal(data, num_rows, num_cols, channel_num);
+	float *channel_data = get_ch_signal(data, num_rows, num_cols, channel_num);
 	// // DEBUG: Print the first 10 samples of the channel
 	// for (size_t i = 0; i < 10 && i < num_rows; i++)
 	// {
@@ -77,16 +79,9 @@ int main(int argc, char *argv[])
 	printf("\nLoading verification data from MATLAB output...\n");
 	char ver_filepath[100];
 	sprintf(ver_filepath, "%sver_chdata_%s_ch%d.csv", MATLAB_DIRERCTORY, strtok(file_name, "."), channel_num);
-	float **verify_data = import_file(ver_filepath, &ver_num_rows, &ver_num_cols);
-	if (!verify_data)
-	{
-		printf("Error: Failed to load data.\n");
-		return 1;
-	}
-
 	// Verify the channel data with the MATLAB output
 	printf("\nVerifying channel data with verification data...\n");
-	verify_signals(channel_data, num_rows, verify_data, ver_num_rows, ver_num_cols);
+	verify_signals(channel_data, num_rows, import_file(ver_filepath, &ver_num_rows, &ver_num_cols), &ver_num_rows, &ver_num_cols);
 
 	// Free the 2D array 'data'
 	for (size_t i = 0; i < num_rows; i++)
@@ -94,6 +89,49 @@ int main(int argc, char *argv[])
 		free(data[i]);
 	}
 	free(data);
+
+	/* ------------------------ Downsampling --------------------------- */
+	// Downsample the channel data by a factor of 2
+	int factor = 16;
+	printf("\nDownsampling channel data by a factor of %d...\n", factor);
+	float *downsampled_data = downsample(channel_data, &num_rows, factor);
+	if (!downsampled_data)
+	{
+		printf("Error: Downsampling failed.\n");
+		free(channel_data);
+		free(downsampled_data);
+		return 1;
+	}
+
+	// Verify the downsampled data with MATLAB downsampled output
+	sprintf(ver_filepath, "%sver_ds_%s_ch%d.csv", MATLAB_DIRERCTORY, strtok(file_name, "."), channel_num);
+	// Verify the channel data with the MATLAB output
+	printf("\nVerifying downsampled data with MATLAB downsampled output data...\n");
+	float **verify_data = import_file(ver_filepath, &ver_num_rows, &ver_num_cols);
+	if (!verify_data)
+	{
+		printf("Error: Failed to load verification data.\n");
+		free(downsampled_data);
+		free(channel_data);
+		return 1;
+	}
+
+	if (verify_signals(downsampled_data, num_rows, verify_data, &ver_num_rows, &ver_num_cols))
+	{
+		printf("Error: Downsampled data verification failed.\n");
+		free(verify_data); // Free allocated memory
+		free(downsampled_data);
+		free(channel_data);
+		return 1;
+	}
+
+	// Free verification data after use
+	for (size_t i = 0; i < ver_num_rows; i++)
+	{
+		free(verify_data[i]);
+	}
+	free(verify_data);
+	free(downsampled_data);
 	free(channel_data);
 
 	return 0;
