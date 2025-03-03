@@ -312,7 +312,7 @@ int validate_file_name(const char *file_name, int *out_frequency)
 	return 0;
 }
 
-void get_channel_num(int *channel_num)
+void get_channel_num(int *channel_num, int max_channel)
 {
 	// Ask for channel number and validate input
 	while (1)
@@ -328,7 +328,7 @@ void get_channel_num(int *channel_num)
 			continue;
 		}
 		// Check if channel number is within the range
-		if (validate_channel_num(*channel_num, MAX_CHANNEL))
+		if (validate_channel_num(*channel_num, max_channel))
 		{
 			continue; // Retry input
 		}

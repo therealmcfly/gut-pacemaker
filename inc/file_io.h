@@ -5,8 +5,7 @@
 
 #define DATA_DIRECTORY "data/" // Set to data directory from where the executable is being run
 #define INITIAL_CAPACITY 1000	 // Start memory allocation for rows
-#define DEFAULT_FILE "exp_16_output.csv"
-#define MAX_CHANNEL 2000
+#define DEFAULT_FILE "exp_16_output_512.csv"
 
 // Function to read a specific channel (column) from a CSV file
 float *read_data(const char *file_name, int channel_num, size_t *num_rows);
@@ -26,7 +25,35 @@ void get_file_name(char *file_name, size_t file_name_size, int *data_frequency);
  * @return              0 on success, 1 on error.
  */
 int validate_file_name(const char *file_name, int *out_frequency);
-void get_channel_num(int *channel_num);
+void get_channel_num(int *channel_num, int max_channel);
 int validate_channel_num(int channel_num, int max_channel);
+
+/**
+ * @brief Downsamples the input signal by the specified factor.
+ *
+ * @param inSignal     Pointer to the input signal array.
+ * @param inLength     Number of elements in the input signal array.
+ * @param factor       Downsampling factor (e.g. 16).
+ * @return             Pointer to the downsampled signal array.
+ *                     Returns NULL on error or memory allocation failure.
+ */
+float *downsample(const float *inSignal,
+									size_t *inLength,
+									int factor);
+
+/**
+ * @brief Retrieve all samples from a single channel (1-based).
+ *
+ * @param data        Pointer to a 2D array [num_rows][num_cols].
+ * @param num_rows    Number of rows in 'data'.
+ * @param num_cols    Number of columns in 'data'.
+ * @param channel_num 1-based index of the channel to retrieve (1..num_cols).
+ * @return            Pointer to newly-allocated array (length = num_rows).
+ *                    Returns NULL on error or memory allocation failure.
+ */
+float *get_ch_signal(float **data,
+										 size_t num_rows,
+										 size_t num_cols,
+										 int channel_num);
 
 #endif
