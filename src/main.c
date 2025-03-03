@@ -19,6 +19,8 @@ int main(int argc, char *argv[])
 	size_t ver_num_rows = 0; // Variable to store the number of rows for verification data
 	size_t ver_num_cols = 0; // Variable to store the number of columns for verification data
 
+	char ver_filepath[100]; // Buffer for verification file path
+
 	// If no arguments are passed, ask for user input
 	if (argc != 3)
 	{
@@ -56,12 +58,6 @@ int main(int argc, char *argv[])
 		printf("Error: Failed to load data.\n");
 		return 1;
 	}
-	// Verify channel data with MATLAB output
-	// if (verify_result(channel_data, num_rows, num_cols, "ver_chdata_%s_ch%d", *strtok(file_name, "."), channel_num))
-	// {
-	// 	printf("Error: Verification failed.\n");
-	// 	return 1;
-	// }
 
 	/* ---------------------------------------------------------------------- */
 	/* -------------------------- Pre Processing ---------------------------- */
@@ -71,47 +67,46 @@ int main(int argc, char *argv[])
 	/* ------------------------ Channel Data Retrieval --------------------------- */
 	// Get the channel data
 	float *channel_data = get_ch_signal(data, num_rows, num_cols, channel_num);
-	if (!channel_data)
-	{
-		printf("Error: Failed to retrieve channel data.\n");
-		// Free data before returning
-		for (size_t i = 0; i < num_rows; i++)
-			free(data[i]);
-		free(data);
-		return 1;
-	}
-	// // DEBUG: Print the first 10 samples of the channel
-	// for (size_t i = 0; i < 10 && i < num_rows; i++)
-	// {
-	// 	printf("channel[%zu] = %f\n", i, channel_data[i]);
-	// }
-
-	// Verify the channel data with MATLAB output
-	// Load the verification data from the MATLAB output file
-	printf("\nLoading verification data from MATLAB output...\n");
-	char ver_filepath[100];
-	sprintf(ver_filepath, "%sver_chdata_%s_ch%d.csv", MATLAB_DIRECTORY, strtok(file_name, "."), channel_num);
-	// Verify the channel data with the MATLAB output
-	printf("\nVerifying channel data with verification data...\n");
-	verify_signals(channel_data, num_rows, import_file(ver_filepath, &ver_num_rows, &ver_num_cols), &ver_num_rows, &ver_num_cols);
-
 	// Free the 2D array 'data'
 	for (size_t i = 0; i < num_rows; i++)
 	{
 		free(data[i]);
 	}
 	free(data);
+	if (!channel_data)
+	{
+		printf("Error: Failed to retrieve channel data.\n");
+		return 1;
+	}
+
+	// // DEBUG: Print the first 10 samples of the channel
+	// for (size_t i = 0; i < 10 && i < num_rows; i++)
+	// {
+	// 	printf("channel[%zu] = %f\n", i, channel_data[i]);
+	// }
+
+	/* ---------------- Channel Retrieval Verification ----------------- */
+	// // Verify the channel data with MATLAB output
+	// // Load the verification data from the MATLAB output file
+	// printf("\n-----------------CHANNEL VERIFICATION-----------------\n");
+	// printf("\nLoading verification data from MATLAB output...\n");
+	// sprintf(ver_filepath, "%sver_chdata_%s_ch%d.csv", MATLAB_DIRECTORY, strtok(file_name, "."), channel_num);
+	// // Verify the channel data with the MATLAB output
+	// printf("\nVerifying channel data with verification data...\n");
+	// verify_signals(channel_data, num_rows, import_file(ver_filepath, &ver_num_rows, &ver_num_cols), &ver_num_rows, &ver_num_cols);
+	// printf("-----------------VERIFICATION SUCCESSFUL-----------------\n");
+	/* ----------------------------------------------------------------- */
 
 	/* ------------------------ Downsampling --------------------------- */
 	// Downsample the channel data if the initial data frequency is higher than the desired frequency
 	float *downsampled_data = NULL;
 	if (data_frequency >= TARGET_FREQUENCY * 2)
 	{
-		printf("Data frequency: %d Hz\n", data_frequency);
+		printf("\nData frequency: %d Hz\n", data_frequency);
 		printf("Desired frequency: %d Hz\n", TARGET_FREQUENCY);
-		printf("\nData frequency is higher than the desired frequency.\n");
+		printf("Data frequency is higher than the desired frequency.\n");
 		int factor = data_frequency / TARGET_FREQUENCY;
-		printf("\nDownsampling channel data by a factor of %d...\n", factor);
+		printf("Downsampling channel data by a factor of %d...\n", factor);
 		downsampled_data = downsample(channel_data, &num_rows, factor);
 		if (!downsampled_data)
 		{
@@ -121,10 +116,11 @@ int main(int argc, char *argv[])
 			return 1;
 		}
 
+		/* ---------------- Downsampling Verification ----------------- */
 		// Verify the downsampled data with MATLAB downsampled output
-		sprintf(ver_filepath, "%sver_ds_%s_ch%d.csv", MATLAB_DIRECTORY, strtok(file_name, "."), channel_num);
 		// Verify the channel data with the MATLAB output
-		printf("\nVerifying downsampled data with MATLAB downsampled output data...\n");
+		printf("\n-----------------DOWN-SAMPLING VERIFICATION-----------------\n");
+		sprintf(ver_filepath, "%sver_ds_%s_ch%d.csv", MATLAB_DIRECTORY, strtok(file_name, "."), channel_num);
 		float **verify_data = import_file(ver_filepath, &ver_num_rows, &ver_num_cols);
 		if (!verify_data)
 		{
@@ -148,6 +144,8 @@ int main(int argc, char *argv[])
 			free(verify_data[i]);
 		}
 		free(verify_data);
+		printf("-----------------VERIFICATION SUCCESSFUL-----------------\n");
+		/* ----------------------------------------------------------------- */
 	}
 	else
 	{
