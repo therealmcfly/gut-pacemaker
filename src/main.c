@@ -71,6 +71,15 @@ int main(int argc, char *argv[])
 	/* ------------------------ Channel Data Retrieval --------------------------- */
 	// Get the channel data
 	float *channel_data = get_ch_signal(data, num_rows, num_cols, channel_num);
+	if (!channel_data)
+	{
+		printf("Error: Failed to retrieve channel data.\n");
+		// Free data before returning
+		for (size_t i = 0; i < num_rows; i++)
+			free(data[i]);
+		free(data);
+		return 1;
+	}
 	// // DEBUG: Print the first 10 samples of the channel
 	// for (size_t i = 0; i < 10 && i < num_rows; i++)
 	// {
@@ -147,6 +156,12 @@ int main(int argc, char *argv[])
 		printf("\nData frequency is lower than the desired frequency.\n");
 		printf("No downsampling required.\n");
 	}
+
+	/* ------------------------ Post Processing --------------------------- */
+	// Post processing steps can be added here
+
+	// ------------------------ Free Memory ---------------------------
+	// Free allocated memory
 
 	!downsampled_data ? printf("No downsampled data to free.") : free(downsampled_data);
 	!channel_data ? printf("No channel data to free.") : free(channel_data);
