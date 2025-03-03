@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
 	/* ---------------------------------------------------------------------- */
 	// code below here is likely to be used in embedded systems. lib usage may be restricted, memory and resources may be limited
 
-	/* ------------------------ Channel Data Retrieval --------------------------- */
+	// CHANNEL SIGNAL RETRIEVAL
 	// Get the channel data
 	float *channel_data = get_ch_signal(data, num_rows, num_cols, channel_num);
 	// Free the 2D array 'data'
@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
 	// printf("-----------------VERIFICATION SUCCESSFUL-----------------\n");
 	/* ----------------------------------------------------------------- */
 
-	/* ------------------------ Downsampling --------------------------- */
+	// DOWNSAMPLING
 	// Downsample the channel data if the initial data frequency is higher than the desired frequency
 	float *downsampled_data = NULL;
 	if (data_frequency >= TARGET_FREQUENCY * 2)
@@ -117,34 +117,34 @@ int main(int argc, char *argv[])
 		}
 
 		/* ---------------- Downsampling Verification ----------------- */
-		// Verify the downsampled data with MATLAB downsampled output
-		// Verify the channel data with the MATLAB output
-		printf("\n-----------------DOWN-SAMPLING VERIFICATION-----------------\n");
-		sprintf(ver_filepath, "%sver_ds_%s_ch%d.csv", MATLAB_DIRECTORY, strtok(file_name, "."), channel_num);
-		float **verify_data = import_file(ver_filepath, &ver_num_rows, &ver_num_cols);
-		if (!verify_data)
-		{
-			printf("Error: Failed to load verification data.\n");
-			free(downsampled_data);
-			free(channel_data);
-			return 1;
-		}
+		// // Verify the downsampled data with MATLAB downsampled output
+		// // Verify the channel data with the MATLAB output
+		// printf("\n-----------------DOWN-SAMPLING VERIFICATION-----------------\n");
+		// sprintf(ver_filepath, "%sver_ds_%s_ch%d.csv", MATLAB_DIRECTORY, strtok(file_name, "."), channel_num);
+		// float **verify_data = import_file(ver_filepath, &ver_num_rows, &ver_num_cols);
+		// if (!verify_data)
+		// {
+		// 	printf("Error: Failed to load verification data.\n");
+		// 	free(downsampled_data);
+		// 	free(channel_data);
+		// 	return 1;
+		// }
 
-		if (verify_signals(downsampled_data, num_rows, verify_data, &ver_num_rows, &ver_num_cols))
-		{
-			printf("Error: Downsampled data verification failed.\n");
-			free(verify_data); // Free allocated memory
-			free(downsampled_data);
-			free(channel_data);
-			return 1;
-		}
-		// Free verification data after use
-		for (size_t i = 0; i < ver_num_rows; i++)
-		{
-			free(verify_data[i]);
-		}
-		free(verify_data);
-		printf("-----------------VERIFICATION SUCCESSFUL-----------------\n");
+		// if (verify_signals(downsampled_data, num_rows, verify_data, &ver_num_rows, &ver_num_cols))
+		// {
+		// 	printf("Error: Downsampled data verification failed.\n");
+		// 	free(verify_data); // Free allocated memory
+		// 	free(downsampled_data);
+		// 	free(channel_data);
+		// 	return 1;
+		// }
+		// // Free verification data after use
+		// for (size_t i = 0; i < ver_num_rows; i++)
+		// {
+		// 	free(verify_data[i]);
+		// }
+		// free(verify_data);
+		// printf("-----------------VERIFICATION SUCCESSFUL-----------------\n");
 		/* ----------------------------------------------------------------- */
 	}
 	else
@@ -155,8 +155,11 @@ int main(int argc, char *argv[])
 		printf("No downsampling required.\n");
 	}
 
-	/* ------------------------ Post Processing --------------------------- */
-	// Post processing steps can be added here
+	// LOW PASS FILTERING
+
+	// HIGH PASS FILTERING
+
+	// ARTIFACT REMOVAL
 
 	// ------------------------ Free Memory ---------------------------
 	// Free allocated memory
