@@ -6,21 +6,24 @@
 #include "../inc/result_check.h"
 
 #define MATLAB_DIRECTORY "MATLAB Model/"
+#define TARGET_FREQUENCY 32 // Signal frequency in Hz
 #define DEBUG 1
 
 int main(int argc, char *argv[])
 {
 	char file_name[100];		 // Buffer for file name
 	int channel_num;				 // Buffer for channel number
+	int data_frequency;			 // Buffer for exp data frequency
 	size_t num_rows = 0;		 // Variable to store the number of rows read
 	size_t num_cols = 0;		 // Variable to store the number of columns read
-	size_t ver_num_rows = 0; // Variable to store the number of rows read
-	size_t ver_num_cols = 0; // Variable to store the number of columns read
+	size_t ver_num_rows = 0; // Variable to store the number of rows for verification data
+	size_t ver_num_cols = 0; // Variable to store the number of columns for verification data
+
 	// If no arguments are passed, ask for user input
 	if (argc != 3)
 	{
 		// Ask for filename and validate input
-		get_file_name(file_name, sizeof(file_name));
+		get_file_name(file_name, sizeof(file_name), &data_frequency);
 		// Ask for channel number and validate input
 		get_channel_num(&channel_num);
 	}
@@ -33,7 +36,7 @@ int main(int argc, char *argv[])
 		channel_num = atoi(argv[2]);						 // Convert argument to integer
 
 		// Validate file name & channel number
-		if (validate_file_name(file_name))
+		if (validate_file_name(file_name, &data_frequency))
 			return 1; // Exit with error
 		if (validate_channel_num(channel_num, MAX_CHANNEL))
 			return 1; // Exit with error
@@ -91,48 +94,62 @@ int main(int argc, char *argv[])
 	free(data);
 
 	/* ------------------------ Downsampling --------------------------- */
-	// Downsample the channel data by a factor of 16
-	int factor = 16;
-	printf("\nDownsampling channel data by a factor of %d...\n", factor);
-	float *downsampled_data = downsample(channel_data, &num_rows, factor);
-	if (!downsampled_data)
+	// Downsample the channel data if the initial data frequency is higher than the desired frequency
+	float *downsampled_data = NULL;
+	if (data_frequency >= TARGET_FREQUENCY * 2)
 	{
-		printf("Error: Downsampling failed.\n");
-		free(channel_data);
-		free(downsampled_data);
-		return 1;
+		printf("Data frequency: %d Hz\n", data_frequency);
+		printf("Desired frequency: %d Hz\n", TARGET_FREQUENCY);
+		printf("\nData frequency is higher than the desired frequency.\n");
+		int factor = data_frequency / TARGET_FREQUENCY;
+		printf("\nDownsampling channel data by a factor of %d...\n", factor);
+		downsampled_data = downsample(channel_data, &num_rows, factor);
+		if (!downsampled_data)
+		{
+			printf("Error: Downsampling failed.\n");
+			free(channel_data);
+			free(downsampled_data);
+			return 1;
+		}
+
+		// Verify the downsampled data with MATLAB downsampled output
+		sprintf(ver_filepath, "%sver_ds_%s_ch%d.csv", MATLAB_DIRECTORY, strtok(file_name, "."), channel_num);
+		// Verify the channel data with the MATLAB output
+		printf("\nVerifying downsampled data with MATLAB downsampled output data...\n");
+		float **verify_data = import_file(ver_filepath, &ver_num_rows, &ver_num_cols);
+		if (!verify_data)
+		{
+			printf("Error: Failed to load verification data.\n");
+			free(downsampled_data);
+			free(channel_data);
+			return 1;
+		}
+
+		if (verify_signals(downsampled_data, num_rows, verify_data, &ver_num_rows, &ver_num_cols))
+		{
+			printf("Error: Downsampled data verification failed.\n");
+			free(verify_data); // Free allocated memory
+			free(downsampled_data);
+			free(channel_data);
+			return 1;
+		}
+		// Free verification data after use
+		for (size_t i = 0; i < ver_num_rows; i++)
+		{
+			free(verify_data[i]);
+		}
+		free(verify_data);
+	}
+	else
+	{
+		printf("Data frequency: %d Hz\n", data_frequency);
+		printf("Desired frequency: %d Hz\n", TARGET_FREQUENCY);
+		printf("\nData frequency is lower than the desired frequency.\n");
+		printf("No downsampling required.\n");
 	}
 
-	// Verify the downsampled data with MATLAB downsampled output
-	sprintf(ver_filepath, "%sver_ds_%s_ch%d.csv", MATLAB_DIRECTORY, strtok(file_name, "."), channel_num);
-	// Verify the channel data with the MATLAB output
-	printf("\nVerifying downsampled data with MATLAB downsampled output data...\n");
-	float **verify_data = import_file(ver_filepath, &ver_num_rows, &ver_num_cols);
-	if (!verify_data)
-	{
-		printf("Error: Failed to load verification data.\n");
-		free(downsampled_data);
-		free(channel_data);
-		return 1;
-	}
-
-	if (verify_signals(downsampled_data, num_rows, verify_data, &ver_num_rows, &ver_num_cols))
-	{
-		printf("Error: Downsampled data verification failed.\n");
-		free(verify_data); // Free allocated memory
-		free(downsampled_data);
-		free(channel_data);
-		return 1;
-	}
-
-	// Free verification data after use
-	for (size_t i = 0; i < ver_num_rows; i++)
-	{
-		free(verify_data[i]);
-	}
-	free(verify_data);
-	free(downsampled_data);
-	free(channel_data);
+	!downsampled_data ? printf("No downsampled data to free.") : free(downsampled_data);
+	!channel_data ? printf("No channel data to free.") : free(channel_data);
 
 	return 0;
 }

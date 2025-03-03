@@ -5,7 +5,7 @@
 int verify_signals(float *signal, size_t num_of_data, float **verify_data, size_t *verify_num_rows, size_t *verify_num_cols)
 {
 	int start_row = 0;
-	int end_row = 10;
+	int end_row = 5;
 	// compare rows and columns of data and verify_data
 	if (*verify_num_rows != num_of_data)
 	{

@@ -4,9 +4,12 @@
 
 #define DEBUG 0
 #define START_ROW 0
-#define END_ROW 10
+#define END_ROW 5
 /**
  * @brief Downsamples the input signal by the specified factor.
+ *
+ * The caller is responsible for freeing the returned memory
+ * by calling free() when done with it.
  */
 float *downsample(const float *inSignal,
 									size_t *signal_length,

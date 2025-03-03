@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "../inc/file_io.h"
 
 const char *FILE_EXTENSIONS[] = {".csv", ".bin"};
+#define NUM_EXTENSIONS (sizeof(FILE_EXTENSIONS) / sizeof(FILE_EXTENSIONS[0]))
 
 float **import_file(const char *file_name, size_t *num_rows, size_t *num_cols)
 {
@@ -189,7 +191,7 @@ int verify_data(float **data, size_t data_num_rows, size_t data_num_cols, const 
 	return 0; // Files match
 }
 
-void get_file_name(char *file_name, size_t file_name_size)
+void get_file_name(char *file_name, size_t file_name_size, int *out_frequency)
 {
 	char input_buffer[100]; // Buffer for user input
 
@@ -215,7 +217,7 @@ void get_file_name(char *file_name, size_t file_name_size)
 		else
 		{
 			// Validate file name
-			if (validate_file_name(input_buffer))
+			if (validate_file_name(input_buffer, out_frequency))
 			{
 				continue;
 			}
@@ -223,27 +225,91 @@ void get_file_name(char *file_name, size_t file_name_size)
 			strncpy(file_name, input_buffer, file_name_size - 1);
 			file_name[file_name_size - 1] = '\0'; // Ensure null termination
 			printf("Opening file: %s\n", file_name);
+			printf("Data frequency: %d\n", *out_frequency);
 			break;
 		}
 	}
 }
 
-// fucntion to validate file name from command line args
-int validate_file_name(const char *file_name)
+int validate_file_name(const char *file_name, int *out_frequency)
 {
-	// Check if file name ends with valid file extensions
-	char *ext = strrchr(file_name, '.'); // Get last occurrence of '.'
-	int valid_ext = 0;
-	for (int i = 0; i < sizeof(FILE_EXTENSIONS) / sizeof(FILE_EXTENSIONS[0]); i++)
+	if (!file_name || !(*file_name))
 	{
-		if (ext && strcmp(ext, FILE_EXTENSIONS[i]) == 0)
+		printf("Error: file name is empty or NULL.\n");
+		return 1;
+	}
+
+	// 1) Check for valid extension
+	char *ext = strrchr(file_name, '.'); // find rightmost '.' in file_name
+	if (!ext)
+	{
+		printf("Error: No file extension found (no '.').\n");
+		printf("Expected structure: <name>_<freq>.csv or .bin\n");
+		return 1;
+	}
+
+	// Check if extension matches one of the expected in FILE_EXTENSIONS
+	int valid_ext = 0;
+	for (int i = 0; i < (int)NUM_EXTENSIONS; i++)
+	{
+		if (strcmp(ext, FILE_EXTENSIONS[i]) == 0)
 		{
 			valid_ext = 1;
-			return 0;
+			break;
 		}
 	}
-	printf("Error: File must end with .csv or .bin.\n");
-	return 1; // Exit with error
+	if (!valid_ext)
+	{
+		printf("Error: File must end with .csv or .bin.\n");
+		return 1;
+	}
+
+	// 2) Extract the substring between the last underscore and the extension => frequency
+	char *last_underscore = strrchr(file_name, '_');
+	if (!last_underscore || last_underscore > ext)
+	{
+		printf("Error: Could not find '_' before the extension.\n");
+		printf("Expected structure: <name>_<freq>.csv or .bin\n");
+		return 1;
+	}
+
+	// freq substring is [last_underscore+1 ... ext-1]
+	char *freq_start = last_underscore + 1;
+	if (freq_start == ext)
+	{
+		// nothing between underscore and dot
+		printf("Error: No numeric frequency found between '_' and extension.\n");
+		printf("Expected structure: <name>_<freq>.csv or .bin\n");
+		return 1;
+	}
+
+	// 3) Verify freq substring is numeric
+	for (char *p = freq_start; p < ext; p++)
+	{
+		if (!isdigit((unsigned char)*p))
+		{
+			printf("Error: Frequency part contains non-numeric characters.\n");
+			printf("Expected structure: <name>_<freq>.csv or .bin\n");
+			return 1;
+		}
+	}
+
+	// 4) Convert freq substring to integer
+	int freq = atoi(freq_start);
+	if (freq <= 0)
+	{
+		printf("Error: Frequency must be a positive integer.\n");
+		return 1;
+	}
+
+	// 5) On success, store freq in *out_frequency
+	if (out_frequency)
+	{
+		*out_frequency = freq;
+	}
+
+	// 0 => success
+	return 0;
 }
 
 void get_channel_num(int *channel_num)
