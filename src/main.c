@@ -5,7 +5,7 @@
 #include "../inc/pre_processing.h"
 #include "../inc/result_check.h"
 
-#define MATLAB_DIRERCTORY "MATLAB Model/"
+#define MATLAB_DIRECTORY "MATLAB Model/"
 #define DEBUG 1
 
 int main(int argc, char *argv[])
@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
 	// Load the verification data from the MATLAB output file
 	printf("\nLoading verification data from MATLAB output...\n");
 	char ver_filepath[100];
-	sprintf(ver_filepath, "%sver_chdata_%s_ch%d.csv", MATLAB_DIRERCTORY, strtok(file_name, "."), channel_num);
+	sprintf(ver_filepath, "%sver_chdata_%s_ch%d.csv", MATLAB_DIRECTORY, strtok(file_name, "."), channel_num);
 	// Verify the channel data with the MATLAB output
 	printf("\nVerifying channel data with verification data...\n");
 	verify_signals(channel_data, num_rows, import_file(ver_filepath, &ver_num_rows, &ver_num_cols), &ver_num_rows, &ver_num_cols);
@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
 	free(data);
 
 	/* ------------------------ Downsampling --------------------------- */
-	// Downsample the channel data by a factor of 2
+	// Downsample the channel data by a factor of 16
 	int factor = 16;
 	printf("\nDownsampling channel data by a factor of %d...\n", factor);
 	float *downsampled_data = downsample(channel_data, &num_rows, factor);
@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
 	}
 
 	// Verify the downsampled data with MATLAB downsampled output
-	sprintf(ver_filepath, "%sver_ds_%s_ch%d.csv", MATLAB_DIRERCTORY, strtok(file_name, "."), channel_num);
+	sprintf(ver_filepath, "%sver_ds_%s_ch%d.csv", MATLAB_DIRECTORY, strtok(file_name, "."), channel_num);
 	// Verify the channel data with the MATLAB output
 	printf("\nVerifying downsampled data with MATLAB downsampled output data...\n");
 	float **verify_data = import_file(ver_filepath, &ver_num_rows, &ver_num_cols);

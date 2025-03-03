@@ -13,12 +13,17 @@ float *downsample(const float *inSignal,
 									int factor)
 {
 
-	if (!inSignal || signal_length <= 0 || factor <= 0)
+	if (!inSignal || !signal_length || *signal_length <= 0 || factor <= 0)
 	{
 		printf("Error: Invalid input.\n");
 		return NULL;
 	}
 	size_t new_length = *signal_length / factor;
+	if (new_length == 0)
+	{
+		printf("Error: Downsampled data length cannot be zero.\n");
+		return NULL;
+	}
 	float *outSignal = (float *)malloc(*signal_length / factor * sizeof(float));
 
 	if (!outSignal)
@@ -48,6 +53,9 @@ float *downsample(const float *inSignal,
  *
  * Returns a newly allocated array of length 'num_rows' containing
  * the requested channel's data. Returns NULL on error.
+ *
+ * @note The caller is responsible for freeing the returned memory
+ * by calling free() when done with it.
  */
 float *get_ch_signal(float **data, size_t num_rows, size_t num_cols, int channel_num)
 {
@@ -71,6 +79,7 @@ float *get_ch_signal(float **data, size_t num_rows, size_t num_cols, int channel
 	if (!channel_data)
 	{
 		printf("Error: Could not allocate memory for channel data.\n");
+		free(channel_data);
 		return NULL;
 	}
 
