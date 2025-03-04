@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
 		printf("Exiting program...\n");
 		return 1;
 	}
-#ifdef DEBUG
+#if DEBUG
 	printf("Sample data[%d]: %f\n", 0, sample_data[0]);
 	printf("Sample data[%d]: %f\n", 1, sample_data[1]);
 	printf("Sample data[%d]: %f\n", 2, sample_data[2]);

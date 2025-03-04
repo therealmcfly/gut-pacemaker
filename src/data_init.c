@@ -8,14 +8,16 @@
 
 float *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length)
 {
-	char file_name[100];		 // Buffer for file name
-	int channel_num;				 // Buffer for channel number
-	int data_frequency;			 // Buffer for exp data frequency
-	size_t num_rows = 0;		 // Variable to store the number of rows read
-	size_t num_cols = 0;		 // Variable to store the number of columns read
+	char file_name[100]; // Buffer for file name
+	int channel_num;		 // Buffer for channel number
+	int data_frequency;	 // Buffer for exp data frequency
+	size_t num_rows = 0; // Variable to store the number of rows read
+	size_t num_cols = 0; // Variable to store the number of columns read
+#if DATA_VERIFICATION || CHANNEL_RETRIEVAL_VERIFICATION || DOWNSAMPING_VERIFICATION
 	size_t ver_num_rows = 0; // Variable to store the number of rows for verification data
 	size_t ver_num_cols = 0; // Variable to store the number of columns for verification data
 	char ver_filepath[100];	 // Buffer for verification file path
+#endif
 
 	// If no arguments are passed, ask for user input
 	if (user_argc != 3)
@@ -75,13 +77,14 @@ float *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length
 		return NULL;
 	}
 
-	// // DEBUG: Print the first 10 samples of the channel
-	// for (size_t i = 0; i < 10 && i < num_rows; i++)
-	// {
-	// 	printf("channel[%zu] = %f\n", i, channel_data[i]);
-	// }
+// // DEBUG: Print the first 10 samples of the channel
+// for (size_t i = 0; i < 10 && i < num_rows; i++)
+// {
+// 	printf("channel[%zu] = %f\n", i, channel_data[i]);
+// }
 
-	/* ---------------- Channel Retrieval Verification ----------------- */
+/* ---------------- Channel Retrieval Verification ----------------- */
+#if CHANNEL_RETRIEVAL_VERIFICATION
 	// Verify the channel data with MATLAB output
 	// Load the verification data from the MATLAB output file
 	printf("\n-----------------CHANNEL VERIFICATION-----------------\n");
@@ -105,6 +108,7 @@ float *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length
 	}
 	free(verify_ch_data);
 	printf("-----------------VERIFICATION SUCCESSFUL-----------------\n");
+#endif
 	/* ----------------------------------------------------------------- */
 
 	// DOWNSAMPLING
@@ -126,7 +130,8 @@ float *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length
 			return NULL;
 		}
 
-		/* ---------------- Downsampling Verification ----------------- */
+/* ---------------- Downsampling Verification ----------------- */
+#if DOWNSAMPING_VERIFICATION
 		// Verify the downsampled data with MATLAB downsampled output
 		// Verify the channel data with the MATLAB output
 		printf("\n-----------------DOWN-SAMPLING VERIFICATION-----------------\n");
@@ -155,6 +160,7 @@ float *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length
 		}
 		free(verify_data);
 		printf("-----------------VERIFICATION SUCCESSFUL-----------------\n");
+#endif
 		/* ----------------------------------------------------------------- */
 	}
 	else
@@ -166,16 +172,23 @@ float *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length
 		return channel_data;
 	}
 
-	// ------------------------ Free Memory ---------------------------
 	// Free allocated memory
-
-	!channel_data ? printf("No channel data to free.") : free(channel_data);
+	if (channel_data)
+	{
+		free(channel_data);
+	}
+	else
+	{
+		printf("No channel data to free.");
+	}
 
 	*out_data_length = num_rows;
+#if DEBUG
 	printf("\nout_data_length: %zu\n", *out_data_length);
 	printf("out_data: %f\n", downsampled_data[0]);
 	printf("out_data: %f\n", downsampled_data[1]);
 	printf("out_data: %f\n", downsampled_data[2]);
+#endif
 
 	// Return the downsampled data
 	return downsampled_data;

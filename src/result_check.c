@@ -5,8 +5,6 @@
 
 int verify_signals(float *signal, size_t num_of_data, float **verify_data, size_t *verify_num_rows, size_t *verify_num_cols)
 {
-	int start_row = 0;
-	int end_row = 5;
 	// compare rows and columns of data and verify_data
 	if (*verify_num_rows != num_of_data)
 	{
@@ -38,14 +36,14 @@ int verify_signals(float *signal, size_t num_of_data, float **verify_data, size_
 	for (size_t row = 0; row < num_of_data; row++)
 	{
 		// Print data row with proper alignment
-		if (row >= start_row && row <= end_row)
+		if (row >= START_ROW && row <= END_ROW)
 		{
 			printf("| %5zu | %16.6f | %16.6f |\n", row, signal[row], verify_data[row][0]);
 		}
-		if (row == end_row + 1)
+		if (row == END_ROW + 1)
 		{
 			printf("---------------------------------------------------\n");
-			printf("... and %zu more rows\n", num_of_data - end_row - 1);
+			printf("... and %zu more rows\n", num_of_data - END_ROW - 1);
 			break;
 		}
 
@@ -63,6 +61,6 @@ int verify_signals(float *signal, size_t num_of_data, float **verify_data, size_
 	}
 
 	// Print closing line
-	printf("Data match : %d data(s) checked\n", num_of_data);
+	printf("Data match : %lld data(s) checked\n", num_of_data);
 	return 0;
 }
