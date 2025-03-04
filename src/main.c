@@ -1,9 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../inc/file_io.h"
-#include "../inc/pre_processing.h"
-#include "../inc/result_check.h"
 #include "../inc/data_init.h"
 
 #define DEBUG 1

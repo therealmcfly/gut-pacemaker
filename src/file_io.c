@@ -4,6 +4,8 @@
 #include <ctype.h>
 #include "../inc/file_io.h"
 
+#define DEBUG 1
+
 const char *FILE_EXTENSIONS[] = {".csv", ".bin"};
 #define NUM_EXTENSIONS (sizeof(FILE_EXTENSIONS) / sizeof(FILE_EXTENSIONS[0]))
 
@@ -207,27 +209,28 @@ void get_file_name(char *file_name, size_t file_name_size, int *out_frequency)
 		// Remove newline character from input
 		input_buffer[strcspn(input_buffer, "\n")] = '\0';
 
+		// Check if user wants to open default file
 		if (strcmp(input_buffer, "0") == 0 || input_buffer[0] == '\0')
 		{
 			strncpy(file_name, DEFAULT_FILE, file_name_size - 1);
 			file_name[file_name_size - 1] = '\0'; // Ensure null termination
-			printf("Opening default file: %s\n", DEFAULT_FILE);
-			break;
+			printf("Default file %s set as data file.\n", DEFAULT_FILE);
 		}
 		else
 		{
-			// Validate file name
-			if (validate_file_name(input_buffer, out_frequency))
-			{
-				continue;
-			}
-
 			strncpy(file_name, input_buffer, file_name_size - 1);
 			file_name[file_name_size - 1] = '\0'; // Ensure null termination
-			printf("Opening file: %s\n", file_name);
-			printf("Data frequency: %d\n", *out_frequency);
-			break;
 		}
+
+		// Validate file name
+		if (validate_file_name(file_name, out_frequency))
+		{
+			continue;
+		}
+
+		printf("Opening file: %s\n", file_name);
+		printf("Data frequency: %d\n", *out_frequency);
+		break;
 	}
 }
 
@@ -293,6 +296,9 @@ int validate_file_name(const char *file_name, int *out_frequency)
 			return 1;
 		}
 	}
+#ifdef DEBUG
+	printf("Frequency substring: %s\n", freq_start);
+#endif
 
 	// 4) Convert freq substring to integer
 	int freq = atoi(freq_start);
