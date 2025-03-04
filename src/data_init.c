@@ -1,13 +1,10 @@
-#include "../inc/data_init.h"
+#include "data_init.h"
 #include <stdio.h>	// for printf (if desired)
 #include <stdlib.h> // for malloc/free (if allowed in your environment)
 #include <string.h> // for strtok, strncpy, etc.
-#include "../inc/file_io.h"
-#include "../inc/result_check.h"
-
-#define DEBUG 1
-#define START_ROW 0
-#define END_ROW 5
+#include "file_io.h"
+#include "result_check.h"
+#include "config.h"
 
 float *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length)
 {
@@ -92,7 +89,21 @@ float *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length
 	sprintf(ver_filepath, "%sver_chdata_%s_ch%d.csv", MATLAB_DIRECTORY, strtok(file_name, "."), channel_num);
 	// Verify the channel data with the MATLAB output
 	printf("\nVerifying channel data with verification data...\n");
-	verify_signals(channel_data, num_rows, import_file(ver_filepath, &ver_num_rows, &ver_num_cols), &ver_num_rows, &ver_num_cols);
+	float **verify_ch_data = import_file(ver_filepath, &ver_num_rows, &ver_num_cols);
+	if (!verify_ch_data)
+	{
+		printf("Error: Failed to load verification data.\n");
+		free(channel_data);
+		return NULL;
+	}
+	verify_signals(channel_data, num_rows, verify_ch_data, &ver_num_rows, &ver_num_cols);
+
+	// Free verification data after use
+	for (size_t i = 0; i < ver_num_rows; i++)
+	{
+		free(verify_ch_data[i]);
+	}
+	free(verify_ch_data);
 	printf("-----------------VERIFICATION SUCCESSFUL-----------------\n");
 	/* ----------------------------------------------------------------- */
 
@@ -248,8 +259,11 @@ float *get_ch_signal(float **data, size_t num_rows, size_t num_cols, int channel
 		free(channel_data);
 		return NULL;
 	}
-
-	// Copy the requested channel's values into 'channel_data'
+	if (!channel_data)
+	{
+		printf("Error: Could not allocate memory for channel data.\n");
+		return NULL;
+	}
 	// Note: 'channel_num' is 1-based, so subtract 1 for 0-based index
 	size_t ch_index = (size_t)(channel_num - 1);
 	for (size_t row = 0; row < num_rows; row++)

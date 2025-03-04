@@ -1,6 +1,7 @@
-#include "../inc/result_check.h"
+#include "result_check.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include "config.h"
 
 int verify_signals(float *signal, size_t num_of_data, float **verify_data, size_t *verify_num_rows, size_t *verify_num_cols)
 {

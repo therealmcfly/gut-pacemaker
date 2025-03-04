@@ -2,9 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include "../inc/file_io.h"
-
-#define DEBUG 1
+#include "file_io.h"
+#include "config.h"
 
 const char *FILE_EXTENSIONS[] = {".csv", ".bin"};
 #define NUM_EXTENSIONS (sizeof(FILE_EXTENSIONS) / sizeof(FILE_EXTENSIONS[0]))
