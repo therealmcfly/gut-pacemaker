@@ -161,7 +161,13 @@ float *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length
 		free(verify_data);
 		printf("-----------------VERIFICATION SUCCESSFUL-----------------\n");
 #endif
-		/* ----------------------------------------------------------------- */
+
+		// Free allocated memory if downsampling was successful
+		if (downsampled_data && channel_data)
+		{
+			free(channel_data);
+			channel_data = NULL;
+		}
 	}
 	else
 	{
@@ -169,8 +175,14 @@ float *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length
 		printf("Desired frequency: %d Hz\n", TARGET_FREQUENCY);
 		printf("\nData frequency is lower than the desired frequency.\n");
 		printf("No downsampling required.\n");
-		return channel_data;
+		downsampled_data = channel_data;
 	}
+
+	*out_data_length = num_rows;
+	// ... rest of function ...
+
+	// Return the unified data pointer
+	return downsampled_data;
 
 	// Free allocated memory
 	if (channel_data)
@@ -266,12 +278,6 @@ float *get_ch_signal(float **data, size_t num_rows, size_t num_cols, int channel
 
 	// Allocate array for the requested channel
 	float *channel_data = (float *)malloc(num_rows * sizeof(float));
-	if (!channel_data)
-	{
-		printf("Error: Could not allocate memory for channel data.\n");
-		free(channel_data);
-		return NULL;
-	}
 	if (!channel_data)
 	{
 		printf("Error: Could not allocate memory for channel data.\n");
