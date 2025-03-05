@@ -19,6 +19,6 @@
 #define INITIAL_CAPACITY 1000	 // Start memory allocation for rows
 #define DEFAULT_FILE "exp_16_output_512.csv"
 #define COEFFICIENTS_FILE "lowpass_coeffs.txt"
-#define BUFFER_SIZE 1000
+#define BUFFER_SIZE 1000 // Must be a multiple of 2
 
 #endif // CONFIG_H
