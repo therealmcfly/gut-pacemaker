@@ -1,8 +1,9 @@
-#ifndef PRE_PROCESSING_H
-#define PRE_PROCESSING_H
+#ifndef DATA_INIT_H
+#define DATA_INIT_H
 
 #include <stddef.h> // for size_t
 
+float *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length);
 /**
  * @brief Downsamples the input signal by the specified factor.
  *
@@ -31,4 +32,4 @@ float *get_ch_signal(float **data,
 										 size_t num_cols,
 										 int channel_num);
 
-#endif /* SIGNAL_PROCESSING_H */
+#endif
