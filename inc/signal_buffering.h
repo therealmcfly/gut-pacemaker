@@ -11,6 +11,6 @@
 #define ERROR 1
 #define ERROR_BUFFER_SIZE 2
 
-int signal_buffering(double *inSignal, size_t signal_length);
+int signal_buffering(double *inSignal, size_t signal_length, int *channel_num);
 
 #endif // S_PROCESSING_H

@@ -5,7 +5,7 @@
 #include "file_io.h"
 #include "config.h"
 
-double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length)
+double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length, int *out_channel_num, char *out_data_name)
 {
 	char file_name[100]; // Buffer for file name
 	int channel_num;		 // Buffer for channel number
@@ -63,6 +63,9 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 
 	// CHANNEL SIGNAL RETRIEVAL
 	// Get the channel data
+	*out_channel_num = channel_num;
+	// get data name
+	out_data_name = file_name;
 	double *channel_data = get_ch_signal(data, num_rows, num_cols, channel_num);
 	// Free the 2D array 'data'
 	for (size_t i = 0; i < num_rows; i++)
@@ -178,30 +181,7 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 	}
 
 	*out_data_length = num_rows;
-	// ... rest of function ...
 
-	// Return the unified data pointer
-	return downsampled_data;
-
-	// Free allocated memory
-	if (channel_data)
-	{
-		free(channel_data);
-	}
-	else
-	{
-		printf("No channel data to free.");
-	}
-
-	*out_data_length = num_rows;
-#if DEBUG
-	printf("\nout_data_length: %zu\n", *out_data_length);
-	printf("out_data: %f\n", downsampled_data[0]);
-	printf("out_data: %f\n", downsampled_data[1]);
-	printf("out_data: %f\n", downsampled_data[2]);
-#endif
-
-	// Return the downsampled data
 	return downsampled_data;
 }
 

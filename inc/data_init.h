@@ -3,7 +3,7 @@
 
 #include <stddef.h> // for size_t
 
-double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length);
+double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length, int *out_channel_num);
 /**
  * @brief Downsamples the input signal by the specified factor.
  *
@@ -32,6 +32,16 @@ double *get_ch_signal(double **data,
 											size_t num_cols,
 											int channel_num);
 
+/**
+ * @brief Verifies signal data against reference data.
+ *
+ * @param signal        Pointer to the signal data to verify.
+ * @param num_of_data   Number of elements in the signal array.
+ * @param verify_data   Pointer to the verification data array.
+ * @param verify_num_rows Number of rows in the verification data.
+ * @param verify_num_cols Number of columns in the verification data.
+ * @return              0 on success, non-zero on error.
+ */
 int verify_signals(double *signal, size_t num_of_data, double **verify_data, size_t *verify_num_rows, size_t *verify_num_cols);
 
 #endif
