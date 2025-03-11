@@ -22,6 +22,6 @@
 #define BUFFER_SIZE 1000											 // Must be a multiple of 2
 
 #define PADDING_SIZE 60
-#define PADDED_BUFFER_SIZE (BUFFER_SIZE + (2 * PADDING_SIZE))
+#define PADDED_BUFFER_SIZE ((BUFFER_SIZE + 1 /* + 1 to mirror the MATLAB logic, romove if not needed*/) + (2 * PADDING_SIZE))
 
 #endif // CONFIG_H

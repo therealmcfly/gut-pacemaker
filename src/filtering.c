@@ -30,12 +30,20 @@ int lowpass_filter(double *in_signal, double *lpf_signal, int signal_length)
 			-4.21964700295067e-05, -0.000175523523401278};
 
 	double padded_signal[PADDED_BUFFER_SIZE];
+	for (int i = 0; i < PADDED_BUFFER_SIZE; i++) // this for loop is to mirror the MATLAB logic, romove if not needed
+	{
+		padded_signal[i] = 0.0;
+	}
 	double padded_lpf_signal[PADDED_BUFFER_SIZE];
+	for (int i = 0; i < PADDED_BUFFER_SIZE; i++) // this for loop is to mirror the MATLAB logic, romove if not needed
+	{
+		padded_lpf_signal[i] = 0.0;
+	}
 
 	// Step 1: Apply PADDING_SIZE padding front(left) and back(right) of signal (Replicating MATLAB's Strategy)
 	double start_signal = in_signal[0];
 	double end_signal = in_signal[signal_length - 1];
-	for (int i = 0; i < PADDED_BUFFER_SIZE; i++)
+	for (int i = 0; i < signal_length + (PADDING_SIZE * 2); i++)
 	{
 		if (i < PADDING_SIZE)
 		{
@@ -51,31 +59,29 @@ int lowpass_filter(double *in_signal, double *lpf_signal, int signal_length)
 		}
 	}
 
-	if (fir_filter(fir_coeffs, FILTER_ORDER, padded_signal, padded_lpf_signal, PADDED_BUFFER_SIZE))
+	if (fir_filter(fir_coeffs, FILTER_ORDER, padded_signal, padded_lpf_signal, signal_length + (PADDING_SIZE * 2)))
 	{
 		printf("Error: FIR filtering failed.\n");
 		return 1;
 	}
 
 	// ✅ Step 5: Reverse Again to Restore Order
-	for (int i = 0; i < BUFFER_SIZE; i++)
+	for (int i = 0; i < signal_length; i++)
 	{
 		lpf_signal[i] = padded_lpf_signal[i + PADDING_SIZE];
-		printf("lpf_signal[%d]: %.15f\n", i, lpf_signal[i]);
+		// printf("lpf_signal[%d]: %.15f\n", i, lpf_signal[i]);
 	}
 
 	// check the padding removal
-	if (lpf_signal[0] != padded_lpf_signal[PADDING_SIZE] || lpf_signal[BUFFER_SIZE - 1] != padded_lpf_signal[PADDING_SIZE + signal_length - 1])
+	if (lpf_signal[0] != padded_lpf_signal[PADDING_SIZE] || lpf_signal[signal_length - 1] != padded_lpf_signal[PADDING_SIZE + signal_length - 1])
 	{
 		printf("\nError in lowpass_filter(): Padding removal failed, check the padding logic.\n");
 		printf("lpf_signal[%d]: %.15f\n", 0, lpf_signal[0]);
 		printf("lpf_signal_wp[%d]: %.15f\n", PADDING_SIZE, padded_lpf_signal[PADDING_SIZE]);
-		printf("\nlpf_signal[%d]: %.15f\n", BUFFER_SIZE - 1, lpf_signal[BUFFER_SIZE - 1]);
+		printf("\nlpf_signal[%d]: %.15f\n", signal_length - 1, lpf_signal[signal_length - 1]);
 		printf("lpf_signal_wp[%d]: %.15f\n", PADDING_SIZE + signal_length - 1, padded_lpf_signal[PADDING_SIZE + signal_length - 1]);
 		return 1;
 	}
-
-	printf("Low-pass filtering complete.\n");
 	return 0;
 }
 
