@@ -2,7 +2,7 @@
 #define CONFIG_H
 
 // Debug flags
-#define DEBUG 1
+#define DEBUG 0
 #define START_ROW 0
 #define END_ROW 5
 
@@ -18,7 +18,10 @@
 #define DATA_DIRECTORY "data/" // Set to data directory from where the executable is being run
 #define INITIAL_CAPACITY 1000	 // Start memory allocation for rows
 #define DEFAULT_FILE "exp_16_output_512.csv"
-#define COEFFICIENTS_FILE "lowpass_coeffs.txt"
-#define BUFFER_SIZE 1000 // Must be a multiple of 2
+#define COEFFICIENTS_FILE "lowpass_coeffs.txt" // Need to set filter order accordingly in signal_buffering.h
+#define BUFFER_SIZE 1000											 // Must be a multiple of 2
+
+#define PADDING_SIZE 60
+#define PADDED_BUFFER_SIZE (BUFFER_SIZE + (2 * PADDING_SIZE))
 
 #endif // CONFIG_H

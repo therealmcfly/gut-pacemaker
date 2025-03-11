@@ -6,7 +6,7 @@
 #include "result_check.h"
 #include "config.h"
 
-float *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length)
+double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length)
 {
 	char file_name[100]; // Buffer for file name
 	int channel_num;		 // Buffer for channel number
@@ -50,7 +50,7 @@ float *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length
 
 	// Read data from file
 	printf("\nReading data from file...\n");
-	float **data = import_file(file_name, &num_rows, &num_cols);
+	double **data = import_file(file_name, &num_rows, &num_cols);
 	if (!data)
 	{
 		printf("Error: Failed to load data.\n");
@@ -64,7 +64,7 @@ float *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length
 
 	// CHANNEL SIGNAL RETRIEVAL
 	// Get the channel data
-	float *channel_data = get_ch_signal(data, num_rows, num_cols, channel_num);
+	double *channel_data = get_ch_signal(data, num_rows, num_cols, channel_num);
 	// Free the 2D array 'data'
 	for (size_t i = 0; i < num_rows; i++)
 	{
@@ -92,7 +92,7 @@ float *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length
 	sprintf(ver_filepath, "%sver_chdata_%s_ch%d.csv", MATLAB_DIRECTORY, strtok(file_name, "."), channel_num);
 	// Verify the channel data with the MATLAB output
 	printf("\nVerifying channel data with verification data...\n");
-	float **verify_ch_data = import_file(ver_filepath, &ver_num_rows, &ver_num_cols);
+	double **verify_ch_data = import_file(ver_filepath, &ver_num_rows, &ver_num_cols);
 	if (!verify_ch_data)
 	{
 		printf("Error: Failed to load verification data.\n");
@@ -113,7 +113,7 @@ float *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length
 
 	// DOWNSAMPLING
 	// Downsample the channel data if the initial data frequency is higher than the desired frequency
-	float *downsampled_data = NULL;
+	double *downsampled_data = NULL;
 	if (data_frequency >= TARGET_FREQUENCY * 2)
 	{
 		printf("\nData frequency: %d Hz\n", data_frequency);
@@ -136,7 +136,7 @@ float *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length
 		// Verify the channel data with the MATLAB output
 		printf("\n-----------------DOWN-SAMPLING VERIFICATION-----------------\n");
 		sprintf(ver_filepath, "%sver_ds_%s_ch%d.csv", MATLAB_DIRECTORY, strtok(file_name, "."), channel_num);
-		float **verify_data = import_file(ver_filepath, &ver_num_rows, &ver_num_cols);
+		double **verify_data = import_file(ver_filepath, &ver_num_rows, &ver_num_cols);
 		if (!verify_data)
 		{
 			printf("Error: Failed to load verification data.\n");
@@ -212,7 +212,7 @@ float *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length
  * The caller is responsible for freeing the returned memory
  * by calling free() when done with it.
  */
-float *downsample(const float *inSignal, size_t *signal_length, int factor)
+double *downsample(const double *inSignal, size_t *signal_length, int factor)
 {
 
 	if (!inSignal || !signal_length || *signal_length <= 0 || factor <= 0)
@@ -226,7 +226,7 @@ float *downsample(const float *inSignal, size_t *signal_length, int factor)
 		printf("Error: Downsampled data length cannot be zero.\n");
 		return NULL;
 	}
-	float *outSignal = (float *)malloc(*signal_length / factor * sizeof(float));
+	double *outSignal = (double *)malloc(*signal_length / factor * sizeof(double));
 
 	if (!outSignal)
 	{
@@ -259,7 +259,7 @@ float *downsample(const float *inSignal, size_t *signal_length, int factor)
  * @note The caller is responsible for freeing the returned memory
  * by calling free() when done with it.
  */
-float *get_ch_signal(float **data, size_t num_rows, size_t num_cols, int channel_num)
+double *get_ch_signal(double **data, size_t num_rows, size_t num_cols, int channel_num)
 {
 	printf("\nRetrieving signal data from channel %d from data...\n", channel_num);
 	// Validate inputs
@@ -277,7 +277,7 @@ float *get_ch_signal(float **data, size_t num_rows, size_t num_cols, int channel
 	}
 
 	// Allocate array for the requested channel
-	float *channel_data = (float *)malloc(num_rows * sizeof(float));
+	double *channel_data = (double *)malloc(num_rows * sizeof(double));
 	if (!channel_data)
 	{
 		printf("Error: Could not allocate memory for channel data.\n");

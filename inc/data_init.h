@@ -3,7 +3,7 @@
 
 #include <stddef.h> // for size_t
 
-float *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length);
+double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length);
 /**
  * @brief Downsamples the input signal by the specified factor.
  *
@@ -13,9 +13,9 @@ float *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length
  * @return             Pointer to the downsampled signal array.
  *                     Returns NULL on error or memory allocation failure.
  */
-float *downsample(const float *inSignal,
-									size_t *inLength,
-									int factor);
+double *downsample(const double *inSignal,
+									 size_t *inLength,
+									 int factor);
 
 /**
  * @brief Retrieve all samples from a single channel (1-based).
@@ -27,9 +27,9 @@ float *downsample(const float *inSignal,
  * @return            Pointer to newly-allocated array (length = num_rows).
  *                    Returns NULL on error or memory allocation failure.
  */
-float *get_ch_signal(float **data,
-										 size_t num_rows,
-										 size_t num_cols,
-										 int channel_num);
+double *get_ch_signal(double **data,
+											size_t num_rows,
+											size_t num_cols,
+											int channel_num);
 
 #endif

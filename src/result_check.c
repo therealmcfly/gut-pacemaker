@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include "config.h"
 
-int verify_signals(float *signal, size_t num_of_data, float **verify_data, size_t *verify_num_rows, size_t *verify_num_cols)
+int verify_signals(double *signal, size_t num_of_data, double **verify_data, size_t *verify_num_rows, size_t *verify_num_cols)
 {
 	// compare rows and columns of data and verify_data
 	if (*verify_num_rows != num_of_data)

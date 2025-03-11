@@ -4,6 +4,7 @@
 #include <stdio.h> // for printf (if desired)
 #include "config.h"
 
-void lowpass_filter(float *in_signal, float *lpf_signal, int signal_length, float *lpf_coeffs, int coeff_length);
-
+int lowpass_filter(double *in_signal, double *lpf_signal, int signal_length);
+int fir_filter(const double *coeffs, int num_coeffs, const double *in_signal,
+							 double *out_signal, int signal_length);
 #endif // FILTERING_H

@@ -6,9 +6,11 @@
 #include "config.h"
 #include "filtering.h"
 
-#define FILTER_ORDER 50
+// main signal processing function
+#define SUCCESS 0
+#define ERROR 1
+#define ERROR_BUFFER_SIZE 2
 
-void signal_buffering(float *inSignal, size_t signal_length);
-int load_coeffs(char *filename, float *lowpass_coeffs);
+int signal_buffering(double *inSignal, size_t signal_length);
 
 #endif // S_PROCESSING_H
