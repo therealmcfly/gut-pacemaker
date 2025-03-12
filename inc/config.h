@@ -23,5 +23,6 @@
 
 #define PADDING_SIZE 60
 #define PADDED_BUFFER_SIZE ((BUFFER_SIZE + 1 /* + 1 to mirror the MATLAB logic, romove if not needed*/) + (2 * PADDING_SIZE))
+#define PRECISION 1e-9 // Precision for floating point comparisons
 
 #endif // CONFIG_H

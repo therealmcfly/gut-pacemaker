@@ -65,7 +65,7 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 	// Get the channel data
 	*out_channel_num = channel_num;
 	// get data name
-	out_data_name = file_name;
+	strcpy(out_data_name, file_name);
 	double *channel_data = get_ch_signal(data, num_rows, num_cols, channel_num);
 	// Free the 2D array 'data'
 	for (size_t i = 0; i < num_rows; i++)
@@ -128,7 +128,6 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 		{
 			printf("Error: Downsampling failed.\n");
 			free(channel_data);
-			free(downsampled_data);
 			return NULL;
 		}
 

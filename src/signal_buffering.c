@@ -16,10 +16,14 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num)
 	double lowpass_signal[BUFFER_SIZE + 1]; // +1 is to mirror the MATLAB logic, romove if not needed
 
 	// Load low pass results from Daryl's MATLAB code
-	size_t lpf_mat_rows, lpf_mat_cols;
+	size_t mat_data_rows, mat_data_cols;
 	char ver_filepath[200];
-	sprintf(ver_filepath, "%sver_lpf_%s_ch%d.csv", MATLAB_DIRECTORY, strtok("exp_16_output", "."), *channel_num);
-	double **lpf_mat_data = import_file(ver_filepath, &lpf_mat_rows, &lpf_mat_cols);
+	// Create a mutable copy of the filename to safely tokenize it.
+	char filename_copy[20] = "exp_16_output";
+	sprintf(ver_filepath, "%sver_lpf_%s_ch%d.csv", MATLAB_DIRECTORY, strtok(filename_copy, "."), *channel_num);
+	double **lpf_mat_data = import_file(ver_filepath, &mat_data_rows, &mat_data_cols);
+	sprintf(ver_filepath, "%sver_hpf_%s_ch%d.csv", MATLAB_DIRECTORY, strtok(filename_copy, "."), *channel_num);
+	double **hpf_mat_data = import_file(ver_filepath, &mat_data_rows, &mat_data_cols);
 
 	while (j < signal_length) // Keep processing until reaching the signal length
 	{
@@ -44,8 +48,8 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num)
 			printf("Error: Low-pass filtering failed.\n");
 			return ERROR;
 		}
-		printf("\n%dth signal buffer low pass filtering successful.\n", shift + 1);
 #if DEBUG
+		printf("\n%dth signal buffer low pass filtering successful.\n", shift + 1);
 		printf("lpf_signal[%d] = %.15f\n", 0, lowpass_signal[0]);
 		printf("lpf_signal[%d] = %.15f\n", 1, lowpass_signal[1]);
 		printf("lpf_signal[%d] = %.15f\n", BUFFER_SIZE - 2, lowpass_signal[BUFFER_SIZE - 2]);
@@ -53,19 +57,19 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num)
 		if (shift > 0) // to check the mirroring of the MATLAB logic, romove if not needed
 			printf("lpf_signal[%d] = %.15f\n", BUFFER_SIZE, lowpass_signal[BUFFER_SIZE]);
 #endif
-
 		// Check results
 		for (int k = 0; k < BUFFER_SIZE; k++)
 		{
-			// if (lowpass_signal[k] != lpf_mat_data[shift][k])
-			// {
-			// 	printf("Error: Low-pass filtering result mismatch at buffer %d, index %d.\n", shift, k);
-			// 	printf("lowpass_signal[%d] = %.15f\n", k, lowpass_signal[k]);
-			// 	printf("lpf_mat_data[%d][%d] = %.15f\n", shift, k, lpf_mat_data[shift][k]);
-			// 	return ERROR;
-			// }
-			printf("lowpass_signal[%d] = %.15f\n", k, lowpass_signal[k]);
-			printf("lpf_mat_data[%d][%d] = %.15f\n", shift, k, lpf_mat_data[k][shift]);
+			// if two values are the same until the 6th decimal place, they are considered equal
+
+			if ((lowpass_signal[k] - lpf_mat_data[k][shift] > PRECISION) ||
+					(lpf_mat_data[k][shift] - lowpass_signal[k] > PRECISION))
+			{
+				printf("Error: Low-pass filtering result mismatch at buffer %d, index %d.\n", shift, k);
+				printf("lowpass_signal[%d] = %.15f\n", k, lowpass_signal[k]);
+				printf("lpf_mat_data[%d][%d] = %.15f\n", shift, k, lpf_mat_data[k][shift]);
+				return ERROR;
+			}
 		}
 
 		/* ----------------------------------------------------------------------------------------------------*/
@@ -77,5 +81,24 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num)
 		i += BUFFER_SIZE / 2;
 		j = i + BUFFER_SIZE;
 	}
+
+	// Free allocated memory
+	if (lpf_mat_data != NULL)
+	{
+		for (size_t i = 0; i < mat_data_rows; i++)
+		{
+			free(lpf_mat_data[i]);
+		}
+		free(lpf_mat_data);
+	}
+	if (hpf_mat_data != NULL)
+	{
+		for (size_t i = 0; i < mat_data_rows; i++)
+		{
+			free(hpf_mat_data[i]);
+		}
+		free(hpf_mat_data);
+	}
+
 	return SUCCESS;
 }
