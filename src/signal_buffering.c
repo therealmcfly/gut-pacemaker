@@ -6,7 +6,7 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num)
 {
 	if (BUFFER_SIZE % 2 != 0)
 	{
-		printf("Error: BUFFER_SIZE must be an even number.\n");
+		printf("\nError: BUFFER_SIZE must be an even number.\n");
 		return ERROR_BUFFER_SIZE;
 	}
 
@@ -27,6 +27,7 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num)
 
 	while (j < signal_length) // Keep processing until reaching the signal length
 	{
+		printf("\nProcessing buffer %d...\n", shift + 1);
 		// Copy Original Signal into Buffer
 		for (int k = 0; k < BUFFER_SIZE + 1; k++)
 		{
@@ -65,16 +66,22 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num)
 			if ((lowpass_signal[k] - lpf_mat_data[k][shift] > PRECISION) ||
 					(lpf_mat_data[k][shift] - lowpass_signal[k] > PRECISION))
 			{
-				printf("Error: Low-pass filtering result mismatch at buffer %d, index %d.\n", shift, k);
+				printf("\nError: Low-pass filtering result mismatch at buffer %d, index %d.\n", shift, k);
 				printf("lowpass_signal[%d] = %.15f\n", k, lowpass_signal[k]);
 				printf("lpf_mat_data[%d][%d] = %.15f\n", shift, k, lpf_mat_data[k][shift]);
 				return ERROR;
 			}
 		}
+		printf("Low-pass filtering successful\n");
 
 		/* ----------------------------------------------------------------------------------------------------*/
 		/* -------------------------------------- HIGH PASS FILTERING -----------------------------------------*/
 		/* ----------------------------------------------------------------------------------------------------*/
+		if (highpass_filter(buffer, lowpass_signal, cur_buffer_size /* <== is to mirroring of the MATLAB logic, if not needed, change to BUFFER_SIZE*/))
+		{
+			printf("\nError: High-pass filtering failed.\n");
+			return ERROR;
+		}
 
 		// Buffer Shift
 		shift++;

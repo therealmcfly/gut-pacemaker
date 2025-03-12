@@ -5,6 +5,9 @@
 #include "config.h"
 
 int lowpass_filter(double *in_signal, double *lpf_signal, int signal_length);
-int fir_filter(const double *coeffs, int num_coeffs, const double *in_signal,
-							 double *out_signal, int signal_length);
+int lowpass_fir_filter(const double *coeffs, int num_coeffs, const double *in_signal,
+											 double *out_signal, int signal_length);
+int highpass_filter(double *in_signal, double *hpf_signal, int signal_length);
+int highpass_fir_filter(const double *coeffs, int num_coeffs, const double *in_signal,
+												double *out_signal, int signal_length);
 #endif // FILTERING_H

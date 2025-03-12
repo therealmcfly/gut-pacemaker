@@ -4,10 +4,9 @@
 #include "config.h"
 #include "filtering.h"
 
-#define FILTER_ORDER 58
 int lowpass_filter(double *in_signal, double *lpf_signal, int signal_length)
 {
-	double fir_coeffs[FILTER_ORDER + 1] = {
+	double fir_coeffs[] = {
 			-0.000175523523401278, -4.21964700295067e-05, 0.000358539018147976,
 			0.000818885111422960, 0.000880009800921136, 0.000146593519844785,
 			-0.00126741644966190, -0.00253045483942841, -0.00244556829945420,
@@ -28,14 +27,15 @@ int lowpass_filter(double *in_signal, double *lpf_signal, int signal_length)
 			-0.00253045483942841, -0.00126741644966190, 0.000146593519844785,
 			0.000880009800921136, 0.000818885111422960, 0.000358539018147976,
 			-4.21964700295067e-05, -0.000175523523401278};
+	int filter_order = sizeof(fir_coeffs) / sizeof(fir_coeffs[0]) - 1;
 
-	double padded_signal[PADDED_BUFFER_SIZE];
-	for (int i = 0; i < PADDED_BUFFER_SIZE; i++) // this for loop is to mirror the MATLAB logic, romove if not needed
+	double padded_signal[LPF_PADDED_BUFFER_SIZE];
+	for (int i = 0; i < LPF_PADDED_BUFFER_SIZE; i++) // this for loop is to mirror the MATLAB logic, romove if not needed
 	{
 		padded_signal[i] = 0.0;
 	}
-	double padded_lpf_signal[PADDED_BUFFER_SIZE];
-	for (int i = 0; i < PADDED_BUFFER_SIZE; i++) // this for loop is to mirror the MATLAB logic, romove if not needed
+	double padded_lpf_signal[LPF_PADDED_BUFFER_SIZE];
+	for (int i = 0; i < LPF_PADDED_BUFFER_SIZE; i++) // this for loop is to mirror the MATLAB logic, romove if not needed
 	{
 		padded_lpf_signal[i] = 0.0;
 	}
@@ -43,15 +43,15 @@ int lowpass_filter(double *in_signal, double *lpf_signal, int signal_length)
 	// Step 1: Apply PADDING_SIZE padding front(left) and back(right) of signal (Replicating MATLAB's Strategy)
 	double start_signal = in_signal[0];
 	double end_signal = in_signal[signal_length - 1];
-	for (int i = 0; i < signal_length + (PADDING_SIZE * 2); i++)
+	for (int i = 0; i < signal_length + (LPF_PADDING_SIZE * 2); i++)
 	{
-		if (i < PADDING_SIZE)
+		if (i < LPF_PADDING_SIZE)
 		{
 			padded_signal[i] = start_signal; // First PADDING_SIZE padding to left with start_signal
 		}
-		else if (i >= PADDING_SIZE && i < PADDING_SIZE + signal_length)
+		else if (i >= LPF_PADDING_SIZE && i < LPF_PADDING_SIZE + signal_length)
 		{
-			padded_signal[i] = in_signal[i - PADDING_SIZE]; // Copying signal to middle of padded_signal
+			padded_signal[i] = in_signal[i - LPF_PADDING_SIZE]; // Copying signal to middle of padded_signal
 		}
 		else
 		{
@@ -59,7 +59,7 @@ int lowpass_filter(double *in_signal, double *lpf_signal, int signal_length)
 		}
 	}
 
-	if (fir_filter(fir_coeffs, FILTER_ORDER, padded_signal, padded_lpf_signal, signal_length + (PADDING_SIZE * 2)))
+	if (lowpass_fir_filter(fir_coeffs, filter_order, padded_signal, padded_lpf_signal, signal_length + (LPF_PADDING_SIZE * 2)))
 	{
 		printf("Error: FIR filtering failed.\n");
 		return 1;
@@ -68,24 +68,25 @@ int lowpass_filter(double *in_signal, double *lpf_signal, int signal_length)
 	// ✅ Step 5: Reverse Again to Restore Order
 	for (int i = 0; i < signal_length; i++)
 	{
-		lpf_signal[i] = padded_lpf_signal[i + PADDING_SIZE];
+		lpf_signal[i] = padded_lpf_signal[i + LPF_PADDING_SIZE];
 		// printf("lpf_signal[%d]: %.15f\n", i, lpf_signal[i]);
 	}
 
 	// check the padding removal
-	if (lpf_signal[0] != padded_lpf_signal[PADDING_SIZE] || lpf_signal[signal_length - 1] != padded_lpf_signal[PADDING_SIZE + signal_length - 1])
+	if (lpf_signal[0] != padded_lpf_signal[LPF_PADDING_SIZE] || lpf_signal[signal_length - 1] != padded_lpf_signal[LPF_PADDING_SIZE + signal_length - 1])
 	{
 		printf("\nError in lowpass_filter(): Padding removal failed, check the padding logic.\n");
 		printf("lpf_signal[%d]: %.15f\n", 0, lpf_signal[0]);
-		printf("lpf_signal_wp[%d]: %.15f\n", PADDING_SIZE, padded_lpf_signal[PADDING_SIZE]);
+		printf("lpf_signal_wp[%d]: %.15f\n", LPF_PADDING_SIZE, padded_lpf_signal[LPF_PADDING_SIZE]);
 		printf("\nlpf_signal[%d]: %.15f\n", signal_length - 1, lpf_signal[signal_length - 1]);
-		printf("lpf_signal_wp[%d]: %.15f\n", PADDING_SIZE + signal_length - 1, padded_lpf_signal[PADDING_SIZE + signal_length - 1]);
+		printf("lpf_signal_wp[%d]: %.15f\n", LPF_PADDING_SIZE + signal_length - 1, padded_lpf_signal[LPF_PADDING_SIZE + signal_length - 1]);
 		return 1;
 	}
-	return 0;
+
+		return 0;
 }
 
-int fir_filter(const double *coeffs, int filter_order, const double *in_signal, double *out_signal, int signal_length)
+int lowpass_fir_filter(const double *coeffs, int filter_order, const double *in_signal, double *out_signal, int signal_length)
 {
 	int filt_delay = filter_order / 2; // N/2 delay compensation
 
@@ -140,6 +141,27 @@ int fir_filter(const double *coeffs, int filter_order, const double *in_signal, 
 	// Free allocated memory
 	free(z_padded_signal);
 	free(temp_output);
+
+	return 0;
+}
+
+int highpass_filter(double *in_signal, double *hpf_signal, int signal_length)
+{
+	double coeffs[] = {
+			-0.00788739916497821, -0.00883748945388316, -0.00982539957188940, -0.0108458743104990,
+			-0.0118931431763899, -0.0129609677159769, -0.0140426954726160, -0.0151313200039590,
+			-0.0162195462972988, -0.0172998608393711, -0.0183646055252676, -0.0194060545299731,
+			-0.0204164932165573, -0.0213882981180202, -0.0223140170058552, -0.0231864480479760,
+			-0.0239987170620023, -0.0247443518870506, -0.0254173529279569, -0.0260122589698998,
+			-0.0265242074181275, -0.0269489881861568, -0.0272830905354722, -0.0275237422592968,
+			-0.0276689407011917, 0.972282524795331, -0.0276689407011917, -0.0275237422592968,
+			-0.0272830905354722, -0.0269489881861568, -0.0265242074181275, -0.0260122589698998,
+			-0.0254173529279569, -0.0247443518870505, -0.0239987170620022, -0.0231864480479760,
+			-0.0223140170058552, -0.0213882981180202, -0.0204164932165573, -0.0194060545299731,
+			-0.0183646055252676, -0.0172998608393711, -0.0162195462972988, -0.0151313200039590,
+			-0.0140426954726160, -0.0129609677159769, -0.0118931431763899, -0.0108458743104990,
+			-0.00982539957188940, -0.00883748945388316, -0.00788739916497821};
+	int filter_order = sizeof(coeffs) / sizeof(coeffs[0]) - 1;
 
 	return 0;
 }
