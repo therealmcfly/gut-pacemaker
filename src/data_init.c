@@ -5,7 +5,7 @@
 #include "file_io.h"
 #include "config.h"
 
-double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length, int *out_channel_num, char *out_data_name)
+double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length, int *out_channel_num)
 {
 	char file_name[100]; // Buffer for file name
 	int channel_num;		 // Buffer for channel number
@@ -64,8 +64,6 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 	// CHANNEL SIGNAL RETRIEVAL
 	// Get the channel data
 	*out_channel_num = channel_num;
-	// get data name
-	strcpy(out_data_name, file_name);
 	double *channel_data = get_ch_signal(data, num_rows, num_cols, channel_num);
 	// Free the 2D array 'data'
 	for (size_t i = 0; i < num_rows; i++)

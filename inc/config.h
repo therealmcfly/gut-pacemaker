@@ -2,7 +2,7 @@
 #define CONFIG_H
 
 // Debug flags
-#define DEBUG 0
+#define DEBUG 1
 #define START_ROW 0
 #define END_ROW 5
 
@@ -20,13 +20,5 @@
 #define DEFAULT_FILE "exp_16_output_512.csv"
 #define BUFFER_SIZE 1000 // Must be a multiple of 2
 #define PRECISION 1e-9	 // Precision for floating point comparisons
-
-// Low-pass filter constants
-#define LPF_PADDING_SIZE 60
-#define LPF_PADDED_BUFFER_SIZE ((BUFFER_SIZE + 1 /* + 1 to mirror the MATLAB logic, romove if not needed*/) + (2 * LPF_PADDING_SIZE))
-
-// High-pass filter constants
-#define HPF_PADDING_SIZE 60
-#define HPF_PADDED_BUFFER_SIZE ((BUFFER_SIZE + 1 /* + 1 to mirror the MATLAB logic, romove if not needed*/) + (2 * HPF_PADDING_SIZE))
 
 #endif // CONFIG_H

@@ -14,6 +14,7 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num)
 	int i = 0, j = BUFFER_SIZE, shift = 0;
 	double buffer[BUFFER_SIZE + 1];					// +1 is to mirror the MATLAB logic, romove if not needed
 	double lowpass_signal[BUFFER_SIZE + 1]; // +1 is to mirror the MATLAB logic, romove if not needed
+	double hpf_signal[BUFFER_SIZE + 1];			// +1 is to mirror the MATLAB logic, romove if not needed
 
 	// Load low pass results from Daryl's MATLAB code
 	size_t mat_data_rows, mat_data_cols;
@@ -72,16 +73,40 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num)
 				return ERROR;
 			}
 		}
-		printf("Low-pass filtering successful\n");
+		printf("Low-pass filtering successful.\n");
 
 		/* ----------------------------------------------------------------------------------------------------*/
 		/* -------------------------------------- HIGH PASS FILTERING -----------------------------------------*/
 		/* ----------------------------------------------------------------------------------------------------*/
-		if (highpass_filter(buffer, lowpass_signal, cur_buffer_size /* <== is to mirroring of the MATLAB logic, if not needed, change to BUFFER_SIZE*/))
+		if (highpass_filter(lowpass_signal, hpf_signal, cur_buffer_size /* <== is to mirroring of the MATLAB logic, if not needed, change to BUFFER_SIZE*/))
 		{
 			printf("\nError: High-pass filtering failed.\n");
 			return ERROR;
 		}
+#if DEBUG
+		printf("\n%dth signal buffer high pass filtering successful.\n", shift + 1);
+		printf("hpf_signal[%d] = %.15f\n", 0, hpf_signal[0]);
+		printf("hpf_signal[%d] = %.15f\n", 1, hpf_signal[1]);
+		printf("hpf_signal[%d] = %.15f\n", BUFFER_SIZE - 2, hpf_signal[BUFFER_SIZE - 2]);
+		printf("hpf_signal[%d] = %.15f\n", BUFFER_SIZE - 1, hpf_signal[BUFFER_SIZE - 1]);
+		if (shift > 0) // to check the mirroring of the MATLAB logic, romove if not needed
+			printf("hpf_signal[%d] = %.15f\n", BUFFER_SIZE, hpf_signal[BUFFER_SIZE]);
+#endif
+
+		// Check results
+		for (int k = 0; k < BUFFER_SIZE; k++)
+		{
+			// if two values are the same until the 6th decimal place, they are considered equal
+			if ((hpf_signal[k] - hpf_mat_data[k][shift] > PRECISION) ||
+					(hpf_mat_data[k][shift] - hpf_signal[k] > PRECISION))
+			{
+				printf("\nError: High-pass filtering result mismatch at buffer %d, index %d.\n", shift, k);
+				printf("hpf_signal[%d] = %.15f\n", k, hpf_signal[k]);
+				printf("hpf_mat_data[%d][%d] = %.15f\n", shift, k, hpf_mat_data[k][shift]);
+				return ERROR;
+			}
+		}
+		printf("High-pass filtering successful.\n");
 
 		// Buffer Shift
 		shift++;

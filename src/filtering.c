@@ -6,7 +6,10 @@
 
 int lowpass_filter(double *in_signal, double *lpf_signal, int signal_length)
 {
-	double fir_coeffs[] = {
+	// Low-pass filter constants
+#define LPF_PADDING_SIZE 60
+#define LPF_PADDED_BUFFER_SIZE ((BUFFER_SIZE + 1 /* + 1 to mirror the MATLAB logic, romove if not needed*/) + (2 * LPF_PADDING_SIZE))
+	const double COEFFS[] = {
 			-0.000175523523401278, -4.21964700295067e-05, 0.000358539018147976,
 			0.000818885111422960, 0.000880009800921136, 0.000146593519844785,
 			-0.00126741644966190, -0.00253045483942841, -0.00244556829945420,
@@ -27,7 +30,7 @@ int lowpass_filter(double *in_signal, double *lpf_signal, int signal_length)
 			-0.00253045483942841, -0.00126741644966190, 0.000146593519844785,
 			0.000880009800921136, 0.000818885111422960, 0.000358539018147976,
 			-4.21964700295067e-05, -0.000175523523401278};
-	int filter_order = sizeof(fir_coeffs) / sizeof(fir_coeffs[0]) - 1;
+	int filter_order = sizeof(COEFFS) / sizeof(COEFFS[0]) - 1;
 
 	double padded_signal[LPF_PADDED_BUFFER_SIZE];
 	for (int i = 0; i < LPF_PADDED_BUFFER_SIZE; i++) // this for loop is to mirror the MATLAB logic, romove if not needed
@@ -41,31 +44,16 @@ int lowpass_filter(double *in_signal, double *lpf_signal, int signal_length)
 	}
 
 	// Step 1: Apply PADDING_SIZE padding front(left) and back(right) of signal (Replicating MATLAB's Strategy)
-	double start_signal = in_signal[0];
-	double end_signal = in_signal[signal_length - 1];
-	for (int i = 0; i < signal_length + (LPF_PADDING_SIZE * 2); i++)
-	{
-		if (i < LPF_PADDING_SIZE)
-		{
-			padded_signal[i] = start_signal; // First PADDING_SIZE padding to left with start_signal
-		}
-		else if (i >= LPF_PADDING_SIZE && i < LPF_PADDING_SIZE + signal_length)
-		{
-			padded_signal[i] = in_signal[i - LPF_PADDING_SIZE]; // Copying signal to middle of padded_signal
-		}
-		else
-		{
-			padded_signal[i] = end_signal; // Last PADDING_SIZE padding to right with end_signal
-		}
-	}
+	apply_padding(in_signal, signal_length, padded_signal, LPF_PADDED_BUFFER_SIZE, LPF_PADDING_SIZE);
 
-	if (lowpass_fir_filter(fir_coeffs, filter_order, padded_signal, padded_lpf_signal, signal_length + (LPF_PADDING_SIZE * 2)))
+	// Step 2: Apply FIR Filtering
+	if (lowpass_fir_filter(COEFFS, filter_order + 1, padded_signal, padded_lpf_signal, signal_length + (LPF_PADDING_SIZE * 2)))
 	{
 		printf("Error: FIR filtering failed.\n");
 		return 1;
 	}
 
-	// ✅ Step 5: Reverse Again to Restore Order
+	// Step 3: Remove padding
 	for (int i = 0; i < signal_length; i++)
 	{
 		lpf_signal[i] = padded_lpf_signal[i + LPF_PADDING_SIZE];
@@ -83,12 +71,12 @@ int lowpass_filter(double *in_signal, double *lpf_signal, int signal_length)
 		return 1;
 	}
 
-		return 0;
+	return 0;
 }
 
-int lowpass_fir_filter(const double *coeffs, int filter_order, const double *in_signal, double *out_signal, int signal_length)
+int lowpass_fir_filter(const double *coeffs, int coeff_len, const double *in_signal, double *out_signal, int signal_length)
 {
-	int filt_delay = filter_order / 2; // N/2 delay compensation
+	int filt_delay = (coeff_len - 1) / 2; // filter order is coeff length -1, and delay is half of the filter order
 
 	// Allocate memory for padded input signal (x + zeros)
 	int z_padded_signal_length = signal_length + filt_delay;
@@ -118,7 +106,7 @@ int lowpass_fir_filter(const double *coeffs, int filter_order, const double *in_
 
 		// printf("\nProcessing out_signal[%d]:\n", n); // Debug
 
-		for (int i = 0; i < filter_order + 1 /*<== filter order is coeff length -1 */; i++) // Apply filter
+		for (int i = 0; i < coeff_len /*<== filter order is coeff length -1 */; i++) // Apply filter
 		{
 			if (n - i >= 0) // Ensure index is within bounds
 			{
@@ -145,9 +133,12 @@ int lowpass_fir_filter(const double *coeffs, int filter_order, const double *in_
 	return 0;
 }
 
-int highpass_filter(double *in_signal, double *hpf_signal, int signal_length)
+int highpass_filter(double *in_signal, double *hpf_signal, int signal_len)
 {
-	double coeffs[] = {
+	// High-pass filter constants
+#define HPF_PADDING_SIZE 60
+#define HPF_PADDED_BUFFER_SIZE ((BUFFER_SIZE + 1 /* + 1 to mirror the MATLAB logic, romove if not needed*/) + (2 * HPF_PADDING_SIZE))
+	const double COEFFS[] = {
 			-0.00788739916497821, -0.00883748945388316, -0.00982539957188940, -0.0108458743104990,
 			-0.0118931431763899, -0.0129609677159769, -0.0140426954726160, -0.0151313200039590,
 			-0.0162195462972988, -0.0172998608393711, -0.0183646055252676, -0.0194060545299731,
@@ -161,7 +152,86 @@ int highpass_filter(double *in_signal, double *hpf_signal, int signal_length)
 			-0.0183646055252676, -0.0172998608393711, -0.0162195462972988, -0.0151313200039590,
 			-0.0140426954726160, -0.0129609677159769, -0.0118931431763899, -0.0108458743104990,
 			-0.00982539957188940, -0.00883748945388316, -0.00788739916497821};
-	int filter_order = sizeof(coeffs) / sizeof(coeffs[0]) - 1;
+
+	int filter_order = sizeof(COEFFS) / sizeof(COEFFS[0]) - 1;
+
+	double padded_signal[HPF_PADDED_BUFFER_SIZE];
+	for (int i = 0; i < HPF_PADDED_BUFFER_SIZE; i++) // this for loop is to mirror the MATLAB logic, romove if not needed
+	{
+		padded_signal[i] = 0.0;
+	}
+	double padded_hpf_signal[HPF_PADDED_BUFFER_SIZE];
+	for (int i = 0; i < HPF_PADDED_BUFFER_SIZE; i++) // this for loop is to mirror the MATLAB logic, romove if not needed
+	{
+		padded_hpf_signal[i] = 0.0;
+	}
+	// Step 1: Apply HPF_PADDING_SIZE padding front(left) and back(right) of signal (Replicating MATLAB's Strategy)
+	apply_padding(in_signal, signal_len, padded_signal, HPF_PADDED_BUFFER_SIZE, HPF_PADDING_SIZE);
+
+	// Step 2: Apply FIR Filtering
+	if (highpass_fir_filter(COEFFS, filter_order + 1, padded_signal, padded_hpf_signal, signal_len + (HPF_PADDING_SIZE * 2)))
+	{
+		printf("Error: FIR filtering failed.\n");
+		return 1;
+	}
+
+	// Step 3: Remove padding
+	for (int i = 0; i < signal_len; i++)
+	{
+		hpf_signal[i] = padded_hpf_signal[i + HPF_PADDING_SIZE];
+		// printf("lpf_signal[%d]: %.15f\n", i, lpf_signal[i]);
+	}
+
+	// check the padding removal
+	if (hpf_signal[0] != padded_hpf_signal[HPF_PADDING_SIZE] || hpf_signal[signal_len - 1] != padded_hpf_signal[HPF_PADDING_SIZE + signal_len - 1])
+	{
+		printf("\nError in lowpass_filter(): Padding removal failed, check the padding logic.\n");
+		printf("lpf_signal[%d]: %.15f\n", 0, hpf_signal[0]);
+		printf("lpf_signal_wp[%d]: %.15f\n", HPF_PADDING_SIZE, padded_hpf_signal[HPF_PADDING_SIZE]);
+		printf("\nlpf_signal[%d]: %.15f\n", signal_len - 1, hpf_signal[signal_len - 1]);
+		printf("lpf_signal_wp[%d]: %.15f\n", HPF_PADDING_SIZE + signal_len - 1, padded_hpf_signal[HPF_PADDING_SIZE + signal_len - 1]);
+		return 1;
+	}
+	return 0;
+}
+
+int highpass_fir_filter(const double *coeffs, int num_coeffs, const double *in_signal, double *out_signal, int signal_length)
+{
+	// Perform Convolution
+	for (int i = 0; i < signal_length; i++)
+	{
+		out_signal[i] = 0.0; // Initialize
+		for (int j = 0; j < num_coeffs; j++)
+		{
+			if (i - j >= 0 && i - j < signal_length)
+			{
+				out_signal[i] += in_signal[i - j] * coeffs[j];
+			}
+		}
+	}
 
 	return 0;
+}
+
+void apply_padding(double *in_signal, int in_signal_len, double *padded_signal, int padded_signal_len, int padding_size)
+{
+
+	// Step 1: Apply PADDING_SIZE padding front(left) and back(right) of signal (Replicating MATLAB's Strategy)
+	double start_signal = in_signal[0];
+	double end_signal = in_signal[in_signal_len - 1];
+	for (int i = 0; i < in_signal_len + (padding_size * 2); i++)
+	{
+		if (i < padding_size)
+		{
+			padded_signal[i] = start_signal; // First PADDING_SIZE padding to left with start_signal
+		}
+		else if (i >= padding_size && i < padding_size + in_signal_len)
+		{
+			padded_signal[i] = in_signal[i - padding_size]; // Copying signal to middle of padded_signal
+		}
+		else
+		{
+			padded_signal[i] = end_signal; // Last PADDING_SIZE padding to right with end_signal
+		}
+	}
 }
