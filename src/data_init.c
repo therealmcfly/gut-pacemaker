@@ -5,10 +5,8 @@
 #include "file_io.h"
 #include "config.h"
 
-double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length, int *out_channel_num)
-{
-	char file_name[100]; // Buffer for file name
-	int channel_num;		 // Buffer for channel number
+double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length, int *out_channel_num, char *out_file_name)
+{											 // Buffer for channel number
 	int data_frequency;	 // Buffer for exp data frequency
 	size_t num_rows = 0; // Variable to store the number of rows read
 	size_t num_cols = 0; // Variable to store the number of columns read
@@ -22,34 +20,37 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 	if (user_argc != 3)
 	{
 		// Ask for filename and validate input
-		get_file_name(file_name, sizeof(file_name), &data_frequency);
+		get_file_name(out_file_name, sizeof(out_file_name), &data_frequency);
 		// Ask for channel number and validate input
-		get_channel_num(&channel_num, MAX_CHANNEL);
+		get_channel_num(out_channel_num, MAX_CHANNEL);
 	}
 	else
 	{
 		// Handle command line arguments
 		// Safely copy arguments to prevent buffer overflow
-		strncpy(file_name, user_argv[1], sizeof(file_name) - 1);
-		file_name[sizeof(file_name) - 1] = '\0'; // Ensure null termination
-		channel_num = atoi(user_argv[2]);				 // Convert argument to integer
+
+		int arg_len = strlen(user_argv[1]);
+
+		strncpy(out_file_name, user_argv[1], arg_len);
+		out_file_name[arg_len] = '\0';				 // Ensure null termination
+		*out_channel_num = atoi(user_argv[2]); // Convert argument to integer
 
 		// Validate file name & channel number
-		if (validate_file_name(file_name, &data_frequency))
+		if (validate_file_name(out_file_name, &data_frequency))
 			return NULL; // Exit with error
-		if (validate_channel_num(channel_num, MAX_CHANNEL))
+		if (validate_channel_num(*out_channel_num, MAX_CHANNEL))
 			return NULL; // Exit with error
 	}
 
 	printf("\n");
 	printf("----------------------------------------\n");
-	printf("Reading from file: %s\n", file_name);
-	printf("Channel number: %d\n", channel_num);
+	printf("Reading from file: %s\n", out_file_name);
+	printf("Channel number: %d\n", *out_channel_num);
 	printf("----------------------------------------\n");
 
 	// Read data from file
 	printf("\nReading data from file...\n");
-	double **data = import_file(file_name, &num_rows, &num_cols);
+	double **data = import_file(out_file_name, &num_rows, &num_cols);
 	if (!data)
 	{
 		printf("Error: Failed to load data.\n");
@@ -63,8 +64,7 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 
 	// CHANNEL SIGNAL RETRIEVAL
 	// Get the channel data
-	*out_channel_num = channel_num;
-	double *channel_data = get_ch_signal(data, num_rows, num_cols, channel_num);
+	double *channel_data = get_ch_signal(data, num_rows, num_cols, *out_channel_num);
 	// Free the 2D array 'data'
 	for (size_t i = 0; i < num_rows; i++)
 	{

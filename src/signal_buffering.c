@@ -2,7 +2,7 @@
 #include "file_io.h"
 #include <string.h>
 
-int signal_buffering(double *in_signal, size_t signal_length, int *channel_num)
+int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, char *file_name)
 {
 	if (BUFFER_SIZE % 2 != 0)
 	{
@@ -20,10 +20,10 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num)
 	size_t mat_data_rows, mat_data_cols;
 	char ver_filepath[200];
 	// Create a mutable copy of the filename to safely tokenize it.
-	char filename_copy[20] = "exp_16_output";
-	sprintf(ver_filepath, "%sver_lpf_%s_ch%d.csv", MATLAB_DIRECTORY, strtok(filename_copy, "."), *channel_num);
+	// char filename_copy[20] = "exp_16_output";
+	sprintf(ver_filepath, "%sver_lpf_%s_ch%d.csv", MATLAB_DIRECTORY, strtok(file_name, "."), *channel_num);
 	double **lpf_mat_data = import_file(ver_filepath, &mat_data_rows, &mat_data_cols);
-	sprintf(ver_filepath, "%sver_hpf_%s_ch%d.csv", MATLAB_DIRECTORY, strtok(filename_copy, "."), *channel_num);
+	sprintf(ver_filepath, "%sver_hpf_%s_ch%d.csv", MATLAB_DIRECTORY, strtok(file_name, "."), *channel_num);
 	double **hpf_mat_data = import_file(ver_filepath, &mat_data_rows, &mat_data_cols);
 
 	while (j < signal_length) // Keep processing until reaching the signal length

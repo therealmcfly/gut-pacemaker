@@ -211,8 +211,10 @@ void get_file_name(char *file_name, size_t file_name_size, int *out_frequency)
 		// Check if user wants to open default file
 		if (strcmp(input_buffer, "0") == 0 || input_buffer[0] == '\0')
 		{
-			strncpy(file_name, DEFAULT_FILE, file_name_size - 1);
-			file_name[file_name_size - 1] = '\0'; // Ensure null termination
+			int default_file_len = sizeof(DEFAULT_FILE);
+
+			strncpy(file_name, DEFAULT_FILE, default_file_len - 1);
+			file_name[default_file_len - 1] = '\0'; // Ensure null termination
 			printf("Default file %s set as data file.\n", DEFAULT_FILE);
 		}
 		else
