@@ -2,7 +2,7 @@
 #define CONFIG_H
 
 // Debug flags
-#define DEBUG 1
+#define DEBUG 0
 #define START_ROW 0
 #define END_ROW 5
 
@@ -10,6 +10,7 @@
 #define DATA_VERIFICATION 0
 #define CHANNEL_RETRIEVAL_VERIFICATION 0
 #define DOWNSAMPING_VERIFICATION 0
+#define PROCESSING_RESULT_CHECK 1
 
 // Constants
 #define MAX_CHANNEL 2000

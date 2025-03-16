@@ -1,8 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include "config.h"
-#include "filtering.h"
+#include "preprocessing.h"
 
 int lowpass_filter(double *in_signal, double *lpf_signal, int signal_length)
 {
@@ -88,7 +84,10 @@ int lowpass_fir_filter(const double *coeffs, int coeff_len, const double *in_sig
 	}
 
 	// Copy original input to padded input
-	memcpy(z_padded_signal, in_signal, signal_length * sizeof(double));
+	for (int i = 0; i < signal_length; i++)
+	{
+		z_padded_signal[i] = in_signal[i];
+	}
 
 	// Temporary buffer for filtered output
 	double *temp_output = (double *)calloc(z_padded_signal_length, sizeof(double));
@@ -213,6 +212,7 @@ int highpass_fir_filter(const double *coeffs, int num_coeffs, const double *in_s
 
 	return 0;
 }
+
 void apply_padding(double *in_signal, int in_signal_len, double *padded_signal, int padded_signal_len, int padding_size)
 {
 	// Ensure the padded_signal buffer is large enough
@@ -240,4 +240,9 @@ void apply_padding(double *in_signal, int in_signal_len, double *padded_signal, 
 			padded_signal[i] = end_signal; // Last PADDING_SIZE padding to right with end_signal
 		}
 	}
+}
+
+int detect_artifact(const double *in_signal, double *out_signal, int signal_length)
+{
+	return 0;
 }

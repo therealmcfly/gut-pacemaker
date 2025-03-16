@@ -20,7 +20,7 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 	if (user_argc != 3)
 	{
 		// Ask for filename and validate input
-		get_file_name(out_file_name, sizeof(out_file_name), &data_frequency);
+		get_file_name(out_file_name, &data_frequency);
 		// Ask for channel number and validate input
 		get_channel_num(out_channel_num, MAX_CHANNEL);
 	}
