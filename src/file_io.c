@@ -2,12 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include "../inc/file_io.h"
+#include "file_io.h"
+#include "config.h"
 
 const char *FILE_EXTENSIONS[] = {".csv", ".bin"};
 #define NUM_EXTENSIONS (sizeof(FILE_EXTENSIONS) / sizeof(FILE_EXTENSIONS[0]))
 
-float **import_file(const char *file_name, size_t *num_rows, size_t *num_cols)
+double **import_file(const char *file_name, size_t *num_rows, size_t *num_cols)
 {
 
 	char file_path[200];
@@ -18,15 +19,15 @@ float **import_file(const char *file_name, size_t *num_rows, size_t *num_cols)
 	FILE *file = fopen(file_path, "r");
 	if (!file)
 	{
-		printf("Error: Could not open file %s\n", file_name);
+		printf("\nError: Could not open file %s\n", file_name);
 		return NULL;
 	}
 
 	size_t capacity = INITIAL_CAPACITY;
-	float **data = (float **)malloc(capacity * sizeof(float *));
+	double **data = (double **)malloc(capacity * sizeof(double *));
 	if (!data)
 	{
-		printf("Error: Memory allocation failed.\n");
+		printf("\nError: Memory allocation failed.\n");
 		fclose(file);
 		return NULL;
 	}
@@ -34,7 +35,7 @@ float **import_file(const char *file_name, size_t *num_rows, size_t *num_cols)
 	char *line = malloc(8192 * sizeof(char)); // Large enough buffer for long rows
 	if (!line)
 	{
-		printf("Error: Memory allocation for line buffer failed.\n");
+		printf("\nError: Memory allocation for line buffer failed.\n");
 		fclose(file);
 		return NULL;
 	}
@@ -47,10 +48,10 @@ float **import_file(const char *file_name, size_t *num_rows, size_t *num_cols)
 		if (row >= capacity)
 		{
 			capacity *= 2;
-			float **temp = (float **)realloc(data, capacity * sizeof(float *));
+			double **temp = (double **)realloc(data, capacity * sizeof(double *));
 			if (!temp)
 			{
-				printf("Error: Memory reallocation failed.\n");
+				printf("\nError: Memory reallocation failed.\n");
 				fclose(file);
 				return NULL;
 			}
@@ -61,7 +62,7 @@ float **import_file(const char *file_name, size_t *num_rows, size_t *num_cols)
 		char *token = strtok(line, ","); // Split by comma
 
 		// Allocate memory for columns (start with 100, expand dynamically)
-		data[row] = (float *)malloc(100 * sizeof(float));
+		data[row] = (double *)malloc(100 * sizeof(double));
 		size_t col_capacity = 100;
 
 		while (token != NULL)
@@ -69,10 +70,10 @@ float **import_file(const char *file_name, size_t *num_rows, size_t *num_cols)
 			if (col >= col_capacity)
 			{
 				col_capacity *= 2;
-				float *temp_row = (float *)realloc(data[row], col_capacity * sizeof(float));
+				double *temp_row = (double *)realloc(data[row], col_capacity * sizeof(double));
 				if (!temp_row)
 				{
-					printf("Error: Column reallocation failed.\n");
+					printf("\nError: Column reallocation failed.\n");
 					fclose(file);
 					return NULL;
 				}
@@ -101,11 +102,11 @@ float **import_file(const char *file_name, size_t *num_rows, size_t *num_cols)
 }
 
 // Function to print the full dataset in a table format
-void print_data(float **data, size_t num_rows, size_t num_cols)
+void print_data(double **data, size_t num_rows, size_t num_cols)
 {
 	if (!data)
 	{
-		printf("Error: No data to print.\n");
+		printf("\nError: No data to print.\n");
 		return;
 	}
 
@@ -134,22 +135,22 @@ void print_data(float **data, size_t num_rows, size_t num_cols)
 	printf("--------------------------------------------------------------\n");
 }
 
-int verify_data(float **data, size_t data_num_rows, size_t data_num_cols, const char *file)
+int verify_data(double **data, size_t data_num_rows, size_t data_num_cols, const char *file)
 {
 	size_t verify_num_rows = 0; // Variable to store the number of rows read
 	size_t verify_num_cols = 0; // Variable to store the number of columns read
-	float **verify_data = import_file(file, &verify_num_rows, &verify_num_cols);
+	double **verify_data = import_file(file, &verify_num_rows, &verify_num_cols);
 
 	if (!verify_data)
 	{
-		printf("Error: Could not verify result.\n\n");
+		printf("\nError: Could not verify result.\n\n");
 		return 1;
 	}
 
 	// compare rows and columns of data and verify_data
 	if (verify_num_rows != data_num_rows)
 	{
-		printf("Error: Number of rows do not match.\n\n");
+		printf("\nError: Number of rows do not match.\n\n");
 		printf("verify_num_rows: %zu\n", verify_num_rows);
 		printf("data_num_rows: %zu\n", data_num_rows);
 		return 1;
@@ -159,7 +160,7 @@ int verify_data(float **data, size_t data_num_rows, size_t data_num_cols, const 
 
 	if (verify_num_cols != data_num_cols)
 	{
-		printf("Error: Number of columns do not match.\n\n");
+		printf("\nError: Number of columns do not match.\n\n");
 		printf("verify_num_cols: %zu\n", verify_num_cols);
 		printf("data_num_cols: %zu\n", data_num_cols);
 		return 1;
@@ -175,7 +176,7 @@ int verify_data(float **data, size_t data_num_rows, size_t data_num_cols, const 
 		{
 			if (data[row][col] != verify_data[row][col])
 			{
-				printf("Error: Data mismatch at row %zu, column %zu.\n\n", row, col);
+				printf("\nError: Data mismatch at row %zu, column %zu.\n\n", row, col);
 				// print the value of data
 				printf("data: %f\n", data[row][col]);
 				// print the value of verify_data
@@ -200,34 +201,37 @@ void get_file_name(char *file_name, size_t file_name_size, int *out_frequency)
 		printf("\nEnter the file name: ");
 		if (fgets(input_buffer, sizeof(input_buffer), stdin) == NULL)
 		{
-			printf("Error reading input.\n");
+			printf("\nError reading input.\n");
 			continue;
 		}
 
 		// Remove newline character from input
 		input_buffer[strcspn(input_buffer, "\n")] = '\0';
 
+		// Check if user wants to open default file
 		if (strcmp(input_buffer, "0") == 0 || input_buffer[0] == '\0')
 		{
-			strncpy(file_name, DEFAULT_FILE, file_name_size - 1);
-			file_name[file_name_size - 1] = '\0'; // Ensure null termination
-			printf("Opening default file: %s\n", DEFAULT_FILE);
-			break;
+			int default_file_len = sizeof(DEFAULT_FILE);
+
+			strncpy(file_name, DEFAULT_FILE, default_file_len - 1);
+			file_name[default_file_len - 1] = '\0'; // Ensure null termination
+			printf("Default file %s set as data file.\n", DEFAULT_FILE);
 		}
 		else
 		{
-			// Validate file name
-			if (validate_file_name(input_buffer, out_frequency))
-			{
-				continue;
-			}
-
 			strncpy(file_name, input_buffer, file_name_size - 1);
 			file_name[file_name_size - 1] = '\0'; // Ensure null termination
-			printf("Opening file: %s\n", file_name);
-			printf("Data frequency: %d\n", *out_frequency);
-			break;
 		}
+
+		// Validate file name
+		if (validate_file_name(file_name, out_frequency))
+		{
+			continue;
+		}
+
+		printf("Opening file: %s\n", file_name);
+		printf("Data frequency: %d\n", *out_frequency);
+		break;
 	}
 }
 
@@ -235,7 +239,7 @@ int validate_file_name(const char *file_name, int *out_frequency)
 {
 	if (!file_name || !(*file_name))
 	{
-		printf("Error: file name is empty or NULL.\n");
+		printf("\nError: file name is empty or NULL.\n");
 		return 1;
 	}
 
@@ -243,7 +247,7 @@ int validate_file_name(const char *file_name, int *out_frequency)
 	char *ext = strrchr(file_name, '.'); // find rightmost '.' in file_name
 	if (!ext)
 	{
-		printf("Error: No file extension found (no '.').\n");
+		printf("\nError: No file extension found (no '.').\n");
 		printf("Expected structure: <name>_<freq>.csv or .bin\n");
 		return 1;
 	}
@@ -260,7 +264,7 @@ int validate_file_name(const char *file_name, int *out_frequency)
 	}
 	if (!valid_ext)
 	{
-		printf("Error: File must end with .csv or .bin.\n");
+		printf("\nError: File must end with .csv or .bin.\n");
 		return 1;
 	}
 
@@ -268,7 +272,7 @@ int validate_file_name(const char *file_name, int *out_frequency)
 	char *last_underscore = strrchr(file_name, '_');
 	if (!last_underscore || last_underscore > ext)
 	{
-		printf("Error: Could not find '_' before the extension.\n");
+		printf("\nError: Could not find '_' before the extension.\n");
 		printf("Expected structure: <name>_<freq>.csv or .bin\n");
 		return 1;
 	}
@@ -278,7 +282,7 @@ int validate_file_name(const char *file_name, int *out_frequency)
 	if (freq_start == ext)
 	{
 		// nothing between underscore and dot
-		printf("Error: No numeric frequency found between '_' and extension.\n");
+		printf("\nError: No numeric frequency found between '_' and extension.\n");
 		printf("Expected structure: <name>_<freq>.csv or .bin\n");
 		return 1;
 	}
@@ -288,17 +292,20 @@ int validate_file_name(const char *file_name, int *out_frequency)
 	{
 		if (!isdigit((unsigned char)*p))
 		{
-			printf("Error: Frequency part contains non-numeric characters.\n");
+			printf("\nError: Frequency part contains non-numeric characters.\n");
 			printf("Expected structure: <name>_<freq>.csv or .bin\n");
 			return 1;
 		}
 	}
+#ifdef DEBUG
+	printf("Frequency substring: %s\n", freq_start);
+#endif
 
 	// 4) Convert freq substring to integer
 	int freq = atoi(freq_start);
 	if (freq <= 0)
 	{
-		printf("Error: Frequency must be a positive integer.\n");
+		printf("\nError: Frequency must be a positive integer.\n");
 		return 1;
 	}
 
@@ -312,7 +319,7 @@ int validate_file_name(const char *file_name, int *out_frequency)
 	return 0;
 }
 
-void get_channel_num(int *channel_num)
+void get_channel_num(int *channel_num, int max_channel)
 {
 	// Ask for channel number and validate input
 	while (1)
@@ -322,13 +329,13 @@ void get_channel_num(int *channel_num)
 		// Check if channel number is an integer
 		if (scanf("%d", channel_num) != 1) // Validate integer input
 		{
-			printf("Error: Invalid input. Please enter an integer.\n");
+			printf("\nError: Invalid input. Please enter an integer.\n");
 			while (getchar() != '\n')
 				; // Clear input buffer
 			continue;
 		}
 		// Check if channel number is within the range
-		if (validate_channel_num(*channel_num, MAX_CHANNEL))
+		if (validate_channel_num(*channel_num, max_channel))
 		{
 			continue; // Retry input
 		}
@@ -341,7 +348,7 @@ int validate_channel_num(int channel_num, int max_channel)
 	// Check if channel number is within the range
 	if (channel_num <= 0 || channel_num > max_channel)
 	{
-		printf("Error: Channel must be an integer between 1 and %d.\n", max_channel);
+		printf("\nError: Channel must be an integer between 1 and %d.\n", max_channel);
 		return 1; // Exit with error
 	}
 	return 0;
