@@ -164,7 +164,6 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 		// Free allocated memory if downsampling was successful
 		if (downsampled_data && channel_data)
 		{
-			free(channel_data);
 			channel_data = NULL;
 		}
 	}
@@ -176,6 +175,8 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 		printf("No downsampling required.\n");
 		downsampled_data = channel_data;
 	}
+
+	free(channel_data);
 
 	*out_data_length = num_rows;
 

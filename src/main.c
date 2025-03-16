@@ -34,6 +34,9 @@ int main(int argc, char *argv[])
 		printf("Exiting program...\n");
 		return 1;
 	}
+
+	// Free allocated memory
+	free(signal);
 	printf("Exiting program...\n");
 	return 0;
 }

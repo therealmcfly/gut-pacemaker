@@ -185,11 +185,11 @@ int highpass_filter(double *in_signal, double *hpf_signal, int signal_len)
 	// check the padding removal
 	if (hpf_signal[0] != padded_hpf_signal[HPF_PADDING_SIZE] || hpf_signal[signal_len - 1] != padded_hpf_signal[HPF_PADDING_SIZE + signal_len - 1])
 	{
-		printf("\nError in lowpass_filter(): Padding removal failed, check the padding logic.\n");
-		printf("lpf_signal[%d]: %.15f\n", 0, hpf_signal[0]);
-		printf("lpf_signal_wp[%d]: %.15f\n", HPF_PADDING_SIZE, padded_hpf_signal[HPF_PADDING_SIZE]);
-		printf("\nlpf_signal[%d]: %.15f\n", signal_len - 1, hpf_signal[signal_len - 1]);
-		printf("lpf_signal_wp[%d]: %.15f\n", HPF_PADDING_SIZE + signal_len - 1, padded_hpf_signal[HPF_PADDING_SIZE + signal_len - 1]);
+		printf("\nError in highpass_filter(): Padding removal failed, check the padding logic.\n");
+		printf("hpf_signal[%d]: %.15f\n", 0, hpf_signal[0]);
+		printf("hpf_signal_wp[%d]: %.15f\n", HPF_PADDING_SIZE, padded_hpf_signal[HPF_PADDING_SIZE]);
+		printf("\nhpf_signal[%d]: %.15f\n", signal_len - 1, hpf_signal[signal_len - 1]);
+		printf("hpf_signal_wp[%d]: %.15f\n", HPF_PADDING_SIZE + signal_len - 1, padded_hpf_signal[HPF_PADDING_SIZE + signal_len - 1]);
 		return 1;
 	}
 	return 0;
@@ -197,6 +197,7 @@ int highpass_filter(double *in_signal, double *hpf_signal, int signal_len)
 
 int highpass_fir_filter(const double *coeffs, int num_coeffs, const double *in_signal, double *out_signal, int signal_length)
 {
+	// Unlike the lowpass_fir_filter, the highpass_fir_filter doesn't account for filter delay
 	// Perform Convolution
 	for (int i = 0; i < signal_length; i++)
 	{
@@ -212,9 +213,14 @@ int highpass_fir_filter(const double *coeffs, int num_coeffs, const double *in_s
 
 	return 0;
 }
-
 void apply_padding(double *in_signal, int in_signal_len, double *padded_signal, int padded_signal_len, int padding_size)
 {
+	// Ensure the padded_signal buffer is large enough
+	if (padded_signal_len < in_signal_len + (2 * padding_size))
+	{
+		printf("Error: padded_signal buffer too small in apply_padding\n");
+		return;
+	}
 
 	// Step 1: Apply PADDING_SIZE padding front(left) and back(right) of signal (Replicating MATLAB's Strategy)
 	double start_signal = in_signal[0];
