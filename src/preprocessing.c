@@ -251,7 +251,7 @@ int apply_padding(double *in_signal, int in_signal_len, double *out_padded_signa
 	return 0;
 }
 
-int remove_artifacts(const double *in_signal, double *out_signal, int signal_length)
+int detect_remove_artifacts(double *in_signal, int signal_length)
 {
 	int i = 0;
 	int j = i + ARTIFACT_DETECT_WINDOW_WIDTH;
@@ -269,20 +269,33 @@ int remove_artifacts(const double *in_signal, double *out_signal, int signal_len
 		// Detect artifact
 		int loc = detect_artifact(window, ARTIFACT_DETECT_WINDOW_WIDTH, ARTIFACT_DETECT_THRESHOLD);
 		if (loc != -1)
-		{ // Artifact found
-			int x1 = loc - ARTIFACT_SIZE / 2;
-			int x2 = loc + ARTIFACT_SIZE / 2;
+		{
+			// Artifact found
+			int x1 = loc - (ARTIFACT_SIZE / 2); //
+			int x2 = loc + (ARTIFACT_SIZE / 2); //
 
-			if (x1 >= 0 && x2 < ARTIFACT_DETECT_WINDOW_WIDTH)
+			printf("\nArtifact detected at i = %d, loc = %d, value = %lf\n", i, loc, window[loc]);
+
+			if (x2 <= ARTIFACT_DETECT_WINDOW_WIDTH && x1 > 0)
 			{
+				printf("Removing artifact at index %d\n", i + loc);
+
 				remove_artifact(window, ARTIFACT_DETECT_WINDOW_WIDTH, x1, x2);
 
 				// Copy modified window back to signal
 				for (int k = 0; k < ARTIFACT_DETECT_WINDOW_WIDTH; k++)
 				{
-					out_signal[i + k] = window[k];
+					in_signal[i + k] = window[k];
 				}
 			}
+			else
+			{
+				printf("Artifact is too close to the edge, skipping removal\n");
+			}
+			// for (int k = 0; k < ARTIFACT_DETECT_WINDOW_WIDTH; k++)
+			// {
+			// 	printf("out_signal[%d]: %lf\n", i + k, out_signal[i + k]);
+			// }
 		}
 
 		// Move window forward
@@ -312,22 +325,74 @@ int detect_artifact(const double *window, int window_size, double threshold)
 }
 
 // Function to remove an artifact using cubic spline interpolation
-void remove_artifact(double *window, int window_size, int x1, int x2)
+void remove_artifact(double *window, int window_len, int x1, int x2)
 {
-	if (x1 < 1 || x2 >= window_size)
-		return; // Ensure valid indices
+	// if (x1 >= x2 || x1 < 1 || x2 >= window_len - 1) /*<--- OLD VER */
+	if (x1 >= x2 || x1 < 0 || x2 >= window_len - 1)
+	{
+		printf("Error: Invalid x1 (%d) or x2 (%d) values\n", x1, x2);
+		return;
+	}
 
-	double y1 = window[x1]; // Start value
-	double y2 = window[x2]; // End value
+	// Compute start and end slopes
+	double dy1 = window[x1] - window[x1 - 1];
+	double dy2 = window[x2] - window[x2 - 1];
 
-	// Compute cubic interpolation coefficients
-	double a = (y2 - y1) / ((x2 - x1) * (x2 - x1));
-	double b = -2 * a * x1;
-	double c = y1 - (a * x1 * x1) - (b * x1);
+	// Compute spline coefficients
+	double a, b, c, d;
+	compute_single_spline(x1, window[x1], dy1, x2, window[x2], dy2, &a, &b, &c, &d);
 
-	// Apply cubic interpolation
+	// Replace artifact region with cubic spline interpolation
 	for (int i = x1; i <= x2; i++)
 	{
-		window[i] = a * i * i + b * i + c;
+		window[i] = evaluate_spline(a, b, c, d, x1, x2, i);
+		// printf("window[%d]: %lf\n", i, window[i]); // Debugging output
 	}
+}
+
+// Function to compute cubic spline coefficients for a single segment
+void compute_single_spline(double x1, double y1, double dy1,
+													 double x2, double y2, double dy2,
+													 double *a, double *b, double *c, double *d)
+{
+	double h = x2 - x1;
+
+	// Ensure h is not too small to avoid division issues
+	// if (h < 1e-6) /*<--- OLD VER */
+	if (h < PRECISION)
+	{
+		*a = y1;
+		*b = dy1;
+		*c = 0;
+		*d = 0;
+		return;
+	}
+
+	*a = y1;
+	*b = dy1;
+	*c = (3 * (y2 - y1) / (h * h)) - (2 * dy1 / h) - (dy2 / h);
+	*d = (2 * (y1 - y2) / (h * h * h)) + ((dy1 + dy2) / (h * h));
+
+	// // Debugging output to verify coefficients
+	// printf("Spline Coefficients (x1=%.2f, x2=%.2f):\n", x1, x2);
+	// printf("a: %f, b: %f, c: %f, d: %f\n", *a, *b, *c, *d);
+}
+
+// Function to evaluate the cubic spline at a given x_query
+double evaluate_spline(double a, double b, double c, double d, double x1, double x2, double x_query)
+{
+	double dx = x_query - x1;
+	double h = x2 - x1;
+
+	// Ensure dx does not exceed h to avoid instability
+	// if (dx > h)
+	// 	dx = h;
+	// if (dx < 0)
+	// 	dx = 0;
+	if (dx < -PRECISION)
+		dx = 0;
+	if (dx > h + PRECISION)
+		dx = h;
+
+	return a + b * dx + c * dx * dx + d * dx * dx * dx;
 }
