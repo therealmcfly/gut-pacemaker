@@ -2,9 +2,6 @@
 
 int lowpass_filter(double *in_signal, double *lpf_signal, int signal_length)
 {
-	// Low-pass filter constants
-#define LPF_PADDING_SIZE 60
-#define LPF_PADDED_BUFFER_SIZE ((BUFFER_SIZE + 1 /* + 1 to mirror the MATLAB logic, romove if not needed*/) + (2 * LPF_PADDING_SIZE))
 	const double COEFFS[] = {
 			-0.000175523523401278, -4.21964700295067e-05, 0.000358539018147976,
 			0.000818885111422960, 0.000880009800921136, 0.000146593519844785,
@@ -40,7 +37,11 @@ int lowpass_filter(double *in_signal, double *lpf_signal, int signal_length)
 	}
 
 	// Step 1: Apply PADDING_SIZE padding front(left) and back(right) of signal (Replicating MATLAB's Strategy)
-	apply_padding(in_signal, signal_length, padded_signal, LPF_PADDED_BUFFER_SIZE, LPF_PADDING_SIZE);
+	if (apply_padding(in_signal, signal_length, padded_signal, LPF_PADDED_BUFFER_SIZE, LPF_PADDING_SIZE))
+	{
+		printf("Error: Padding for low pass filtering failed.\n");
+		return 1;
+	}
 
 	// Step 2: Apply FIR Filtering
 	if (lowpass_fir_filter(COEFFS, filter_order + 1, padded_signal, padded_lpf_signal, signal_length + (LPF_PADDING_SIZE * 2)))
@@ -132,12 +133,9 @@ int lowpass_fir_filter(const double *coeffs, int coeff_len, const double *in_sig
 	return 0;
 }
 
-int highpass_filter(double *in_signal, double *hpf_signal, int signal_len)
+int highpass_filter(double *in_signal, int in_signal_len, double *out_hpf_signal, int *out_hpf_signal_len)
 {
-	// High-pass filter constants
-#define HPF_PADDING_SIZE 60
-#define HPF_PADDED_BUFFER_SIZE ((BUFFER_SIZE + 1 /* + 1 to mirror the MATLAB logic, romove if not needed*/) + (2 * HPF_PADDING_SIZE))
-	const double COEFFS[] = {
+	const double COEFFS[HPF_FILTER_ORDER + 1] = {
 			-0.00788739916497821, -0.00883748945388316, -0.00982539957188940, -0.0108458743104990,
 			-0.0118931431763899, -0.0129609677159769, -0.0140426954726160, -0.0151313200039590,
 			-0.0162195462972988, -0.0172998608393711, -0.0183646055252676, -0.0194060545299731,
@@ -150,62 +148,72 @@ int highpass_filter(double *in_signal, double *hpf_signal, int signal_len)
 			-0.0223140170058552, -0.0213882981180202, -0.0204164932165573, -0.0194060545299731,
 			-0.0183646055252676, -0.0172998608393711, -0.0162195462972988, -0.0151313200039590,
 			-0.0140426954726160, -0.0129609677159769, -0.0118931431763899, -0.0108458743104990,
-			-0.00982539957188940, -0.00883748945388316, -0.00788739916497821};
+			-0.00982539957188940, -0.00883748945388316, -0.00788739916497821}; // the filter order is declared in config.h. If the coeff length changes, the filter order should be updated in config.h. Else, the code will throw error below.
+
+	if (sizeof(COEFFS) / sizeof(COEFFS[0]) != HPF_FILTER_ORDER + 1)
+	{
+		printf("\nError: Highpass filter order mismatch. HPF_FILTER_ORDER must equal coeff length -1. Check HPF_FILTER_ORDER value at config.h.\n");
+		return 1;
+	}
 
 	int filter_order = sizeof(COEFFS) / sizeof(COEFFS[0]) - 1;
 
-	double padded_signal[HPF_PADDED_BUFFER_SIZE];
-	for (int i = 0; i < HPF_PADDED_BUFFER_SIZE; i++) // this for loop is to mirror the MATLAB logic, romove if not needed
+	double padded_signal[HPF_PADDED_SIGNAL_SIZE];
+	for (int i = 0; i < HPF_PADDED_SIGNAL_SIZE; i++) // this for loop is to mirror the MATLAB logic, romove if not needed
 	{
 		padded_signal[i] = 0.0;
 	}
-	double padded_hpf_signal[HPF_PADDED_BUFFER_SIZE];
-	for (int i = 0; i < HPF_PADDED_BUFFER_SIZE; i++) // this for loop is to mirror the MATLAB logic, romove if not needed
+	double hpf_conv_signal[HPF_CONV_PADDED_SIGNAL_SIZE];
+	for (int i = 0; i < HPF_CONV_PADDED_SIGNAL_SIZE; i++) // this for loop is to mirror the MATLAB logic, romove if not needed
 	{
-		padded_hpf_signal[i] = 0.0;
+		hpf_conv_signal[i] = 0.0;
 	}
 	// Step 1: Apply HPF_PADDING_SIZE padding front(left) and back(right) of signal (Replicating MATLAB's Strategy)
-	apply_padding(in_signal, signal_len, padded_signal, HPF_PADDED_BUFFER_SIZE, HPF_PADDING_SIZE);
+	if (apply_padding(in_signal, in_signal_len, padded_signal, HPF_PADDED_SIGNAL_SIZE, HPF_PADDING_SIZE))
+	{
+		printf("\nError: Padding for high pass filtering in failed.\n");
+		return 1;
+	}
 
 	// Step 2: Apply FIR Filtering
-	if (highpass_fir_filter(COEFFS, filter_order + 1, padded_signal, padded_hpf_signal, signal_len + (HPF_PADDING_SIZE * 2)))
+	if (highpass_fir_filter(COEFFS, filter_order + 1, padded_signal, HPF_PADDED_SIGNAL_SIZE, hpf_conv_signal, HPF_CONV_PADDED_SIGNAL_SIZE))
 	{
-		printf("Error: FIR filtering failed.\n");
+		printf("\nError: FIR filtering failed.\n");
 		return 1;
 	}
 
 	// Step 3: Remove padding
-	for (int i = 0; i < signal_len; i++)
+	for (int i = 0; i < *out_hpf_signal_len; i++)
 	{
-		hpf_signal[i] = padded_hpf_signal[i + HPF_PADDING_SIZE];
+		out_hpf_signal[i] = hpf_conv_signal[i + HPF_PADDING_SIZE];
 		// printf("lpf_signal[%d]: %.15f\n", i, lpf_signal[i]);
 	}
 
 	// check the padding removal
-	if (hpf_signal[0] != padded_hpf_signal[HPF_PADDING_SIZE] || hpf_signal[signal_len - 1] != padded_hpf_signal[HPF_PADDING_SIZE + signal_len - 1])
+	if (out_hpf_signal[0] != hpf_conv_signal[HPF_PADDING_SIZE] || out_hpf_signal[*out_hpf_signal_len - 1] != hpf_conv_signal[HPF_PADDING_SIZE + *out_hpf_signal_len - 1])
 	{
 		printf("\nError in highpass_filter(): Padding removal failed, check the padding logic.\n");
-		printf("hpf_signal[%d]: %.15f\n", 0, hpf_signal[0]);
-		printf("hpf_signal_wp[%d]: %.15f\n", HPF_PADDING_SIZE, padded_hpf_signal[HPF_PADDING_SIZE]);
-		printf("\nhpf_signal[%d]: %.15f\n", signal_len - 1, hpf_signal[signal_len - 1]);
-		printf("hpf_signal_wp[%d]: %.15f\n", HPF_PADDING_SIZE + signal_len - 1, padded_hpf_signal[HPF_PADDING_SIZE + signal_len - 1]);
+		printf("hpf_signal[%d]: %.15f\n", 0, out_hpf_signal[0]);
+		printf("hpf_signal_wp[%d]: %.15f\n", HPF_PADDING_SIZE, hpf_conv_signal[HPF_PADDING_SIZE]);
+		printf("\nhpf_signal[%d]: %.15f\n", *out_hpf_signal_len - 1, out_hpf_signal[*out_hpf_signal_len - 1]);
+		printf("hpf_signal_wp[%d]: %.15f\n", HPF_PADDING_SIZE + *out_hpf_signal_len - 1, hpf_conv_signal[HPF_PADDING_SIZE + *out_hpf_signal_len - 1]);
 		return 1;
 	}
 	return 0;
 }
 
-int highpass_fir_filter(const double *coeffs, int num_coeffs, const double *in_signal, double *out_signal, int signal_length)
+int highpass_fir_filter(const double *coeffs, int num_coeffs, const double *in_signal, int in_signal_len, double *out_conv_signal, int out_conv_signal_len)
 {
 	// Unlike the lowpass_fir_filter, the highpass_fir_filter doesn't account for filter delay
 	// Perform Convolution
-	for (int i = 0; i < signal_length; i++)
+	for (int i = 0; i < out_conv_signal_len; i++)
 	{
-		out_signal[i] = 0.0; // Initialize
+		out_conv_signal[i] = 0.0; // Initialize
 		for (int j = 0; j < num_coeffs; j++)
 		{
-			if (i - j >= 0 && i - j < signal_length)
+			if (i - j >= 0 && i - j < in_signal_len)
 			{
-				out_signal[i] += in_signal[i - j] * coeffs[j];
+				out_conv_signal[i] += in_signal[i - j] * coeffs[j];
 			}
 		}
 	}
@@ -213,13 +221,13 @@ int highpass_fir_filter(const double *coeffs, int num_coeffs, const double *in_s
 	return 0;
 }
 
-void apply_padding(double *in_signal, int in_signal_len, double *padded_signal, int padded_signal_len, int padding_size)
+int apply_padding(double *in_signal, int in_signal_len, double *out_padded_signal, int out_padded_signal_len, int padding_size)
 {
 	// Ensure the padded_signal buffer is large enough
-	if (padded_signal_len < in_signal_len + (2 * padding_size))
+	if (out_padded_signal_len < in_signal_len + (2 * padding_size))
 	{
-		printf("Error: padded_signal buffer too small in apply_padding\n");
-		return;
+		printf("\nError: out_padded_signal buffer too small in apply_padding\n");
+		return 1;
 	}
 
 	// Step 1: Apply PADDING_SIZE padding front(left) and back(right) of signal (Replicating MATLAB's Strategy)
@@ -229,20 +237,97 @@ void apply_padding(double *in_signal, int in_signal_len, double *padded_signal, 
 	{
 		if (i < padding_size)
 		{
-			padded_signal[i] = start_signal; // First PADDING_SIZE padding to left with start_signal
+			out_padded_signal[i] = start_signal; // First PADDING_SIZE padding to left with start_signal
 		}
 		else if (i >= padding_size && i < padding_size + in_signal_len)
 		{
-			padded_signal[i] = in_signal[i - padding_size]; // Copying signal to middle of padded_signal
+			out_padded_signal[i] = in_signal[i - padding_size]; // Copying signal to middle of padded_signal
 		}
 		else
 		{
-			padded_signal[i] = end_signal; // Last PADDING_SIZE padding to right with end_signal
+			out_padded_signal[i] = end_signal; // Last PADDING_SIZE padding to right with end_signal
 		}
 	}
+	return 0;
 }
 
-int detect_artifact(const double *in_signal, double *out_signal, int signal_length)
+int remove_artifacts(const double *in_signal, double *out_signal, int signal_length)
 {
-	return 0;
+	int i = 0;
+	int j = i + ARTIFACT_DETECT_WINDOW_WIDTH;
+
+	while (j < signal_length)
+	{
+		double window[ARTIFACT_DETECT_WINDOW_WIDTH];
+
+		// Copy signal into temporary window
+		for (int k = 0; k < ARTIFACT_DETECT_WINDOW_WIDTH; k++)
+		{
+			window[k] = in_signal[i + k];
+		}
+
+		// Detect artifact
+		int loc = detect_artifact(window, ARTIFACT_DETECT_WINDOW_WIDTH, ARTIFACT_DETECT_THRESHOLD);
+		if (loc != -1)
+		{ // Artifact found
+			int x1 = loc - ARTIFACT_SIZE / 2;
+			int x2 = loc + ARTIFACT_SIZE / 2;
+
+			if (x1 >= 0 && x2 < ARTIFACT_DETECT_WINDOW_WIDTH)
+			{
+				remove_artifact(window, ARTIFACT_DETECT_WINDOW_WIDTH, x1, x2);
+
+				// Copy modified window back to signal
+				for (int k = 0; k < ARTIFACT_DETECT_WINDOW_WIDTH; k++)
+				{
+					out_signal[i + k] = window[k];
+				}
+			}
+		}
+
+		// Move window forward
+		i += ARTIFACT_DETECT_WINDOW_WIDTH / 2;
+		j = i + ARTIFACT_DETECT_WINDOW_WIDTH;
+	}
+
+	return 0; // Success
+}
+
+// Function to detect artifacts in a signal window
+int detect_artifact(const double *window, int window_size, double threshold)
+{
+	int peak_index = -1;
+	double max_value = 0.0;
+
+	for (int i = 0; i < window_size; i++)
+	{
+		double abs_val = (window[i] < 0) ? -window[i] : window[i]; // Absolute value of signal sample
+		if (abs_val > threshold && abs_val > max_value)
+		{
+			max_value = abs_val;
+			peak_index = i;
+		}
+	}
+	return peak_index; // Returns the index of the artifact if found, else -1
+}
+
+// Function to remove an artifact using cubic spline interpolation
+void remove_artifact(double *window, int window_size, int x1, int x2)
+{
+	if (x1 < 1 || x2 >= window_size)
+		return; // Ensure valid indices
+
+	double y1 = window[x1]; // Start value
+	double y2 = window[x2]; // End value
+
+	// Compute cubic interpolation coefficients
+	double a = (y2 - y1) / ((x2 - x1) * (x2 - x1));
+	double b = -2 * a * x1;
+	double c = y1 - (a * x1 * x1) - (b * x1);
+
+	// Apply cubic interpolation
+	for (int i = x1; i <= x2; i++)
+	{
+		window[i] = a * i * i + b * i + c;
+	}
 }
