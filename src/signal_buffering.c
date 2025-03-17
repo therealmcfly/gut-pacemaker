@@ -38,10 +38,11 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 		}
 
 		/* -----------------------------------------------------------------------------*/
-		/* ---------------------------- LOW PASS FILTERING -----------------------------*/
+		/*                                 PREPROCESSING                                */
 		/* -----------------------------------------------------------------------------*/
 
-		// Apply Low-Pass Filtering
+		/* ---------------------------- Low-Pass Filtering ---------------------------  */
+
 		if (lowpass_filter(buffer, lowpass_signal, BUFFER_SIZE))
 		{
 			printf("\nError: Low-pass filtering failed.\n");
@@ -64,9 +65,8 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 		printf("Low-pass filtering successful.\n");
 #endif
 
-		/* -----------------------------------------------------------------------------*/
-		/* --------------------------- HIGH PASS FILTERING -----------------------------*/
-		/* -----------------------------------------------------------------------------*/
+		/* ---------------------------- High-Pass Filtering ---------------------------  */
+
 		if (highpass_filter(lowpass_signal, BUFFER_SIZE, hpf_signal, &hpf_signal_len))
 		{
 			printf("\nError: High-pass filtering failed in %dth buffer.\n", shift);
@@ -89,9 +89,7 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 		printf("High-pass filtering successful.\n");
 #endif
 
-		/* -----------------------------------------------------------------------------*/
-		/* ---------------------- ARTIFACT DETECTION & REMOVAL -------------------------*/
-		/* -----------------------------------------------------------------------------*/
+		/* --------------------- Artifact Detection and Removal ---------------------  */
 
 		if (detect_remove_artifacts(hpf_signal, BUFFER_SIZE + HPF_FILTER_ORDER))
 		{
@@ -107,6 +105,14 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 		}
 		printf("Artifact detection and removal successful.\n");
 #endif
+
+		/* -----------------------------------------------------------------------------*/
+		/*                             ACTIVATION DETECTION                             */
+		/* -----------------------------------------------------------------------------*/
+
+		/* -------------------- Non Linear Energy (NEO) Transform --------------------- */
+
+		/* -----------------------------------------------------------------------------*/
 
 		// Buffer Shift
 		shift++;
