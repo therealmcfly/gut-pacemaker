@@ -51,8 +51,8 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 		printf("\n%dth signal buffer low pass filtering successful.\n", shift + 1);
 		printf("lpf_signal[%d] = %.15f\n", 0, lowpass_signal[0]);
 		printf("lpf_signal[%d] = %.15f\n", 1, lowpass_signal[1]);
-		printf("lpf_signal[%d] = %.15f\n", cur_buffer_size - 2, lowpass_signal[cur_buffer_size - 2]);
-		printf("lpf_signal[%d] = %.15f\n", cur_buffer_size - 1, lowpass_signal[cur_buffer_size - 1]);
+		printf("lpf_signal[%d] = %.15f\n", BUFFER_SIZE - 2, lowpass_signal[BUFFER_SIZE - 2]);
+		printf("lpf_signal[%d] = %.15f\n", BUFFER_SIZE - 1, lowpass_signal[BUFFER_SIZE - 1]);
 #endif
 #if LOW_PASS_FILTER_VERIFICATION
 		// Check Low-Pass Filtering Result
@@ -76,8 +76,8 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 		printf("\n%dth signal buffer high pass filtering successful.\n", shift + 1);
 		printf("hpf_signal[%d] = %.15f\n", 0, hpf_signal[0]);
 		printf("hpf_signal[%d] = %.15f\n", 1, hpf_signal[1]);
-		printf("hpf_signal[%d] = %.15f\n", cur_buffer_size + HPF_FILTER_ORDER - 2, hpf_signal[cur_buffer_size + HPF_FILTER_ORDER - 2]);
-		printf("hpf_signal[%d] = %.15f\n", cur_buffer_size + HPF_FILTER_ORDER - 1, hpf_signal[cur_buffer_size + HPF_FILTER_ORDER - 1]);
+		printf("hpf_signal[%d] = %.15f\n", BUFFER_SIZE + HPF_FILTER_ORDER - 2, hpf_signal[BUFFER_SIZE + HPF_FILTER_ORDER - 2]);
+		printf("hpf_signal[%d] = %.15f\n", BUFFER_SIZE + HPF_FILTER_ORDER - 1, hpf_signal[BUFFER_SIZE + HPF_FILTER_ORDER - 1]);
 #endif
 #if HIGH_PASS_FILTER_VERIFICATION
 		// Check High-Pass Filtering Result
