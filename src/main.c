@@ -19,8 +19,8 @@ int main(int argc, char *argv[])
 
 	if (signal == NULL)
 	{
-		printf("Error occured while initializing sample data.\n");
-		printf("Exiting program...\n");
+		printf("\nError occured while initializing sample data.\n");
+		printf("Exiting program...\n\n");
 		return 1;
 	}
 
@@ -30,13 +30,13 @@ int main(int argc, char *argv[])
 
 	if (signal_buffering(signal, signal_length, &channel_num, file_name))
 	{
-		printf("Error occured while buffering signal.\n");
-		printf("Exiting program...\n");
+		printf("\nError occured while buffering signal.\n");
+		printf("Exiting program...\n\n");
 		return 1;
 	}
 
 	// Free allocated memory
 	free(signal);
-	printf("Exiting program...\n");
+	printf("\nExiting program...\n\n");
 	return 0;
 }

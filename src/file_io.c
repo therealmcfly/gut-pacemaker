@@ -192,7 +192,7 @@ int verify_data(double **data, size_t data_num_rows, size_t data_num_cols, const
 	return 0; // Files match
 }
 
-void get_file_name(char *file_name, size_t file_name_size, int *out_frequency)
+void get_file_name(char *file_name, int *out_frequency)
 {
 	char input_buffer[100]; // Buffer for user input
 
@@ -219,8 +219,8 @@ void get_file_name(char *file_name, size_t file_name_size, int *out_frequency)
 		}
 		else
 		{
-			strncpy(file_name, input_buffer, file_name_size - 1);
-			file_name[file_name_size - 1] = '\0'; // Ensure null termination
+			strncpy(file_name, input_buffer, sizeof(file_name) - 1);
+			file_name[sizeof(file_name) - 1] = '\0'; // Ensure null termination
 		}
 
 		// Validate file name

@@ -20,8 +20,9 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.c
 $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS)
 
-# Clean build files
+# Clean build files (Windows & Unix compatible)
 clean:
-	rm -rf $(OBJDIR) $(TARGET)
+	@if exist $(OBJDIR) (rmdir /S /Q $(OBJDIR))
+	@if exist $(TARGET) (del /F /Q $(TARGET))
 
 .PHONY: clean
