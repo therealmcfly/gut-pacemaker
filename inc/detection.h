@@ -1,5 +1,5 @@
-#ifndef ACTIVATION_DETECTION_H
-#define ACTIVATION_DETECTION_H
+#ifndef DETECTION_H
+#define DETECTION_H
 
 #include <stdio.h> // for printf (if desired)
 #include "config.h"

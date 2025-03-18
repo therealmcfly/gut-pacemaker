@@ -7,7 +7,7 @@
 #include "config.h"
 #include "preprocessing.h"
 #include "result_check.h"
-#include "activation_detection.h"
+#include "detection.h"
 
 #define SUCCESS 0
 #define ERROR 1

@@ -1,4 +1,4 @@
-#include "activation_detection.h"
+#include "detection.h"
 
 int neo_transform(double *in_signal, int in_signal_len, double *out_signal, int out_signal_len)
 {
