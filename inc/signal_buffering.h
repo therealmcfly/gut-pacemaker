@@ -4,6 +4,11 @@
 #include <stdio.h>	// for printf (if desired)
 #include <stdlib.h> // for malloc/free (if allowed in your environment)
 
+#include "config.h"
+#include "preprocessing.h"
+#include "result_check.h"
+#include "activation_detection.h"
+
 #define SUCCESS 0
 #define ERROR 1
 #define ERROR_BUFFER_SIZE 2

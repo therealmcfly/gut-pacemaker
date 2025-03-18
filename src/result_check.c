@@ -17,10 +17,15 @@ int check_processing_result(double *signal, size_t signal_length, int channel_nu
 		printf("\nError: Failed to import verification data from %s\n", ver_filepath);
 		return 1;
 	}
-
+	// for (int i = 0; i < signal_length; i++)
+	// {
+	// 	printf("\n%s_signal      [%4d] %20.15f\n", ver_code, i, signal[i]);
+	// 	printf("%s_ver_data[%2d][%4d] %20.15f\n\n", ver_code, shift, i, ver_file_data[i][shift]);
+	// }
 	// Check results
 	for (int k = 0; k < signal_length; k++)
 	{
+
 		// Check if the results match within a certain precision
 		if ((signal[k] - ver_file_data[k][shift] > PRECISION) ||
 				(ver_file_data[k][shift] - signal[k] > PRECISION))
@@ -38,12 +43,8 @@ int check_processing_result(double *signal, size_t signal_length, int channel_nu
 			free(ver_file_data);
 			return 1;
 		}
-		// else
-		// {
-		// 	printf("\n%s_signal      [%4d] %20.15f\n", ver_code, k, signal[k]);
-		// 	printf("%s_ver_data[%2d][%4d] %20.15f\n", ver_code, shift, k, ver_file_data[k][shift]);
-		// }
 	}
+
 	printf("Success: %dth buffer %s results match with verification data.\n", shift + 1, ver_code);
 	// Free allocated memory
 	for (size_t i = 0; i < mat_data_rows; i++)
