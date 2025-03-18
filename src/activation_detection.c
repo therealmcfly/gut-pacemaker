@@ -16,7 +16,7 @@ int neo_transform(double *in_signal, int in_signal_len, double *out_signal, int 
 		return 1;
 	}
 
-	// Set first and last values to zero (to maintain array size)
+	// Set first values to zero (to maintain array size)
 	out_signal[0] = 1;
 
 	// Apply NEO Transform to the signal
@@ -28,32 +28,33 @@ int neo_transform(double *in_signal, int in_signal_len, double *out_signal, int 
 	return 0;
 }
 
-int moving_average_filter(double *input_signal, double *output_signal, int in_signal_len, int window_size)
+// Function to apply a moving average filter with a window of 1 second
+// Returns 0 on success, -1 on failure
+int moving_average_filtering(double *input_signal, double *output_signal, int length, int sample_rate)
 {
-	if (window_size <= 0)
+	int time = 1;
+	int window_size = sample_rate * time; // Window size of 1 second
+	if (window_size > length)
 	{
-		printf("\nError: Invalid window size.\n");
-		printf("Window size: %d\n", window_size);
-		return 1;
+		printf("Error: Window size is larger than signal length.\n");
+		return -1;
 	}
 
-	for (int i = 0; i < in_signal_len; i++)
+	double sum[BUFFER_SIZE + HPF_FILTER_ORDER - 1]; // Initialize sum array for moving average
+	for (int i = 0; i < length; i++)
 	{
-		double sum = 0.0;
-		int count = 0;
-
-		// Apply moving average
-		for (int j = i - window_size / 2; j <= i + window_size / 2; j++)
+		sum[i] = 0;
+	}
+	// Compute moving average using a sliding window approach
+	for (int i = 0; i < length - window_size; i++)
+	{
+		for (int j = 1; j <= window_size; j++) // I think the j starts from 1 because the first value of input signal, which is signal from neo_transform, which has value of 1 in index 0 due to how neo_transform is implemented. This may need some refactoring in the future.
 		{
-			if (j >= 0 && j < in_signal_len)
-			{
-				sum += input_signal[j];
-				count++;
-			}
+			sum[i] += input_signal[i + j];
+			// printf("sum[%d]%d: %f\n", i, j, sum[i]);
 		}
-
-		output_signal[i] = sum / count;
+		output_signal[i] = sum[i] / window_size;
 	}
 
-	return 0;
+	return 0; // Success
 }

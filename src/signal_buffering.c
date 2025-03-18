@@ -123,6 +123,25 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 		printf("NEO Transform successful.\n");
 #endif
 
+		/* -------------------------- Max Average Filtering -------------------------- */
+		double max_avg_signal[BUFFER_SIZE + HPF_FILTER_ORDER - 1];
+		int max_avg_signal_len = sizeof(max_avg_signal) / sizeof(max_avg_signal[0]);
+
+		if (moving_average_filtering(neo_signal, max_avg_signal, max_avg_signal_len, TARGET_FREQUENCY))
+		{
+			printf("\nError: Moving average filtering failed.\n");
+			return ERROR;
+		}
+#if MOVING_AVERAGE_FILTER_VERIFICATION
+		// Check Moving Average Filtering Result
+		if (check_processing_result(max_avg_signal, max_avg_signal_len, *channel_num, file_name, "maf", shift))
+		{
+			printf("\nError occured while checking moving average filtering result.\n");
+			return ERROR;
+		}
+		printf("Moving average filtering successful.\n");
+#endif
+
 		/* -----------------------------------------------------------------------------*/
 
 		// Buffer Shift
