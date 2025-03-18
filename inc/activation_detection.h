@@ -18,6 +18,8 @@
  */
 int neo_transform(double *in_signal, int in_signal_len, double *out_signal, int out_signal_len);
 
-int moving_average_filtering(double *input_signal, double *output_signal, int length, int sample_rate);
+int moving_average_filtering(double *in_signal, double *out_signal, int out_signal_len, int sample_rate);
+
+int edge_detection(double *in_signal, double *edge_signal, int signal_len);
 
 #endif
