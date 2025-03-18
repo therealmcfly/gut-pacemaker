@@ -56,7 +56,7 @@ int moving_average_filtering(double *in_signal, double *out_signal, int out_sign
 
 	for (int i = 0; i < out_signal_len - window_size; i++)
 	{
-		for (int j = 1; j <= window_size; j++) // I think the j starts from 1 because the first value of input signal, which is signal from neo_transform, which has value of 1 in index 0 due to how neo_transform is implemented. This may need some refactoring in the future.
+		for (int j = 1; j <= window_size; j++) // I think the j starts from 1 because the first value of input signal, which is signal from neo_transform, which has value of 1 in index 0 due to how neo_transform is implemented. Leaving is as it is now since the goal is to mirror the MATLAB code. This may need to be refactored in the future along with the neo_transform function.
 		{
 			sum[i] += in_signal[i + j];
 			// printf("sum[%d]%d: %f\n", i, j, sum[i]);
