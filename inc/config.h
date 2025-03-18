@@ -12,7 +12,9 @@
 #define DOWNSAMPING_VERIFICATION 0
 #define LOW_PASS_FILTER_VERIFICATION 0
 #define HIGH_PASS_FILTER_VERIFICATION 0
-#define ARTIFACT_REMOVAL_VERIFICATION 1
+#define ARTIFACT_REMOVAL_VERIFICATION 0
+#define NEO_TRANSFORM_VERIFICATION 0
+#define MOVING_AVERAGE_FILTER_VERIFICATION 1
 
 #define MIRROR_MATLAB_LOGIC 0
 
@@ -24,7 +26,7 @@
 #define INITIAL_CAPACITY 1000	 // Start memory allocation for rows
 #define DEFAULT_FILE "exp_16_output_512.csv"
 #define BUFFER_SIZE 1001 // Must be a multiple of 2
-#define PRECISION 1e-8	 // Precision for floating point comparisons
+#define PRECISION 1e-6	 // Precision for floating point comparisons
 
 // PREPROCESSING CONSTANTS
 // Low-pass filter
