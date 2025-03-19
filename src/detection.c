@@ -104,7 +104,7 @@ int edge_detection(const double *in_processed_signal, int in_processed_sig_len, 
 		// printf("out_ed_signal[%d]: %f\n", i, out_ed_signal[i]);
 	}
 
-	double ed_sig_base = (sum / out_ed_signal_len) * ED_SCALE_VALUE; // Calculate mean and
+	double ed_sig_base = (sum / out_ed_signal_len) * ED_SCALAR_VALUE; // Calculate mean and
 	for (int j = 0; j < out_ed_signal_len; j++)
 	{
 		if (out_ed_signal[j] < ed_sig_base)

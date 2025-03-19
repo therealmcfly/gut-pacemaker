@@ -46,6 +46,6 @@
 // NEO Transform
 #define NEO_MAF_ED_SIGNAL_SIZE (BUFFER_SIZE + HPF_FILTER_ORDER - 1)
 // Edge detection
-#define ED_SCALE_VALUE 59
+#define ED_SCALAR_VALUE 59
 
 #endif // CONFIG_H
