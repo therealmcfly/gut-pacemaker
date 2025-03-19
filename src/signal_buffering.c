@@ -35,8 +35,9 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 
 		/* ---------------------------- Low-Pass Filtering ---------------------------  */
 		double lowpass_signal[BUFFER_SIZE];
+		int lpf_signal_len = sizeof(lowpass_signal) / sizeof(lowpass_signal[0]);
 
-		if (lowpass_filter(buffer, lowpass_signal, BUFFER_SIZE))
+		if (lowpass_filter(buffer, lowpass_signal, lpf_signal_len))
 		{
 			printf("\nError: Low-pass filtering failed.\n");
 			return ERROR;
@@ -45,12 +46,12 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 		printf("\n%dth signal buffer low pass filtering successful.\n", shift + 1);
 		printf("lpf_signal[%d] = %.15f\n", 0, lowpass_signal[0]);
 		printf("lpf_signal[%d] = %.15f\n", 1, lowpass_signal[1]);
-		printf("lpf_signal[%d] = %.15f\n", BUFFER_SIZE - 2, lowpass_signal[BUFFER_SIZE - 2]);
-		printf("lpf_signal[%d] = %.15f\n", BUFFER_SIZE - 1, lowpass_signal[BUFFER_SIZE - 1]);
+		printf("lpf_signal[%d] = %.15f\n", lpf_signal_len - 2, lowpass_signal[lpf_signal_len - 2]);
+		printf("lpf_signal[%d] = %.15f\n", lpf_signal_len - 1, lowpass_signal[lpf_signal_len - 1]);
 #endif
 #if LOW_PASS_FILTER_VERIFICATION
 		// Check Low-Pass Filtering Result
-		if (check_processing_result(lowpass_signal, BUFFER_SIZE, *channel_num, file_name, "lpf", shift))
+		if (check_processing_result(lowpass_signal, lpf_signal_len, *channel_num, file_name, "lpf", shift))
 		{
 			printf("\nError occured while checking low pass filtering result.\n");
 			return ERROR;
@@ -59,10 +60,10 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 #endif
 
 		/* ---------------------------- High-Pass Filtering ---------------------------  */
-		double preprocessed_signal[BUFFER_SIZE + HPF_FILTER_ORDER];
-		int hpf_signal_len = BUFFER_SIZE + HPF_FILTER_ORDER;
+		double preprocessed_signal[HPF_AD_SIGNAL_LEN];
+		int preprocessed_signal_len = sizeof(preprocessed_signal) / sizeof(preprocessed_signal[0]);
 
-		if (highpass_filter(lowpass_signal, BUFFER_SIZE, preprocessed_signal, &hpf_signal_len))
+		if (highpass_filter(lowpass_signal, lpf_signal_len, preprocessed_signal, &preprocessed_signal_len))
 		{
 			printf("\nError: High-pass filtering failed in %dth buffer.\n", shift);
 			return ERROR;
@@ -71,12 +72,12 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 		printf("\n%dth signal buffer high pass filtering successful.\n", shift + 1);
 		printf("hpf_signal[%d] = %.15f\n", 0, preprocessed_signal[0]);
 		printf("hpf_signal[%d] = %.15f\n", 1, preprocessed_signal[1]);
-		printf("hpf_signal[%d] = %.15f\n", BUFFER_SIZE + HPF_FILTER_ORDER - 2, preprocessed_signal[BUFFER_SIZE + HPF_FILTER_ORDER - 2]);
-		printf("hpf_signal[%d] = %.15f\n", BUFFER_SIZE + HPF_FILTER_ORDER - 1, preprocessed_signal[BUFFER_SIZE + HPF_FILTER_ORDER - 1]);
+		printf("hpf_signal[%d] = %.15f\n", preprocessed_signal_len - 2, preprocessed_signal[preprocessed_signal_len - 2]);
+		printf("hpf_signal[%d] = %.15f\n", preprocessed_signal_len - 1, preprocessed_signal[preprocessed_signal_len - 1]);
 #endif
 #if HIGH_PASS_FILTER_VERIFICATION
 		// Check High-Pass Filtering Result
-		if (check_processing_result(preprocessed_signal, BUFFER_SIZE + HPF_FILTER_ORDER, *channel_num, file_name, "hpf", shift))
+		if (check_processing_result(preprocessed_signal, preprocessed_signal_len, *channel_num, file_name, "hpf", shift))
 		{
 			printf("\nError occured while checking high pass filtering result.\n");
 			return ERROR;
@@ -86,14 +87,14 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 
 		/* --------------------- Artifact Detection and Removal ---------------------  */
 
-		if (detect_remove_artifacts(preprocessed_signal, BUFFER_SIZE + HPF_FILTER_ORDER))
+		if (detect_remove_artifacts(preprocessed_signal, preprocessed_signal_len))
 		{
 			printf("\nError: Artifact detection and removal failed.\n");
 			return ERROR;
 		}
 #if ARTIFACT_REMOVAL_VERIFICATION
 		// Check Artifact Removal Result
-		if (check_processing_result(preprocessed_signal, BUFFER_SIZE + HPF_FILTER_ORDER, *channel_num, file_name, "ad", shift))
+		if (check_processing_result(preprocessed_signal, preprocessed_signal_len, *channel_num, file_name, "ad", shift))
 		{
 			printf("\nError occured while checking artifact detection and removal result.\n");
 			return ERROR;
@@ -106,9 +107,9 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 		/* -----------------------------------------------------------------------------*/
 
 		/* -------------------- Non Linear Energy (NEO) Transform --------------------- */
-		double neo_signal[BUFFER_SIZE + HPF_FILTER_ORDER - 1]; // NEO Transform output signal is 1 less than the input signal
+		double neo_signal[NEO_MAF_ED_SIGNAL_SIZE]; // NEO Transform output signal is 1 less than the input signal
 		int neo_signal_len = sizeof(neo_signal) / sizeof(neo_signal[0]);
-		if (neo_transform(preprocessed_signal, BUFFER_SIZE + HPF_FILTER_ORDER, neo_signal, neo_signal_len))
+		if (neo_transform(preprocessed_signal, preprocessed_signal_len, neo_signal, neo_signal_len))
 		{
 			printf("\nError: NEO Transform failed.\n");
 			return ERROR;
@@ -123,18 +124,19 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 		printf("NEO Transform successful.\n");
 #endif
 
-		/* -------------------------- Max Average Filtering -------------------------- */
-		double max_avg_signal[BUFFER_SIZE + HPF_FILTER_ORDER - 1];
-		int max_avg_signal_len = sizeof(max_avg_signal) / sizeof(max_avg_signal[0]);
+		/* -------------------------- Moving Average Filtering -------------------------- */
 
-		if (moving_average_filtering(neo_signal, max_avg_signal, max_avg_signal_len, TARGET_FREQUENCY))
+		double maf_signal[NEO_MAF_ED_SIGNAL_SIZE];
+		int maf_signal_len = sizeof(maf_signal) / sizeof(maf_signal[0]);
+
+		if (moving_average_filtering(neo_signal, maf_signal, maf_signal_len, TARGET_FREQUENCY))
 		{
 			printf("\nError: Moving average filtering failed.\n");
 			return ERROR;
 		}
 #if MOVING_AVERAGE_FILTER_VERIFICATION
 		// Check Moving Average Filtering Result
-		if (check_processing_result(max_avg_signal, max_avg_signal_len, *channel_num, file_name, "maf", shift))
+		if (check_processing_result(maf_signal, maf_signal_len, *channel_num, file_name, "maf", shift))
 		{
 			printf("\nError occured while checking moving average filtering result.\n");
 			return ERROR;
@@ -142,6 +144,29 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 		printf("Moving average filtering successful.\n");
 #endif
 
+		/* ---------------------------- Edge Detection ---------------------------- */
+
+		double edge_signal[NEO_MAF_ED_SIGNAL_SIZE];
+		double edge_signal_len = sizeof(edge_signal) / sizeof(edge_signal[0]);
+
+		if (edge_detection(preprocessed_signal, preprocessed_signal_len, maf_signal, maf_signal_len, edge_signal, edge_signal_len))
+		{
+			printf("\nError: Edge detection failed.\n");
+			return ERROR;
+		}
+
+#if EDGE_DETECTION_VERIFICATION
+		// Check Edge Detection Result
+		if (check_processing_result(edge_signal, maf_signal_len, *channel_num, file_name, "ed", shift))
+		{
+			printf("\nError occured while checking edge detection result.\n");
+			return ERROR;
+		}
+		printf("Edge detection successful.\n");
+#endif
+
+		if (shift == 0)
+			break;
 		/* -----------------------------------------------------------------------------*/
 
 		// Buffer Shift

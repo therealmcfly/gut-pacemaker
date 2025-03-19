@@ -7,8 +7,18 @@ int check_processing_result(double *signal, size_t signal_length, int channel_nu
 	size_t mat_data_rows, mat_data_cols;
 	char ver_filepath[200];
 	char file_name_copy[200];
-	strncpy(file_name_copy, file_name, sizeof(file_name_copy) - 1);
-	file_name_copy[sizeof(file_name_copy) - 1] = '\0';
+	// check if file name char until it reaches \0
+	for (int i = 0; i < 200; i++)
+	{
+		if (file_name[i] == '\0')
+		{
+			file_name_copy[i] = '\0';
+			break;
+		}
+		file_name_copy[i] = file_name[i];
+	}
+
+	// strncpy(file_name_copy, file_name, sizeof(file_name_copy) - 1);
 	sprintf(ver_filepath, "%sver_%s_%s_ch%d.csv", MATLAB_DIRECTORY, ver_code, strtok(file_name_copy, "."), channel_num);
 
 	double **ver_file_data = import_file(ver_filepath, &mat_data_rows, &mat_data_cols);

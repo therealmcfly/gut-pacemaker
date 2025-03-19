@@ -14,7 +14,8 @@
 #define HIGH_PASS_FILTER_VERIFICATION 0
 #define ARTIFACT_REMOVAL_VERIFICATION 0
 #define NEO_TRANSFORM_VERIFICATION 0
-#define MOVING_AVERAGE_FILTER_VERIFICATION 1
+#define MOVING_AVERAGE_FILTER_VERIFICATION 0
+#define EDGE_DETECTION_VERIFICATION 1
 
 #define MIRROR_MATLAB_LOGIC 0
 
@@ -35,11 +36,16 @@
 // High-pass filter
 #define HPF_FILTER_ORDER 50 // coefficient is declared in highpass_filter function
 #define HPF_PADDING_SIZE 50
+#define HPF_AD_SIGNAL_LEN (BUFFER_SIZE + HPF_FILTER_ORDER)
 #define HPF_PADDED_SIGNAL_SIZE ((BUFFER_SIZE + 1 /* + 1 to mirror the MATLAB logic, romove if not needed*/) + (2 * HPF_PADDING_SIZE))
 #define HPF_CONV_PADDED_SIGNAL_SIZE (HPF_PADDED_SIGNAL_SIZE + HPF_FILTER_ORDER)
 // Artifact detection and removal
 #define ARTIFACT_DETECT_WINDOW_WIDTH 101 // Window size for artifact detection
 #define ARTIFACT_SIZE 60								 // Expected artifact size in samples
 #define ARTIFACT_DETECT_THRESHOLD 500		 // Threshold for detecting artifacts
+// NEO Transform
+#define NEO_MAF_ED_SIGNAL_SIZE (BUFFER_SIZE + HPF_FILTER_ORDER - 1)
+// Edge detection
+#define ED_SCALE_VALUE 59
 
 #endif // CONFIG_H
