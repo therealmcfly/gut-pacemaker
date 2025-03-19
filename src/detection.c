@@ -19,9 +19,11 @@ int neo_transform(double *in_signal, int in_signal_len, double *out_signal, int 
 	}
 
 	// Set first values to zero (to maintain array size)
+
 	out_signal[0] = 1;
 
 	// Apply NEO Transform to the signal
+	// As per MATLAB code, the first value of the output signal is set to 1. And calculation starts from the second value of the input signal. Dont understand why this is done, but leaving it as it is now since the goal is to mirror the MATLAB code. This may need to be refactored in the future along with the neo_transform function.
 	for (int i = 1; i < in_signal_len - 1; i++)
 	{
 		out_signal[i] = (in_signal[i] * in_signal[i]) - (in_signal[i - 1] * in_signal[i + 1]);

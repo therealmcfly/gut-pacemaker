@@ -5,8 +5,8 @@ int check_processing_result(double *signal, size_t signal_length, int channel_nu
 	printf("\nChecking %s result of %dth buffer...\n", ver_code, shift + 1);
 	// Load low pass results from Daryl's MATLAB code
 	size_t mat_data_rows, mat_data_cols;
-	char ver_filepath[200];
-	char file_name_copy[200];
+	char ver_filepath[100];
+	char file_name_copy[50];
 	// check if file name char until it reaches \0
 	for (int i = 0; i < 200; i++)
 	{

@@ -147,7 +147,7 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 		/* ---------------------------- Edge Detection ---------------------------- */
 
 		double edge_signal[NEO_MAF_ED_SIGNAL_SIZE];
-		double edge_signal_len = sizeof(edge_signal) / sizeof(edge_signal[0]);
+		int edge_signal_len = sizeof(edge_signal) / sizeof(edge_signal[0]);
 
 		if (edge_detection(preprocessed_signal, preprocessed_signal_len, maf_signal, maf_signal_len, edge_signal, edge_signal_len))
 		{
