@@ -83,7 +83,10 @@ int edge_detection(const double *in_processed_signal, int in_processed_sig_len, 
 	for (int i = 0; i < out_ed_signal_len; i++)
 	{
 		// Perform element-wise multiplication with correct indexing
-		out_ed_signal[i] = conv_signal[i + 1 /* +1 here is to match the matlab code. may need to be romoved in the future when neo transform output doesnt contain 1 extra value in the front*/] * in_neo_signal[i]; // Offset neo_filtered by 1
+
+		out_ed_signal[i] = conv_signal[i + 1] * in_neo_signal[i]; // Offset neo_filtered by 1
+		// conv_signal is length 1 greater than in_neo_signal, so we offset by 1 to match the matlab code
+		// may need to be romoved in the future when neo transform output doesnt contain 1 extra value in the front
 
 		// Apply squaring and summing
 		if (out_ed_signal[i] < 0 || out_ed_signal[i] == -0) // if negative or -0
