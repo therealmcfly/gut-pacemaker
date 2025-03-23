@@ -2,6 +2,9 @@
 
 int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, char *file_name)
 {
+
+	double activations[200]; // Buffer for activation indices
+	int num_activations = 0; // Number of activations
 	// if (BUFFER_SIZE % 2 != 0)
 	// {
 	// 	printf("\nError: BUFFER_SIZE must be an even number.\n");
@@ -51,7 +54,7 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 #endif
 #if LOW_PASS_FILTER_VERIFICATION
 		// Check Low-Pass Filtering Result
-		if (check_processing_result(lowpass_signal, lpf_signal_len, *channel_num, file_name, "lpf", shift))
+		if (check_processing_result(lowpass_signal, lpf_signal_len, *channel_num, file_name, "lpf", shift, PRECISION))
 		{
 			printf("\nError occured while checking low pass filtering result.\n");
 			return ERROR;
@@ -77,12 +80,12 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 #endif
 #if HIGH_PASS_FILTER_VERIFICATION
 		// Check High-Pass Filtering Result
-		if (check_processing_result(preprocessed_signal, preprocessed_signal_len, *channel_num, file_name, "hpf", shift))
+		if (check_processing_result(preprocessed_signal, preprocessed_signal_len, *channel_num, file_name, "hpf", shift, PRECISION))
 		{
 			printf("\nError occured while checking high pass filtering result.\n");
 			return ERROR;
 		}
-		printf("High-pass filtering successful.\n");
+		printf("High-pass filtering verification successful.\n");
 #endif
 
 		/* --------------------- Artifact Detection and Removal ---------------------  */
@@ -94,12 +97,12 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 		}
 #if ARTIFACT_REMOVAL_VERIFICATION
 		// Check Artifact Removal Result
-		if (check_processing_result(preprocessed_signal, preprocessed_signal_len, *channel_num, file_name, "ad", shift))
+		if (check_processing_result(preprocessed_signal, preprocessed_signal_len, *channel_num, file_name, "ad", shift, PRECISION))
 		{
 			printf("\nError occured while checking artifact detection and removal result.\n");
 			return ERROR;
 		}
-		printf("Artifact detection and removal successful.\n");
+		printf("Artifact detection and removal verification successful.\n");
 #endif
 
 		/* -----------------------------------------------------------------------------*/
@@ -116,12 +119,12 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 		}
 #if NEO_TRANSFORM_VERIFICATION
 		// Check NEO Transform Result
-		if (check_processing_result(neo_signal, neo_signal_len, *channel_num, file_name, "neo", shift))
+		if (check_processing_result(neo_signal, neo_signal_len, *channel_num, file_name, "neo", shift, PRECISION))
 		{
 			printf("\nError occured while checking NEO Transform result.\n");
 			return ERROR;
 		}
-		printf("NEO Transform successful.\n");
+		printf("NEO Transform verification successful.\n");
 #endif
 
 		/* -------------------------- Moving Average Filtering -------------------------- */
@@ -136,12 +139,12 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 		}
 #if MOVING_AVERAGE_FILTER_VERIFICATION
 		// Check Moving Average Filtering Result
-		if (check_processing_result(maf_signal, maf_signal_len, *channel_num, file_name, "maf", shift))
+		if (check_processing_result(maf_signal, maf_signal_len, *channel_num, file_name, "maf", shift, PRECISION))
 		{
 			printf("\nError occured while checking moving average filtering result.\n");
 			return ERROR;
 		}
-		printf("Moving average filtering successful.\n");
+		printf("Moving average filtering verification successful.\n");
 #endif
 
 		/* ---------------------------- Edge Detection ---------------------------- */
@@ -157,22 +160,71 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 
 #if EDGE_DETECTION_VERIFICATION
 		// Check Edge Detection Result
-		if (check_processing_result(edge_signal, maf_signal_len, *channel_num, file_name, "ed", shift))
+		if (check_processing_result(edge_signal, maf_signal_len, *channel_num, file_name, "ed", shift, ED_PRECISION))
 		{
 			printf("\nError occured while checking edge detection result.\n");
 			return ERROR;
 		}
-		printf("Edge detection successful.\n");
+		printf("Edge detection verification successful.\n");
 #endif
 
-		if (shift == 0)
-			break;
+		/* --------------------------- Activation Detection --------------------------- */
+
+		int buff_activation_indices[20];
+		int buff_num_activations = 0;
+
+		if (detect_activation(edge_signal, edge_signal_len, buff_activation_indices, &buff_num_activations, i))
+		{
+			printf("\nError: Activation detection failed.\n");
+			return ERROR;
+		}
+
+		for (int k = 0; k < buff_num_activations; k++)
+		{
+			printf("Activation detected at index %d\n", buff_activation_indices[k]);
+		}
+		printf("Number of activations detected: %d\n", buff_num_activations);
+
+		// append activation indices to output
+		for (int k = 0; k < buff_num_activations; k++)
+		{
+			activations[k + num_activations] = buff_activation_indices[k];
+		}
+		num_activations += buff_num_activations;
+
+		// // Print all activation indices
+
+		// for (int k = 0; k < num_activations; k++)
+		// {
+		// 	printf("out_activation_indices[%d]: %d\n", k, activations[k]);
+		// }
+
 		/* -----------------------------------------------------------------------------*/
 
 		// Buffer Shift
 		shift++;
 		i += BUFFER_SIZE / 2;
 		j = i + BUFFER_SIZE;
+	}
+
+	// Check Pre Activation Detection Result
+#if PRE_ACTIVATION_DETECTION_VERIFICATION
+	shift = 0; // Reset shift for verification
+	if (check_activations(activations, num_activations, *channel_num, file_name))
+	{
+		printf("\nError occured while checking activation detection result.\n");
+		return ERROR;
+	}
+	printf("Pre activation detection verification successful.\n");
+#endif
+
+	cleanup_activation_locs(activations, &num_activations, signal_length, ACTIVATION_REMOVAL_THRESHOLD);
+
+	// Print all activation indices
+	printf("\nFinal Activation Indices:\n");
+	for (int k = 0; k < num_activations; k++)
+	{
+		printf("out_activation_indices[%d]: %d\n", k, (int)activations[k]);
 	}
 
 	return SUCCESS;

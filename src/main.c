@@ -11,7 +11,6 @@ int main(int argc, char *argv[])
 	size_t signal_length;
 	int channel_num;
 	char file_name[100]; // Buffer for file name
-
 	// INITIALIZE SAMPLE DATA
 	// Sample data loading, channel selection, and downsampling is all handled within the get_sample_data function
 	// The function will return a pointer to sample data on success, NULL on error

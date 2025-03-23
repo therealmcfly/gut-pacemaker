@@ -75,7 +75,7 @@ int edge_detection(const double *in_processed_signal, int in_processed_sig_len, 
 {
 	double kernel[] = {-1, 0, 1}; // Edge detection kernel
 	int kernel_len = sizeof(kernel) / sizeof(kernel[0]);
-	int half_k = kernel_len / 2; // Kernel midpoint
+	// int half_k = kernel_len / 2; // Kernel midpoint
 
 	double conv_signal[NEO_MAF_ED_SIGNAL_SIZE]; // Full convolution size
 
@@ -177,3 +177,63 @@ void conv_1d_same(const double *input, int input_size, const double *kernel, int
 // 		printf("output[%d]: %f\n", i, output[i]);
 // 	}
 // }
+
+int detect_activation(double *in_ed_signal, int in_ed_signal_len, int *out_activation_indices, int *out_num_activation, int cur_buffer_start_index)
+{
+	// mean of signal * SCALE
+	double mad = 0;
+	double sum = 0;
+	for (int i = 0; i < in_ed_signal_len; i++)
+	{
+		sum += in_ed_signal[i];
+	}
+	mad = (sum / in_ed_signal_len) * ED_SCALAR_VALUE;
+
+	// % finding where detection signal > threshold
+
+	int count = 0;
+	for (int i = 0; i < in_ed_signal_len; i++)
+	{
+		if (in_ed_signal[i] > mad)
+		{
+			out_activation_indices[count] = i + cur_buffer_start_index;
+			count++;
+		}
+	}
+	*out_num_activation = count;
+	return 0;
+}
+
+void cleanup_activation_locs(double *locs, int *locs_len, int signal_length, int threshold)
+{
+	int i = 0;
+
+	// Step 1: Remove close activations (within threshold)
+	while (i < *locs_len - 1)
+	{
+		if (locs[i + 1] - locs[i] < threshold)
+		{
+			// Remove locs[i + 1] by shifting the array left
+			for (int j = i + 1; j < *locs_len - 1; j++)
+			{
+				locs[j] = locs[j + 1];
+			}
+			(*locs_len)--;
+			// Do not increment i here to re-check new locs[i + 1]
+		}
+		else
+		{
+			i++;
+		}
+	}
+
+	// Step 2: Remove activations beyond signal length
+	for (int k = 0; k < *locs_len; k++)
+	{
+		if (locs[k] > signal_length)
+		{
+			*locs_len = k; // Truncate from here
+			break;
+		}
+	}
+}

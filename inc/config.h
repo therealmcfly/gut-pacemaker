@@ -15,7 +15,8 @@
 #define ARTIFACT_REMOVAL_VERIFICATION 0
 #define NEO_TRANSFORM_VERIFICATION 0
 #define MOVING_AVERAGE_FILTER_VERIFICATION 0
-#define EDGE_DETECTION_VERIFICATION 1
+#define EDGE_DETECTION_VERIFICATION 0
+#define PRE_ACTIVATION_DETECTION_VERIFICATION 1
 
 #define MIRROR_MATLAB_LOGIC 0
 
@@ -27,7 +28,9 @@
 #define INITIAL_CAPACITY 1000	 // Start memory allocation for rows
 #define DEFAULT_FILE "exp_16_output_512.csv"
 #define BUFFER_SIZE 1001 // Must be a multiple of 2
-#define PRECISION 1e-6	 // Precision for floating point comparisons
+
+#define PRECISION 1e-6	// Precision for floating point comparisons
+#define ED_PRECISION 10 // Precision for edge detection
 
 // PREPROCESSING CONSTANTS
 // Low-pass filter
@@ -47,5 +50,7 @@
 #define NEO_MAF_ED_SIGNAL_SIZE (BUFFER_SIZE + HPF_FILTER_ORDER - 1)
 // Edge detection
 #define ED_SCALAR_VALUE 59
+// Activation detection
+#define ACTIVATION_REMOVAL_THRESHOLD 500
 
 #endif // CONFIG_H

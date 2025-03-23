@@ -10,6 +10,7 @@
 #include "config.h"
 #include "file_io.h"
 
-int check_processing_result(double *signal, size_t signal_length, int channel_num, char *file_name, char *ver_code, int shift);
+int check_processing_result(double *signal, size_t signal_length, int channel_num, char *file_name, char *ver_code, int shift, double ver_percision);
+int check_activations(double *activation_indices, int num_activations, int channel_num, char *file_name);
 
 #endif
