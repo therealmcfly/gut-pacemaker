@@ -34,7 +34,7 @@ int neo_transform(double *in_signal, int in_signal_len, double *out_signal, int 
 
 // Function to apply a moving average filter with a window of 1 second
 // Returns 0 on success, -1 on failure
-int moving_average_filtering(double *in_signal, double *out_signal, int out_signal_len, int sample_rate)
+int moving_average_filtering(double *in_signal, double *out_signal, int out_signal_len, int *data_freq)
 {
 	if (in_signal == NULL || out_signal == NULL)
 	{
@@ -42,7 +42,7 @@ int moving_average_filtering(double *in_signal, double *out_signal, int out_sign
 		return 1;
 	}
 	int time = 1;
-	int window_size = sample_rate * time; // Window size of 1 second
+	int window_size = *data_freq * time; // Window size of 1 second
 	if (window_size > out_signal_len)
 	{
 		printf("\nError: Window size is larger than signal length.\n");

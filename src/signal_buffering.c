@@ -1,6 +1,6 @@
 #include "signal_buffering.h"
 
-int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, char *file_name)
+int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, char *file_name, int *cur_data_freq)
 {
 	int activations[200];		 // Buffer for activation indices
 	int num_activations = 0; // Number of activations
@@ -131,7 +131,7 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 		double maf_signal[NEO_MAF_ED_SIGNAL_SIZE];
 		int maf_signal_len = sizeof(maf_signal) / sizeof(maf_signal[0]);
 
-		if (moving_average_filtering(neo_signal, maf_signal, maf_signal_len, TARGET_FREQUENCY))
+		if (moving_average_filtering(neo_signal, maf_signal, maf_signal_len, cur_data_freq))
 		{
 			printf("\nError: Moving average filtering failed.\n");
 			return ERROR;

@@ -5,9 +5,9 @@
 #include "file_io.h"
 #include "config.h"
 
-double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length, int *out_channel_num, char *out_file_name)
-{											 // Buffer for channel number
-	int data_frequency;	 // Buffer for exp data frequency
+double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length, int *out_channel_num, char *out_file_name, int *out_cur_data_freq)
+{ // Buffer for channel number
+	// int data_frequency;	 // Buffer for exp data frequency
 	size_t num_rows = 0; // Variable to store the number of rows read
 	size_t num_cols = 0; // Variable to store the number of columns read
 #if DATA_VERIFICATION || CHANNEL_RETRIEVAL_VERIFICATION || DOWNSAMPING_VERIFICATION
@@ -20,7 +20,7 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 	if (user_argc != 3)
 	{
 		// Ask for filename and validate input
-		get_file_name(out_file_name, &data_frequency);
+		get_file_name(out_file_name, out_cur_data_freq);
 		// Ask for channel number and validate input
 		get_channel_num(out_channel_num, MAX_CHANNEL);
 	}
@@ -36,7 +36,7 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 		*out_channel_num = atoi(user_argv[2]); // Convert argument to integer
 
 		// Validate file name & channel number
-		if (validate_file_name(out_file_name, &data_frequency))
+		if (validate_file_name(out_file_name, out_cur_data_freq))
 			return NULL; // Exit with error
 		if (validate_channel_num(*out_channel_num, MAX_CHANNEL))
 			return NULL; // Exit with error
@@ -114,12 +114,12 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 	// DOWNSAMPLING
 	// Downsample the channel data if the initial data frequency is higher than the desired frequency
 	double *downsampled_data = NULL;
-	if (data_frequency >= TARGET_FREQUENCY * 2)
+	if (*out_cur_data_freq >= TARGET_FREQUENCY * 2)
 	{
-		printf("\nData frequency: %d Hz\n", data_frequency);
+		printf("\nCurrent data frequency: %d Hz\n", *out_cur_data_freq);
 		printf("Desired frequency: %d Hz\n", TARGET_FREQUENCY);
-		printf("Data frequency is higher than the desired frequency.\n");
-		int factor = data_frequency / TARGET_FREQUENCY;
+		printf("Current data frequency is higher than the desired frequency.\n");
+		int factor = *out_cur_data_freq / TARGET_FREQUENCY;
 		printf("Downsampling channel data by a factor of %d...\n", factor);
 		downsampled_data = downsample(channel_data, &num_rows, factor);
 		if (!downsampled_data)
@@ -128,6 +128,8 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 			free(channel_data);
 			return NULL;
 		}
+		*out_cur_data_freq = TARGET_FREQUENCY; // Update the data frequency
+		printf("Successfully downsampled to %d Hz\n", *out_cur_data_freq);
 
 /* ---------------- Downsampling Verification ----------------- */
 #if DOWNSAMPING_VERIFICATION
@@ -169,10 +171,10 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 	}
 	else
 	{
-		printf("Data frequency: %d Hz\n", data_frequency);
+		printf("Current data frequency: %d Hz\n", *out_cur_data_freq);
 		printf("Desired frequency: %d Hz\n", TARGET_FREQUENCY);
-		printf("\nData frequency is lower than the desired frequency.\n");
-		printf("No downsampling required.\n");
+		printf("\nCurrent data frequency is lower than the desired frequency.\n");
+		printf("No downsampling required. Leaving current frequecy at %d Hz\n", *out_cur_data_freq);
 		downsampled_data = channel_data;
 	}
 
