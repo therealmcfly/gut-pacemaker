@@ -2,8 +2,7 @@
 
 int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, char *file_name)
 {
-
-	double activations[200]; // Buffer for activation indices
+	int activations[200];		 // Buffer for activation indices
 	int num_activations = 0; // Number of activations
 	// if (BUFFER_SIZE % 2 != 0)
 	// {
@@ -224,7 +223,7 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 	printf("\nFinal Activation Indices:\n");
 	for (int k = 0; k < num_activations; k++)
 	{
-		printf("out_activation_indices[%d]: %d\n", k, (int)activations[k]);
+		printf("out_activation_indices[%d]: %d\n", k, activations[k]);
 	}
 
 	return SUCCESS;

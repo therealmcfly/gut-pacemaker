@@ -204,7 +204,7 @@ int detect_activation(double *in_ed_signal, int in_ed_signal_len, int *out_activ
 	return 0;
 }
 
-void cleanup_activation_locs(double *locs, int *locs_len, int signal_length, int threshold)
+void cleanup_activation_locs(int *locs, int *locs_len, int signal_length, int threshold)
 {
 	int i = 0;
 

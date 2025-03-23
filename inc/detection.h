@@ -26,6 +26,6 @@ void conv_1d_same(const double *input, int input_size, const double *kernel, int
 
 int detect_activation(double *in_ed_signal, int in_ed_signal_len, int *out_activation_indices, int *out_num_activation, int cur_buffer_start_index);
 
-void cleanup_activation_locs(double *locs, int *locs_len, int signal_length, int threshold);
+void cleanup_activation_locs(int *locs, int *locs_len, int signal_length, int threshold);
 
 #endif

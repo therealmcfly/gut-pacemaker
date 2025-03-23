@@ -65,7 +65,7 @@ int check_processing_result(double *signal, size_t signal_length, int channel_nu
 	return 0;
 }
 
-int check_activations(double *activation_indices, int num_activations, int channel_num, char *file_name)
+int check_activations(int *activation_indices, int num_activations, int channel_num, char *file_name)
 {
 	printf("\nChecking activations detection results...\n");
 	// Load low pass results from Daryl's MATLAB code
@@ -102,11 +102,11 @@ int check_activations(double *activation_indices, int num_activations, int chann
 	{
 
 		// Check if the results match within a certain precision
-		if ((activation_indices[k] + 1 != ver_file_data[k][0]))
+		if ((activation_indices[k] + 1 != (int)ver_file_data[k][0]))
 		{
 			printf("\nError: activation detection result mismatch at index %d.\n", k);
-			printf("activation idx      [%2d] %f\n", k, activation_indices[k]);
-			printf("actd_ver_data[%4d] %20.15f\n", k, ver_file_data[k][0]);
+			printf("activation idx      [%2d] %d\n", k, activation_indices[k]);
+			printf("actd_ver_data[%2d] %d\n", k, (int)ver_file_data[k][0]);
 			// Free allocated memory
 			for (size_t i = 0; i < mat_data_rows; i++)
 			{
