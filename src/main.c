@@ -17,8 +17,6 @@ int main(int argc, char *argv[])
 	// The function will return a pointer to sample data on success, NULL on error
 	double *signal = get_sample_data(argc, argv, &signal_length, &channel_num, file_name, &cur_data_freq);
 
-	printf("cur_data_freq: %d\n", cur_data_freq);
-
 	if (signal == NULL)
 	{
 		printf("\nError occured while initializing sample data.\n");
@@ -38,7 +36,11 @@ int main(int argc, char *argv[])
 	}
 
 	// Free allocated memory
-	free(signal);
+	if (signal != NULL)
+	{
+		free(signal);
+		signal = NULL; // Avoid double free
+	}
 	printf("\nExiting program...\n\n");
 	return 0;
 }

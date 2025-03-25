@@ -25,6 +25,7 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 		// cur_buffer_size = MIRROR_MATLAB_LOGIC && (shift == 0) ? BUFFER_SIZE : BUFFER_SIZE + 1;
 
 		printf("\nProcessing buffer %d...\n", shift + 1);
+
 		// Copy Original Signal into Buffer
 		for (int k = 0; k < BUFFER_SIZE; k++)
 		{
@@ -172,27 +173,29 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 		int buff_activation_indices[20];
 		int buff_num_activations = 0;
 
+		if (shift + 1 >= 33 && shift + 1 <= 35)
+		{
+			printf("Debug: shift = %d\n", shift);
+		}
+
 		if (detect_activation(edge_signal, edge_signal_len, buff_activation_indices, &buff_num_activations, i))
 		{
 			printf("\nError: Activation detection failed.\n");
 			return ERROR;
 		}
 
-		for (int k = 0; k < buff_num_activations; k++)
+		if (buff_num_activations)
 		{
-			printf("Activation detected at index %d\n", buff_activation_indices[k]);
+			for (int k = 0; k < buff_num_activations; k++)
+			{
+				activations[k + num_activations] = buff_activation_indices[k];
+			}
+			num_activations += buff_num_activations;
 		}
-		printf("Number of activations detected: %d\n", buff_num_activations);
 
-		// append activation indices to output
-		for (int k = 0; k < buff_num_activations; k++)
-		{
-			activations[k + num_activations] = buff_activation_indices[k];
-		}
-		num_activations += buff_num_activations;
+		// Print all activation indices
 
-		// // Print all activation indices
-
+		// printf("\nActivation Indices:\n");
 		// for (int k = 0; k < num_activations; k++)
 		// {
 		// 	printf("out_activation_indices[%d]: %d\n", k, activations[k]);
@@ -208,8 +211,13 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 
 	// Check Pre Activation Detection Result
 #if PRE_ACTIVATION_DETECTION_VERIFICATION
-	shift = 0; // Reset shift for verification
-	if (check_activations(activations, num_activations, *channel_num, file_name))
+	int activations_len = sizeof(activations) / sizeof(activations[0]);
+	if (num_activations > activations_len)
+	{
+		printf("\nError: Number of activations detected (%d) before removing close proximity detections is greater than the allocated size of the activations array(%d). This will result to unexpected outcomes due to overflow. Please reset ACTIVATION_ARRAY_SIZE to higher value in config.h.\n", num_activations, activations_len);
+		return ERROR;
+	}
+	if (check_activations(activations, num_activations, *channel_num, file_name, "actdpre"))
 	{
 		printf("\nError occured while checking activation detection result.\n");
 		return ERROR;
@@ -225,6 +233,20 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 	{
 		printf("out_activation_indices[%d]: %d\n", k, activations[k]);
 	}
+
+#if ACTIVATION_DETECTION_VERIFICATION
+	// Check Activation Removal Result
+	if (check_activations(activations, num_activations, *channel_num, file_name, "actd"))
+	{
+		printf("\nError occured while checking activation detection result.\n");
+		return ERROR;
+	}
+	printf("Activation detection verification successful.\n");
+#endif
+
+	printf("\n----------------- ALL SUCCESSFUL -----------------\n");
+	printf("\nNumber of activations detected: %d\n", num_activations);
+	printf("\n---------------------------------------------------\n");
 
 	return SUCCESS;
 }

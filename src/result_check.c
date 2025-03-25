@@ -65,9 +65,9 @@ int check_processing_result(double *signal, size_t signal_length, int channel_nu
 	return 0;
 }
 
-int check_activations(int *activation_indices, int num_activations, int channel_num, char *file_name)
+int check_activations(int *activation_indices, int num_activations, int channel_num, char *file_name, char *ver_code)
 {
-	printf("\nChecking activations detection results...\n");
+	printf("\nChecking pre activations detection results...\n");
 	// Load low pass results from Daryl's MATLAB code
 	size_t mat_data_rows, mat_data_cols;
 	char ver_filepath[100];
@@ -84,7 +84,7 @@ int check_activations(int *activation_indices, int num_activations, int channel_
 	}
 
 	// strncpy(file_name_copy, file_name, sizeof(file_name_copy) - 1);
-	sprintf(ver_filepath, "%sver_actdpre_%s_ch%d.csv", MATLAB_DIRECTORY, strtok(file_name_copy, "."), channel_num);
+	sprintf(ver_filepath, "%sver_%s_%s_ch%d.csv", MATLAB_DIRECTORY, ver_code, strtok(file_name_copy, "."), channel_num);
 
 	double **ver_file_data = import_file(ver_filepath, &mat_data_rows, &mat_data_cols);
 	if (ver_file_data == NULL)
@@ -97,6 +97,23 @@ int check_activations(int *activation_indices, int num_activations, int channel_
 	// 	printf("\n%s_signal      [%4d] %20.15f\n", ver_code, i, signal[i]);
 	// 	printf("%s_ver_data[%2d][%4d] %20.15f\n\n", ver_code, shift, i, ver_file_data[i][shift]);
 	// }
+
+	if (num_activations != mat_data_rows)
+	{
+		printf("\nError: Number of activations do not match.\n");
+		printf("num_activations: %d\n", num_activations);
+		printf("mat_data_rows: %zu\n", mat_data_rows);
+		// Free allocated memory
+		for (size_t i = 0; i < mat_data_rows; i++)
+		{
+			free(ver_file_data[i]);
+		}
+		free(ver_file_data);
+		return 1;
+	}
+
+	printf("Number of %s activation match : %d activation(s)\n", ver_code, num_activations);
+
 	// Check results
 	for (int k = 0; k < num_activations; k++)
 	{
@@ -104,9 +121,9 @@ int check_activations(int *activation_indices, int num_activations, int channel_
 		// Check if the results match within a certain precision
 		if ((activation_indices[k] + 1 != (int)ver_file_data[k][0]))
 		{
-			printf("\nError: activation detection result mismatch at index %d.\n", k);
-			printf("activation idx      [%2d] %d\n", k, activation_indices[k]);
-			printf("actd_ver_data[%2d] %d\n", k, (int)ver_file_data[k][0]);
+			printf("\nError: %s activation detection result mismatch at index %d.\n", ver_code, k);
+			printf("%s activation idx      [%2d] %d\n", ver_code, k, activation_indices[k]);
+			printf("%s_ver_data[%2d] %d\n", ver_code, k, (int)ver_file_data[k][0]);
 			// Free allocated memory
 			for (size_t i = 0; i < mat_data_rows; i++)
 			{

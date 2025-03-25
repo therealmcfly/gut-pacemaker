@@ -185,7 +185,10 @@ int detect_activation(double *in_ed_signal, int in_ed_signal_len, int *out_activ
 	double sum = 0;
 	for (int i = 0; i < in_ed_signal_len; i++)
 	{
+		// printf("in_ed_signal[%d]: %f\n", i, in_ed_signal[i]);
+		// printf("initial sum: %f\n", sum);
 		sum += in_ed_signal[i];
+		// printf("sum after adding in_ed_signal[%d]: %f\n", i, sum);
 	}
 	mad = (sum / in_ed_signal_len) * ED_SCALAR_VALUE;
 
@@ -201,6 +204,10 @@ int detect_activation(double *in_ed_signal, int in_ed_signal_len, int *out_activ
 		}
 	}
 	*out_num_activation = count;
+	for (int i = 0; i < count; i++)
+	{
+		printf("out_activation_indices[%d]: %d\n", i, out_activation_indices[i]);
+	}
 	return 0;
 }
 
@@ -230,6 +237,7 @@ void cleanup_activation_locs(int *locs, int *locs_len, int signal_length, int th
 	// Step 2: Remove activations beyond signal length
 	for (int k = 0; k < *locs_len; k++)
 	{
+
 		if (locs[k] > signal_length)
 		{
 			*locs_len = k; // Truncate from here
