@@ -2,8 +2,8 @@
 
 int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, char *file_name, int *cur_data_freq)
 {
-	int activations[200];		 // Buffer for activation indices
-	int num_activations = 0; // Number of activations
+	int activations[ACTIVATIONS_ARRAY_SIZE]; // Buffer for activation indices
+	int num_activations = 0;								 // Number of activations
 	// if (BUFFER_SIZE % 2 != 0)
 	// {
 	// 	printf("\nError: BUFFER_SIZE must be an even number.\n");

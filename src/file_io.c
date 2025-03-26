@@ -158,7 +158,12 @@ void get_file_name(char *file_name, int *out_frequency)
 		{
 			int default_file_len = sizeof(DEFAULT_FILE);
 
-			strncpy(file_name, DEFAULT_FILE, default_file_len - 1);
+			// strncpy(file_name, DEFAULT_FILE, default_file_len - 1);
+			for (int i = 0; i < default_file_len; i++)
+			{
+				file_name[i] = DEFAULT_FILE[i];
+			}
+
 			file_name[default_file_len - 1] = '\0'; // Ensure null termination
 			printf("Default file %s set as data file.\n", DEFAULT_FILE);
 		}
@@ -302,60 +307,3 @@ int validate_channel_num(int channel_num, int max_channel)
 	}
 	return 0;
 }
-
-// int verify_data(double **data, size_t data_num_rows, size_t data_num_cols, const char *file)
-// {
-// 	size_t verify_num_rows = 0; // Variable to store the number of rows read
-// 	size_t verify_num_cols = 0; // Variable to store the number of columns read
-// 	double **verify_data = import_file(file, &verify_num_rows, &verify_num_cols);
-
-// 	if (!verify_data)
-// 	{
-// 		printf("\nError: Could not verify result.\n\n");
-// 		return 1;
-// 	}
-
-// 	// compare rows and columns of data and verify_data
-// 	if (verify_num_rows != data_num_rows)
-// 	{
-// 		printf("\nError: Number of rows do not match.\n\n");
-// 		printf("verify_num_rows: %zu\n", verify_num_rows);
-// 		printf("data_num_rows: %zu\n", data_num_rows);
-// 		return 1;
-// 	}
-
-// 	printf("Row match : %zu row(s)\n", verify_num_rows);
-
-// 	if (verify_num_cols != data_num_cols)
-// 	{
-// 		printf("\nError: Number of columns do not match.\n\n");
-// 		printf("verify_num_cols: %zu\n", verify_num_cols);
-// 		printf("data_num_cols: %zu\n", data_num_cols);
-// 		return 1;
-// 	}
-
-// 	printf("Column match : %zu column(s)\n", verify_num_cols);
-
-// 	// compare each row of data and verify_data
-// 	int count = 0;
-// 	for (size_t row = 0; row < data_num_rows; row++)
-// 	{
-// 		for (size_t col = 0; col < data_num_cols; col++)
-// 		{
-// 			if (data[row][col] != verify_data[row][col])
-// 			{
-// 				printf("\nError: Data mismatch at row %zu, column %zu.\n\n", row, col);
-// 				// print the value of data
-// 				printf("data: %f\n", data[row][col]);
-// 				// print the value of verify_data
-// 				printf("verify_data: %f\n", verify_data[row][col]);
-
-// 				return 1;
-// 			}
-// 			count++;
-// 		}
-// 	}
-// 	printf("Data match: %d value(s) checked\n\n", count);
-
-// 	return 0; // Files match
-// }

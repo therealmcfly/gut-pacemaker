@@ -10,7 +10,7 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 	// int data_frequency;	 // Buffer for exp data frequency
 	size_t num_rows = 0; // Variable to store the number of rows read
 	size_t num_cols = 0; // Variable to store the number of columns read
-#ifdef DATA_VERIFICATION || CHANNEL_RETRIEVAL_VERIFICATION || DOWNSAMPING_VERIFICATION
+#if defined(CHANNEL_RETRIEVAL_VERIFICATION) || defined(DOWNSAMPING_VERIFICATION)
 	size_t ver_num_rows = 0; // Variable to store the number of rows for verification data
 	size_t ver_num_cols = 0; // Variable to store the number of columns for verification data
 	char ver_filepath[100];	 // Buffer for verification file path
@@ -27,11 +27,12 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 	else
 	{
 		// Handle command line arguments
-		// Safely copy arguments to prevent buffer overflow
-
 		int arg_len = strlen(user_argv[1]);
+		for (int i = 0; i < arg_len; i++)
+		{
+			out_file_name[i] = user_argv[1][i];
+		}
 
-		strncpy(out_file_name, user_argv[1], arg_len);
 		out_file_name[arg_len] = '\0';				 // Ensure null termination
 		*out_channel_num = atoi(user_argv[2]); // Convert argument to integer
 
@@ -176,10 +177,8 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 		// Free allocated memory if downsampling was successful
 		if (downsampled_data && channel_data)
 		{
-			channel_data = NULL;
+			free(channel_data);
 		}
-
-		free(channel_data);
 
 		*out_data_length = num_rows;
 

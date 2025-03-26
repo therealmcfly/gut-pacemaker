@@ -10,6 +10,7 @@ void print_data(double **data, size_t num_rows, size_t num_cols);
 double **import_file(const char *file_name, size_t *num_rows, size_t *num_cols);
 void get_file_name(char *file_name, int *data_frequency);
 /**
+
  * @brief Validate file name structure and extract frequency from the name.
  *
  * Expected structure: <any_name>_<frequency>.ext
@@ -23,6 +24,5 @@ void get_file_name(char *file_name, int *data_frequency);
 int validate_file_name(const char *file_name, int *out_frequency);
 void get_channel_num(int *channel_num, int max_channel);
 int validate_channel_num(int channel_num, int max_channel);
-int verify_data(double **data, size_t data_num_rows, size_t data_num_cols, const char *file);
 
 #endif
