@@ -204,10 +204,6 @@ int detect_activation(double *in_ed_signal, int in_ed_signal_len, int *out_activ
 		}
 	}
 	*out_num_activation = count;
-	for (int i = 0; i < count; i++)
-	{
-		printf("out_activation_indices[%d]: %d\n", i, out_activation_indices[i]);
-	}
 	return 0;
 }
 

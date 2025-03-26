@@ -10,7 +10,7 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 	// int data_frequency;	 // Buffer for exp data frequency
 	size_t num_rows = 0; // Variable to store the number of rows read
 	size_t num_cols = 0; // Variable to store the number of columns read
-#if DATA_VERIFICATION || CHANNEL_RETRIEVAL_VERIFICATION || DOWNSAMPING_VERIFICATION
+#ifdef DATA_VERIFICATION || CHANNEL_RETRIEVAL_VERIFICATION || DOWNSAMPING_VERIFICATION
 	size_t ver_num_rows = 0; // Variable to store the number of rows for verification data
 	size_t ver_num_cols = 0; // Variable to store the number of columns for verification data
 	char ver_filepath[100];	 // Buffer for verification file path
@@ -84,7 +84,7 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 // }
 
 /* ---------------- Channel Retrieval Verification ----------------- */
-#if CHANNEL_RETRIEVAL_VERIFICATION
+#ifdef CHANNEL_RETRIEVAL_VERIFICATION
 	// Verify the channel data with MATLAB output
 	// Load the verification data from the MATLAB output file
 	printf("\n-----------------CHANNEL VERIFICATION-----------------\n");
@@ -142,7 +142,7 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 		printf("Successfully downsampled to %d Hz\n", *out_cur_data_freq);
 
 /* ---------------- Downsampling Verification ----------------- */
-#if DOWNSAMPING_VERIFICATION
+#ifdef DOWNSAMPING_VERIFICATION
 		// Verify the downsampled data with MATLAB downsampled output
 		// Verify the channel data with the MATLAB output
 		printf("\n-----------------DOWN-SAMPLING VERIFICATION-----------------\n");

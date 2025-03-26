@@ -67,7 +67,7 @@ int check_processing_result(double *signal, size_t signal_length, int channel_nu
 
 int check_activations(int *activation_indices, int num_activations, int channel_num, char *file_name, char *ver_code)
 {
-	printf("\nChecking pre activations detection results...\n");
+	printf("\nChecking %s activations detection results...\n", ver_code);
 	// Load low pass results from Daryl's MATLAB code
 	size_t mat_data_rows, mat_data_cols;
 	char ver_filepath[100];
@@ -112,7 +112,7 @@ int check_activations(int *activation_indices, int num_activations, int channel_
 		return 1;
 	}
 
-	printf("Number of %s activation match : %d activation(s)\n", ver_code, num_activations);
+	printf("Number of %s activation(s) match : %d activation(s)\n", ver_code, num_activations);
 
 	// Check results
 	for (int k = 0; k < num_activations; k++)
@@ -121,7 +121,7 @@ int check_activations(int *activation_indices, int num_activations, int channel_
 		// Check if the results match within a certain precision
 		if ((activation_indices[k] + 1 != (int)ver_file_data[k][0]))
 		{
-			printf("\nError: %s activation detection result mismatch at index %d.\n", ver_code, k);
+			printf("\nError: %s activation detection mismatch at index %d.\n", ver_code, k);
 			printf("%s activation idx      [%2d] %d\n", ver_code, k, activation_indices[k]);
 			printf("%s_ver_data[%2d] %d\n", ver_code, k, (int)ver_file_data[k][0]);
 			// Free allocated memory
@@ -134,7 +134,7 @@ int check_activations(int *activation_indices, int num_activations, int channel_
 		}
 	}
 
-	printf("Success: activation detection results match with verification data.\n");
+	printf("Index values of activations match.\n");
 	// Free allocated memory
 	for (size_t i = 0; i < mat_data_rows; i++)
 	{
