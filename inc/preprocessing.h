@@ -1,8 +1,7 @@
 #ifndef PREPROCESSING_H
 #define PREPROCESSING_H
 
-#include <stdio.h>	// for printf (if desired)
-#include <stdlib.h> // for malloc/free (if allowed in your environment)
+#include <stdio.h> // for printf (if desired)
 #include "config.h"
 
 int lowpass_filter(double *in_signal, double *lpf_signal, int signal_length);

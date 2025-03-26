@@ -186,6 +186,12 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 
 		if (buff_num_activations)
 		{
+			if (num_activations + buff_num_activations > ACTIVATIONS_ARRAY_SIZE)
+			{
+				printf("\nError: Not enough space in 'activations' array. Number of activations detected (%d) before close proximity removals are greater than the allocated size of the activations array(%d). This will result to unexpected outcomes due to overflow. Please reset ACTIVATIONS_ARRAY_SIZE to higher value in config.h.\n", num_activations + buff_num_activations, ACTIVATIONS_ARRAY_SIZE);
+
+				return ERROR;
+			}
 			for (int k = 0; k < buff_num_activations; k++)
 			{
 				activations[k + num_activations] = buff_activation_indices[k];
@@ -214,11 +220,7 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 	// Check Pre Activation Detection Result
 #ifdef PRE_ACTIVATION_DETECTION_VERIFICATION
 	int activations_len = sizeof(activations) / sizeof(activations[0]);
-	if (num_activations > activations_len)
-	{
-		printf("\nError: Number of activations detected (%d) before removing close proximity detections is greater than the allocated size of the activations array(%d). This will result to unexpected outcomes due to overflow. Please reset ACTIVATION_ARRAY_SIZE to higher value in config.h.\n", num_activations, activations_len);
-		return ERROR;
-	}
+
 	if (check_activations(activations, num_activations, *channel_num, file_name, "actdpre"))
 	{
 		printf("\nError occured while checking activation detection result.\n");
