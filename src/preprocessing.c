@@ -1,4 +1,5 @@
 #include "preprocessing.h"
+#include <stdlib.h> // for malloc/free (if allowed in your environment)
 
 int lowpass_filter(double *in_signal, double *lpf_signal, int signal_length)
 {

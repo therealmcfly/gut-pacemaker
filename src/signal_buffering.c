@@ -175,7 +175,7 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 
 		/* --------------------------- Activation Detection --------------------------- */
 
-		int buff_activation_indices[20];
+		int buff_activation_indices[BUFFER_ACTIVATION_ARRAY_SIZE];
 		int buff_num_activations = 0;
 
 		if (detect_activation(edge_signal, edge_signal_len, buff_activation_indices, &buff_num_activations, i))

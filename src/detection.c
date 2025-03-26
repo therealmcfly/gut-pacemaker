@@ -199,6 +199,11 @@ int detect_activation(double *in_ed_signal, int in_ed_signal_len, int *out_activ
 	{
 		if (in_ed_signal[i] > mad)
 		{
+			if (count > BUFFER_ACTIVATION_ARRAY_SIZE)
+			{
+				printf("\nError: Not enough space in 'activations' array. Number of activations detected (%d) before close proximity removals are greater than the allocated size of the activations array(%d). This will result to unexpected outcomes due to overflow. Please reset BUFFER_ACTIVATIONS_ARRAY_SIZE to higher value in config.h.\n", count, BUFFER_ACTIVATION_ARRAY_SIZE);
+				return 1;
+			}
 			out_activation_indices[count] = i + cur_buffer_start_index;
 			count++;
 		}

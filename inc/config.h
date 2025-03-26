@@ -33,6 +33,7 @@
 #define ED_PRECISION 10 // Precision for edge detection
 
 #define ACTIVATIONS_ARRAY_SIZE 1000
+#define BUFFER_ACTIVATION_ARRAY_SIZE 20
 
 // PREPROCESSING CONSTANTS
 // Low-pass filter
