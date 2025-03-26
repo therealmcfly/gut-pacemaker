@@ -10,7 +10,7 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 	// int data_frequency;	 // Buffer for exp data frequency
 	size_t num_rows = 0; // Variable to store the number of rows read
 	size_t num_cols = 0; // Variable to store the number of columns read
-#if defined(CHANNEL_RETRIEVAL_VERIFICATION) || defined(DOWNSAMPING_VERIFICATION)
+#if defined(CHANNEL_RETRIEVAL_VERIFICATION) || defined(DOWNSAMPLING_VERIFICATION)
 	size_t ver_num_rows = 0; // Variable to store the number of rows for verification data
 	size_t ver_num_cols = 0; // Variable to store the number of columns for verification data
 	char ver_filepath[100];	 // Buffer for verification file path
