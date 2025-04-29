@@ -5,12 +5,12 @@
 #include "file_io.h"
 #include "config.h"
 
-double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length, int *out_channel_num, char *out_file_name)
-{											 // Buffer for channel number
-	int data_frequency;	 // Buffer for exp data frequency
+double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length, int *out_channel_num, char *out_file_name, int *out_cur_data_freq)
+{ // Buffer for channel number
+	// int data_frequency;	 // Buffer for exp data frequency
 	size_t num_rows = 0; // Variable to store the number of rows read
 	size_t num_cols = 0; // Variable to store the number of columns read
-#if DATA_VERIFICATION || CHANNEL_RETRIEVAL_VERIFICATION || DOWNSAMPING_VERIFICATION
+#if (defined(CHANNEL_RETRIEVAL_VERIFICATION) || defined(DOWNSAMPLING_VERIFICATION))
 	size_t ver_num_rows = 0; // Variable to store the number of rows for verification data
 	size_t ver_num_cols = 0; // Variable to store the number of columns for verification data
 	char ver_filepath[100];	 // Buffer for verification file path
@@ -20,23 +20,24 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 	if (user_argc != 3)
 	{
 		// Ask for filename and validate input
-		get_file_name(out_file_name, &data_frequency);
+		get_file_name(out_file_name, out_cur_data_freq);
 		// Ask for channel number and validate input
 		get_channel_num(out_channel_num, MAX_CHANNEL);
 	}
 	else
 	{
 		// Handle command line arguments
-		// Safely copy arguments to prevent buffer overflow
-
 		int arg_len = strlen(user_argv[1]);
+		for (int i = 0; i < arg_len; i++)
+		{
+			out_file_name[i] = user_argv[1][i];
+		}
 
-		strncpy(out_file_name, user_argv[1], arg_len);
 		out_file_name[arg_len] = '\0';				 // Ensure null termination
 		*out_channel_num = atoi(user_argv[2]); // Convert argument to integer
 
 		// Validate file name & channel number
-		if (validate_file_name(out_file_name, &data_frequency))
+		if (validate_file_name(out_file_name, out_cur_data_freq))
 			return NULL; // Exit with error
 		if (validate_channel_num(*out_channel_num, MAX_CHANNEL))
 			return NULL; // Exit with error
@@ -84,12 +85,12 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 // }
 
 /* ---------------- Channel Retrieval Verification ----------------- */
-#if CHANNEL_RETRIEVAL_VERIFICATION
+#ifdef CHANNEL_RETRIEVAL_VERIFICATION
 	// Verify the channel data with MATLAB output
 	// Load the verification data from the MATLAB output file
 	printf("\n-----------------CHANNEL VERIFICATION-----------------\n");
 	printf("\nLoading verification data from MATLAB output...\n");
-	sprintf(ver_filepath, "%sver_chdata_%s_ch%d.csv", MATLAB_DIRECTORY, strtok(file_name, "."), channel_num);
+	sprintf(ver_filepath, "%sver_chdata_%s_ch%d.csv", MATLAB_DIRECTORY, strtok(out_file_name, "."), *out_channel_num);
 	// Verify the channel data with the MATLAB output
 	printf("\nVerifying channel data with verification data...\n");
 	double **verify_ch_data = import_file(ver_filepath, &ver_num_rows, &ver_num_cols);
@@ -99,7 +100,17 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 		free(channel_data);
 		return NULL;
 	}
-	verify_signals(channel_data, num_rows, verify_ch_data, &ver_num_rows, &ver_num_cols);
+	// for (size_t i = 0; i < ver_num_rows; i++)
+	// {
+	// 	printf("verify_ch_data[%zu] = %f\n", i, verify_ch_data[i][0]);
+	// }
+
+	if (verify_signals(channel_data, num_rows, verify_ch_data, &ver_num_rows, &ver_num_cols))
+	{
+		printf("\nError: Channel data verification failed.\n");
+		free(channel_data); // Free allocated memory
+		return NULL;
+	}
 
 	// Free verification data after use
 	for (size_t i = 0; i < ver_num_rows; i++)
@@ -114,12 +125,12 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 	// DOWNSAMPLING
 	// Downsample the channel data if the initial data frequency is higher than the desired frequency
 	double *downsampled_data = NULL;
-	if (data_frequency >= TARGET_FREQUENCY * 2)
+	if (*out_cur_data_freq >= TARGET_FREQUENCY * 2)
 	{
-		printf("\nData frequency: %d Hz\n", data_frequency);
+		printf("\nCurrent data frequency: %d Hz\n", *out_cur_data_freq);
 		printf("Desired frequency: %d Hz\n", TARGET_FREQUENCY);
-		printf("Data frequency is higher than the desired frequency.\n");
-		int factor = data_frequency / TARGET_FREQUENCY;
+		printf("Current data frequency is higher than the desired frequency.\n");
+		int factor = *out_cur_data_freq / TARGET_FREQUENCY;
 		printf("Downsampling channel data by a factor of %d...\n", factor);
 		downsampled_data = downsample(channel_data, &num_rows, factor);
 		if (!downsampled_data)
@@ -128,13 +139,15 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 			free(channel_data);
 			return NULL;
 		}
+		*out_cur_data_freq = TARGET_FREQUENCY; // Update the data frequency
+		printf("Successfully downsampled to %d Hz\n", *out_cur_data_freq);
 
 /* ---------------- Downsampling Verification ----------------- */
-#if DOWNSAMPING_VERIFICATION
+#ifdef DOWNSAMPLING_VERIFICATION
 		// Verify the downsampled data with MATLAB downsampled output
 		// Verify the channel data with the MATLAB output
 		printf("\n-----------------DOWN-SAMPLING VERIFICATION-----------------\n");
-		sprintf(ver_filepath, "%sver_ds_%s_ch%d.csv", MATLAB_DIRECTORY, strtok(file_name, "."), channel_num);
+		sprintf(ver_filepath, "%sver_ds_%s_ch%d.csv", MATLAB_DIRECTORY, strtok(out_file_name, "."), *out_channel_num);
 		double **verify_data = import_file(ver_filepath, &ver_num_rows, &ver_num_cols);
 		if (!verify_data)
 		{
@@ -164,23 +177,23 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 		// Free allocated memory if downsampling was successful
 		if (downsampled_data && channel_data)
 		{
-			channel_data = NULL;
+			free(channel_data);
 		}
+
+		*out_data_length = num_rows;
+
+		return downsampled_data;
 	}
 	else
 	{
-		printf("Data frequency: %d Hz\n", data_frequency);
+		printf("Current data frequency: %d Hz\n", *out_cur_data_freq);
 		printf("Desired frequency: %d Hz\n", TARGET_FREQUENCY);
-		printf("\nData frequency is lower than the desired frequency.\n");
-		printf("No downsampling required.\n");
-		downsampled_data = channel_data;
+		printf("\nCurrent data frequency is lower than the desired frequency.\n");
+		printf("No downsampling required. Current frequecy is still at %d Hz\n", *out_cur_data_freq);
+		*out_data_length = num_rows;
+
+		return channel_data;
 	}
-
-	free(channel_data);
-
-	*out_data_length = num_rows;
-
-	return downsampled_data;
 }
 
 /**

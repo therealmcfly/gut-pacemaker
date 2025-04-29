@@ -34,7 +34,7 @@ int neo_transform(double *in_signal, int in_signal_len, double *out_signal, int 
 
 // Function to apply a moving average filter with a window of 1 second
 // Returns 0 on success, -1 on failure
-int moving_average_filtering(double *in_signal, double *out_signal, int out_signal_len, int sample_rate)
+int moving_average_filtering(double *in_signal, double *out_signal, int out_signal_len, int *data_freq)
 {
 	if (in_signal == NULL || out_signal == NULL)
 	{
@@ -42,7 +42,7 @@ int moving_average_filtering(double *in_signal, double *out_signal, int out_sign
 		return 1;
 	}
 	int time = 1;
-	int window_size = sample_rate * time; // Window size of 1 second
+	int window_size = *data_freq * time; // Window size of 1 second
 	if (window_size > out_signal_len)
 	{
 		printf("\nError: Window size is larger than signal length.\n");
@@ -75,7 +75,7 @@ int edge_detection(const double *in_processed_signal, int in_processed_sig_len, 
 {
 	double kernel[] = {-1, 0, 1}; // Edge detection kernel
 	int kernel_len = sizeof(kernel) / sizeof(kernel[0]);
-	int half_k = kernel_len / 2; // Kernel midpoint
+	// int half_k = kernel_len / 2; // Kernel midpoint
 
 	double conv_signal[NEO_MAF_ED_SIGNAL_SIZE]; // Full convolution size
 
@@ -177,3 +177,72 @@ void conv_1d_same(const double *input, int input_size, const double *kernel, int
 // 		printf("output[%d]: %f\n", i, output[i]);
 // 	}
 // }
+
+int detect_activation(double *in_ed_signal, int in_ed_signal_len, int *out_activation_indices, int *out_num_activation, int cur_buffer_start_index)
+{
+	// mean of signal * SCALE
+	double mad = 0;
+	double sum = 0;
+	for (int i = 0; i < in_ed_signal_len; i++)
+	{
+		// printf("in_ed_signal[%d]: %f\n", i, in_ed_signal[i]);
+		// printf("initial sum: %f\n", sum);
+		sum += in_ed_signal[i];
+		// printf("sum after adding in_ed_signal[%d]: %f\n", i, sum);
+	}
+	mad = (sum / in_ed_signal_len) * ED_SCALAR_VALUE;
+
+	// % finding where detection signal > threshold
+
+	int count = 0;
+	for (int i = 0; i < in_ed_signal_len; i++)
+	{
+		if (in_ed_signal[i] > mad)
+		{
+			if (count > BUFFER_ACTIVATION_ARRAY_SIZE)
+			{
+				printf("\nError: Not enough space in 'activations' array. Number of activations detected (%d) before close proximity removals are greater than the allocated size of the activations array(%d). This will result to unexpected outcomes due to overflow. Please reset BUFFER_ACTIVATIONS_ARRAY_SIZE to higher value in config.h.\n", count, BUFFER_ACTIVATION_ARRAY_SIZE);
+				return 1;
+			}
+			out_activation_indices[count] = i + cur_buffer_start_index;
+			count++;
+		}
+	}
+	*out_num_activation = count;
+	return 0;
+}
+
+void cleanup_activation_locs(int *locs, int *locs_len, int signal_length, int threshold)
+{
+	int i = 0;
+
+	// Step 1: Remove close activations (within threshold)
+	while (i < *locs_len - 1)
+	{
+		if (locs[i + 1] - locs[i] < threshold)
+		{
+			// Remove locs[i + 1] by shifting the array left
+			for (int j = i + 1; j < *locs_len - 1; j++)
+			{
+				locs[j] = locs[j + 1];
+			}
+			(*locs_len)--;
+			// Do not increment i here to re-check new locs[i + 1]
+		}
+		else
+		{
+			i++;
+		}
+	}
+
+	// Step 2: Remove activations beyond signal length
+	for (int k = 0; k < *locs_len; k++)
+	{
+
+		if (locs[k] > signal_length)
+		{
+			*locs_len = k; // Truncate from here
+			break;
+		}
+	}
+}

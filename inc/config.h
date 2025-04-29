@@ -7,15 +7,16 @@
 #define END_ROW 5
 
 // Verification flags
-#define DATA_VERIFICATION 0
-#define CHANNEL_RETRIEVAL_VERIFICATION 0
-#define DOWNSAMPING_VERIFICATION 0
-#define LOW_PASS_FILTER_VERIFICATION 0
-#define HIGH_PASS_FILTER_VERIFICATION 0
-#define ARTIFACT_REMOVAL_VERIFICATION 0
-#define NEO_TRANSFORM_VERIFICATION 0
-#define MOVING_AVERAGE_FILTER_VERIFICATION 0
-#define EDGE_DETECTION_VERIFICATION 1
+// #define CHANNEL_RETRIEVAL_VERIFICATION
+// #define DOWNSAMPLING_VERIFICATION
+// #define LOW_PASS_FILTER_VERIFICATION
+// #define HIGH_PASS_FILTER_VERIFICATION
+// #define ARTIFACT_REMOVAL_VERIFICATION
+// #define NEO_TRANSFORM_VERIFICATION
+// #define MOVING_AVERAGE_FILTER_VERIFICATION
+// #define EDGE_DETECTION_VERIFICATION
+// #define PRE_ACTIVATION_DETECTION_VERIFICATION
+#define ACTIVATION_DETECTION_VERIFICATION
 
 #define MIRROR_MATLAB_LOGIC 0
 
@@ -24,10 +25,15 @@
 #define MATLAB_DIRECTORY "MATLAB Model/"
 #define TARGET_FREQUENCY 32		 // Signal frequency in Hz
 #define DATA_DIRECTORY "data/" // Set to data directory from where the executable is being run
-#define INITIAL_CAPACITY 1000	 // Start memory allocation for rows
+#define INITIAL_CAPACITY 500	 // Start memory allocation for rows
 #define DEFAULT_FILE "exp_16_output_512.csv"
 #define BUFFER_SIZE 1001 // Must be a multiple of 2
-#define PRECISION 1e-6	 // Precision for floating point comparisons
+
+#define PRECISION 1e-6	// Precision for floating point comparisons
+#define ED_PRECISION 10 // Precision for edge detection
+
+#define ACTIVATIONS_ARRAY_SIZE 1000
+#define BUFFER_ACTIVATION_ARRAY_SIZE 20
 
 // PREPROCESSING CONSTANTS
 // Low-pass filter
@@ -47,5 +53,7 @@
 #define NEO_MAF_ED_SIGNAL_SIZE (BUFFER_SIZE + HPF_FILTER_ORDER - 1)
 // Edge detection
 #define ED_SCALAR_VALUE 59
+// Activation detection
+#define ACTIVATION_REMOVAL_THRESHOLD 500
 
 #endif // CONFIG_H

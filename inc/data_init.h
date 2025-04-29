@@ -3,7 +3,7 @@
 
 #include <stddef.h> // for size_t
 
-double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length, int *out_channel_num, char *out_file_name);
+double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length, int *out_channel_num, char *out_file_name, int *cur_data_freq);
 /**
  * @brief Downsamples the input signal by the specified factor.
  *

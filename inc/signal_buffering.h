@@ -13,6 +13,6 @@
 #define ERROR 1
 #define ERROR_BUFFER_SIZE 2
 
-int signal_buffering(double *inSignal, size_t signal_length, int *channel_num, char *file_name);
+int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, char *file_name, int *cur_data_freq);
 
 #endif
