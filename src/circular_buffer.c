@@ -1,13 +1,14 @@
 #include <stdbool.h>
 #include <stddef.h> // for NULL
 #include "config.h"
+#include <stdio.h>
 
 typedef struct
 {
-	double buffer[BUFFER_SIZE];
-	double *head; // write pointer
-	double *tail; // read pointer
-	double *end;	// one-past-the-end pointer
+	double buffer[10]; // Fixed-size buffer
+	double *head;			 // write pointer
+	double *tail;			 // read pointer
+	double *end;			 // one-past-the-end pointer
 } CircularBufferDouble;
 
 // Initialize buffer
@@ -15,7 +16,13 @@ void cb_init(CircularBufferDouble *cb)
 {
 	cb->head = cb->buffer;
 	cb->tail = cb->buffer;
-	cb->end = cb->buffer + BUFFER_SIZE;
+	cb->end = cb->buffer + 10;
+	printf("Buffer initialized\n");
+	printf("Buffer initialized: %p\n", cb->buffer);
+	printf("Buffer initialized: %p\n", cb->head);
+	printf("Buffer initialized: %p\n", cb->tail);
+	printf("Buffer initialized: %p\n", cb->end);
+	printf("Buffer initialized: %p\n", cb->buffer + 10);
 }
 
 // Check if full
@@ -27,6 +34,11 @@ bool cb_is_full(CircularBufferDouble *cb)
 	return next == cb->tail;
 }
 
+bool full_check(CircularBufferDouble *cb)
+{
+	return cb->head == cb->tail;
+}
+
 // Check if empty
 bool cb_is_empty(CircularBufferDouble *cb)
 {
@@ -36,14 +48,29 @@ bool cb_is_empty(CircularBufferDouble *cb)
 // Push data
 bool cb_push(CircularBufferDouble *cb, double data)
 {
+	// *(cb->head) = data;
+	// // if head is at the end, wrap around
+	// if (cb->head == cb->end)
+	// 	cb->head = cb->buffer;
+	// else
+	// 	// Otherwise, just advance the head
+	// 	cb->head++;
+
+	// If full, advance tail to discard the oldest value
 	if (cb_is_full(cb))
-		return false;
+	{
+		cb->tail++;
+		if (cb->tail == cb->end)
+			cb->tail = cb->buffer;
+	}
 
 	*(cb->head) = data;
+
 	cb->head++;
 	if (cb->head == cb->end)
 		cb->head = cb->buffer;
-	return true;
+
+	return false;
 }
 
 // Pop data
@@ -67,4 +94,26 @@ bool cb_peek(CircularBufferDouble *cb, double *data)
 
 	*data = *(cb->tail);
 	return true;
+}
+
+int cb_push_sample(CircularBufferDouble *cb, double data)
+{
+
+	*(cb->head) = data;
+
+	printf("\nStored %f at %p\n", *(cb->head), cb->head);
+
+	cb->head++;
+	if (cb->head == cb->end)
+		cb->head = cb->buffer;
+
+	printf("Next head: %p\n", cb->head);
+	printf("Tail value: %f at %p\n", *(cb->tail), cb->tail);
+
+	if (full_check(cb))
+	{
+		return 1;
+	}
+
+	return 0;
 }

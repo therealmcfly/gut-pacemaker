@@ -11,6 +11,7 @@ typedef struct
 	double *end;								// Pointer to buffer + BUFFER_SIZE
 } CircularBufferDouble;
 
+int cb_push_sample(CircularBufferDouble *cb, double data);
 // Initializes the buffer
 void cb_init(CircularBufferDouble *cb);
 

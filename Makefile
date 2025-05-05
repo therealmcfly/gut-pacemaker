@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -Wall -g -O2 -I$(INCDIR)
 
-TARGET = pacemaker.o
+TARGET = pacemaker.out
 SRCDIR = src
 INCDIR = inc
 OBJDIR = obj

@@ -70,6 +70,9 @@ int main(int argc, char *argv[])
 		perror("Listen failed");
 		exit(EXIT_FAILURE);
 	}
+	CircularBufferDouble cir_buffer;
+	cb_init(&cir_buffer); // Initialize circular buffer
+
 	printf("Waiting for Simulink to connect on port %d...\n", PORT);
 
 	// Accept client connection (blocking):
@@ -82,18 +85,30 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Simulink connected. Sending samples...\n");
+	printf("Simulink connected.\n");
 
-	double value;
+	char filename[256] = {0}; // Enough space
+	int meta_bytes = recv(client_fd, filename, sizeof(filename) - 1, 0);
+
+	if (meta_bytes > 0)
+	{
+		printf("Received filename: %s\n", filename);
+	}
+	else
+	{
+		printf("Failed to receive metadata.\n");
+	}
+
+	printf("Starting data reception...\n");
+
+	double sample;
 	int bytes_read;
-
-	CircularBufferDouble c_buffer;
-	cb_init(&c_buffer); // Initialize circular buffer
+	bool is_filled = false;
 
 	int count = 1;
 	while (1)
 	{
-		bytes_read = recv(client_fd, &value, sizeof(value), 0);
+		bytes_read = recv(client_fd, &sample, sizeof(sample), 0);
 
 		if (bytes_read == 0)
 		{
@@ -105,19 +120,21 @@ int main(int argc, char *argv[])
 			perror("recv failed");
 			break;
 		}
-		else if (bytes_read == sizeof(value))
+		else if (bytes_read == sizeof(sample))
 		{
-			printf("Received %d: %f\n", count, value);
+			// printf("Received %d: %f\n", count, value);
+
 			// Store the received value in the circular buffer
 
-			// if (cb_push(&c_buffer, value))
-			// {
-			// 	printf("Stored in buffer: %f\n", value);
-			// }
-			// else
-			// {
-			// 	printf("Buffer is full. Cannot store %f\n", value);
-			// }
+			if (cb_push_sample(&cir_buffer, sample))
+			{
+				is_filled = true;
+				printf("Buffer is full. Starting signal processing...\n");
+			}
+
+			// printf("Stored %d: %f\n", count, value);
+			// printf("Stored %d: %f\n", count, *cir_buffer.head);
+			// printf("Stored %d: %f\n", count, *cir_buffer.tail);
 		}
 		count++;
 	}
@@ -159,6 +176,6 @@ int main(int argc, char *argv[])
 	// 	free(signal);
 	// 	signal = NULL; // Avoid double free
 	// }
-	printf("\nExiting program...\n\n");
-	return 0;
+	// printf("\nExiting program...\n\n");
+	// return 0;
 }
