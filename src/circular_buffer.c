@@ -17,12 +17,7 @@ void cb_init(CircularBufferDouble *cb)
 	cb->head = cb->buffer;
 	cb->tail = cb->buffer;
 	cb->end = cb->buffer + 10;
-	printf("Buffer initialized\n");
-	printf("Buffer initialized: %p\n", cb->buffer);
-	printf("Buffer initialized: %p\n", cb->head);
-	printf("Buffer initialized: %p\n", cb->tail);
-	printf("Buffer initialized: %p\n", cb->end);
-	printf("Buffer initialized: %p\n", cb->buffer + 10);
+	printf("Circular buffer initialized.\n");
 }
 
 // Check if full
@@ -107,7 +102,8 @@ int cb_push_sample(CircularBufferDouble *cb, double data)
 	if (cb->head == cb->end)
 		cb->head = cb->buffer;
 
-	printf("Next head: %p\n", cb->head);
+	// printf("Next head: %p\n", cb->head);
+	printf("Next head value: %f at %p\n", *(cb->head), cb->head);
 	printf("Tail value: %f at %p\n", *(cb->tail), cb->tail);
 
 	if (full_check(cb))
