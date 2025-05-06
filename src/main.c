@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
+#include <stdint.h> // for close(), usleep()
 #include "config.h"
 #include "data_init.h"
 #include "signal_buffering.h"
+#include "mode_select.h"
+#include "tcp_server.h"
 
-int main(int argc, char *argv[])
+int static_dataset_mode(int argc, char *argv[])
 {
 	size_t signal_length;
 	int channel_num;
@@ -20,7 +22,7 @@ int main(int argc, char *argv[])
 	if (signal == NULL)
 	{
 		printf("\nError occured while initializing sample data.\n");
-		printf("Exiting program...\n\n");
+
 		return 1;
 	}
 
@@ -31,7 +33,7 @@ int main(int argc, char *argv[])
 	if (signal_buffering(signal, signal_length, &channel_num, file_name, &cur_data_freq))
 	{
 		printf("\nError occured while buffering signal.\n");
-		printf("Exiting program...\n\n");
+
 		return 1;
 	}
 
@@ -41,6 +43,42 @@ int main(int argc, char *argv[])
 		free(signal);
 		signal = NULL; // Avoid double free
 	}
+
+	return 0;
+}
+
+int main(int argc, char *argv[])
+{
+	RunMode mode = select_mode();
+
+	switch (mode)
+	{
+	case MODE_STATIC_DATASET:
+		printf("\nRunning in Static Dataset Mode...\n");
+		if (static_dataset_mode(argc, argv) != 0)
+		{
+			printf("\nError occured while running static dataset mode.\n");
+		}
+		break;
+	case MODE_REALTIME_DATASET:
+
+		printf("\nRunning in Real-time Dataset Mode...\n");
+
+		if (run_tcp_server())
+		{
+			printf("\nError occured while running Real-time Dataset Mode.\n");
+		}
+
+		break;
+	case MODE_GUT_MODEL:
+		printf("\nRunning in Gut Model Mode...\n");
+
+		break;
+	default:
+		printf("\nUnknown mode.\n");
+		return 1;
+	}
+
 	printf("\nExiting program...\n\n");
 	return 0;
 }

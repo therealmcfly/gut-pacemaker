@@ -1,5 +1,5 @@
-#ifndef S_BUFFERING_H
-#define S_BUFFERING_H
+#ifndef SIGNAL_BUFFERING_H
+#define SIGNAL_BUFFERING_H
 
 #include <stdio.h>	// for printf (if desired)
 #include <stdlib.h> // for malloc/free (if allowed in your environment)
