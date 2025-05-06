@@ -129,8 +129,15 @@ int tcp_server_receive(double *data, Timer *interval_timer, int *first_sample)
 	{
 		timer_stop(interval_timer);
 		double interval_ms = timer_elapsed_ms(interval_timer);
-		double freq_hz = 1000.0 / interval_ms;
-		printf("Sample interval: %.3f ms (%.2f Hz)\n", interval_ms, freq_hz);
+		double freq_hz = interval_ms > 0 ? 1000.0 / interval_ms : 0;
+		if (interval_ms > 0)
+		{
+			printf("Sample interval: %.3f ms (%.2f Hz)\n", interval_ms, freq_hz);
+		}
+		else
+		{
+			printf("Sample interval: %.3f ms (infinity Hz)\n", interval_ms);
+		}
 		timer_start(interval_timer);
 	}
 
