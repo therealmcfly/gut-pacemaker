@@ -1,5 +1,6 @@
 CC = gcc
-CFLAGS = -Wall -g -O2 -I$(INCDIR)
+# CFLAGS = -Wall -g -O2 -I$(INCDIR)
+CFLAGS = -Wall -O3 -I$(INCDIR)
 
 TARGET = pacemaker.out
 SRCDIR = src
