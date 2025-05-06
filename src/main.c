@@ -5,16 +5,8 @@
 #include "config.h"
 #include "data_init.h"
 #include "signal_buffering.h"
-#include "circular_buffer.h"
-#include <unistd.h>
-#include <arpa/inet.h> // defines sockaddr_in, htons(), INADDR_ANY, and all TCP/IP functions
-#include <signal.h>
 #include "mode_select.h"
-
-// TCP Server Constants
-#define PORT 8080
-#define SAMPLE_DELAY_US 5000 // 200 Hz = 5000 µs delay
-#define SAMPLE_COUNT 1000		 // Dummy size; replace with actual size
+#include "tcp_server.h"
 
 int static_dataset_mode(int argc, char *argv[])
 {

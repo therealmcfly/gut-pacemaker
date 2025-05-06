@@ -15,8 +15,7 @@
 
 // TCP Server Constants
 #define PORT 8080
-#define SAMPLE_DELAY_US 5000 // 200 Hz = 5000 µs delay
-#define SAMPLE_COUNT 10			 // Dummy size; replace with actual size
+#define SAMPLE_DELAY_US 5000 // 200 Hz = 5000 µs delayactual size
 
 void handle_sigint(int sig);
 

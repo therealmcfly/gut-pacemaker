@@ -1,22 +1,12 @@
-#include <stdbool.h>
-#include <stddef.h> // for NULL
-#include "config.h"
-#include <stdio.h>
-
-typedef struct
-{
-	double buffer[10]; // Fixed-size buffer
-	double *head;			 // write pointer
-	double *tail;			 // read pointer
-	double *end;			 // one-past-the-end pointer
-} CircularBufferDouble;
+#include "circular_buffer.h"
 
 // Initialize buffer
 void cb_init(CircularBufferDouble *cb)
 {
 	cb->head = cb->buffer;
 	cb->tail = cb->buffer;
-	cb->end = cb->buffer + 10;
+	cb->end = cb->buffer + C_BUFFER_SIZE;
+	cb->is_full = false;
 	printf("Circular buffer initialized.\n");
 }
 
@@ -91,25 +81,36 @@ bool cb_peek(CircularBufferDouble *cb, double *data)
 	return true;
 }
 
-int cb_push_sample(CircularBufferDouble *cb, double data)
+void cb_push_sample(CircularBufferDouble *cb, double data)
 {
 
 	*(cb->head) = data;
 
-	printf("\nStored %f at %p\n", *(cb->head), cb->head);
+	// printf("\nStored %f at %p\n", *(cb->head), cb->head);
+	int stored_index = cb->head - cb->buffer + 1;
+	printf("\nStored %f at buf_num [%d]\n", *(cb->head), stored_index);
 
 	cb->head++;
 	if (cb->head == cb->end)
-		cb->head = cb->buffer;
-
-	// printf("Next head: %p\n", cb->head);
-	printf("Next head value: %f at %p\n", *(cb->head), cb->head);
-	printf("Tail value: %f at %p\n", *(cb->tail), cb->tail);
-
-	if (full_check(cb))
 	{
-		return 1;
+		cb->head = cb->buffer;
+		cb->is_full = true;
 	}
 
-	return 0;
+	// printf("Next head: %p\n", cb->head);
+	// printf("Next head value: %f at %p\n", *(cb->head), cb->head);
+	// printf("Tail value: %f at %p\n", *(cb->tail), cb->tail);
+
+	int next_index = cb->head - cb->buffer + 1;
+	int tail_index = cb->tail - cb->buffer + 1;
+
+	printf("Next head value: %f at buf_num [%d]\n", *(cb->head), next_index);
+	printf("Tail value: %f at buf_num [%d]\n", *(cb->tail), tail_index);
+}
+
+void cb_reset(CircularBufferDouble *cb)
+{
+	cb->head = cb->buffer;
+	cb->tail = cb->buffer;
+	cb->is_full = false;
 }
