@@ -119,6 +119,21 @@ int tcp_server_receive(double *data, Timer *interval_timer, int *first_sample)
 	// Receive data from client
 	int bytes_read = recv(client_fd, data, sizeof(double), 0);
 
+	// Timing logic here
+	if (*first_sample)
+	{
+		timer_start(interval_timer);
+		*first_sample = 0;
+	}
+	else
+	{
+		timer_stop(interval_timer);
+		double interval_ms = timer_elapsed_ms(interval_timer);
+		double freq_hz = 1000.0 / interval_ms;
+		printf("Sample interval: %.3f ms (%.2f Hz)\n", interval_ms, freq_hz);
+		timer_start(interval_timer);
+	}
+
 	if (bytes_read == 0)
 	{
 		printf("\nConnection closed by Simulink.\n");
@@ -134,21 +149,6 @@ int tcp_server_receive(double *data, Timer *interval_timer, int *first_sample)
 	{
 		fprintf(stderr, "\nError: recv returned %d bytes, expected %zu bytes\n", bytes_read, sizeof(double));
 		return -1;
-	}
-
-	// Timing logic here
-	if (*first_sample)
-	{
-		timer_start(interval_timer);
-		*first_sample = 0;
-	}
-	else
-	{
-		timer_stop(interval_timer);
-		double interval_ms = timer_elapsed_ms(interval_timer);
-		double freq_hz = 1000.0 / interval_ms;
-		printf("Sample interval: %.3f ms (%.2f Hz)\n", interval_ms, freq_hz);
-		timer_start(interval_timer);
 	}
 
 	return bytes_read;

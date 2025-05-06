@@ -1,4 +1,5 @@
 #include "signal_buffering.h"
+#include "timer_util.h"
 
 int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, char *file_name, int *cur_data_freq)
 {
@@ -26,6 +27,10 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 
 	while (j < signal_length) // Keep processing until reaching the signal length
 	{
+		// start the timer for the current buffer
+		Timer buffer_timer;
+		timer_start(&buffer_timer);
+
 		// this is a modification to mirror the logic happening in the MATLAB project. 1st buffer size is 1000 in the first buffer and 1001 in all the rest of the buffers. remove if not needed
 		// cur_buffer_size = MIRROR_MATLAB_LOGIC && (shift == 0) ? BUFFER_SIZE : BUFFER_SIZE + 1;
 		last_sample_index = j - 1;
@@ -210,6 +215,9 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 		/* -----------------------------------------------------------------------------*/
 
 		printf("Buffer %d processing successful.\n", shift + 1);
+		timer_stop(&buffer_timer);
+		double elapsed_ms = timer_elapsed_ms(&buffer_timer);
+		printf("Buffer %d processing time: %.3f ms\n", shift + 1, elapsed_ms);
 
 		// Buffer Shift
 		shift++;
