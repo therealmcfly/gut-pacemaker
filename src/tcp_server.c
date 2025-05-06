@@ -114,7 +114,7 @@ int tcp_server_send(double *data, int size)
 
 	return bytes_sent;
 }
-int tcp_server_receive(double *data)
+int tcp_server_receive(double *data, Timer *interval_timer, int *first_sample)
 {
 	// Receive data from client
 	int bytes_read = recv(client_fd, data, sizeof(double), 0);
@@ -135,6 +135,22 @@ int tcp_server_receive(double *data)
 		fprintf(stderr, "\nError: recv returned %d bytes, expected %zu bytes\n", bytes_read, sizeof(double));
 		return -1;
 	}
+
+	// Timing logic here
+	if (*first_sample)
+	{
+		timer_start(interval_timer);
+		*first_sample = 0;
+	}
+	else
+	{
+		timer_stop(interval_timer);
+		double interval_ms = timer_elapsed_ms(interval_timer);
+		double freq_hz = 1000.0 / interval_ms;
+		printf("Sample interval: %.3f ms (%.2f Hz)\n", interval_ms, freq_hz);
+		timer_start(interval_timer);
+	}
+
 	return bytes_read;
 }
 
@@ -177,10 +193,12 @@ int run_tcp_server(void)
 		CircularBufferDouble cir_buffer;
 		cb_init(&cir_buffer);
 		double sample;
+		Timer interval_timer;
+		int first_sample = 1;
 
 		while (1) // === Inner loop: receive data from current client ===
 		{
-			int bytes_read = tcp_server_receive(&sample);
+			int bytes_read = tcp_server_receive(&sample, &interval_timer, &first_sample);
 
 			if (bytes_read == 0)
 			{
