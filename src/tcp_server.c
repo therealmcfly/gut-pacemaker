@@ -1,7 +1,13 @@
 #include "tcp_server.h"
+#include <pthread.h>
 
 int server_fd = -1;
 int client_fd = -1;
+
+pthread_mutex_t buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t buffer_not_empty = PTHREAD_COND_INITIALIZER;
+int client_active = 1;
+CircularBufferDouble cir_buffer;
 
 void handle_sigint(int sig)
 {
@@ -37,6 +43,15 @@ int tcp_server_init(void)
 	if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
 	{
 		perror("setsockopt(SO_REUSEADDR) failed");
+		close(server_fd);
+		return -1;
+	}
+
+	// Ensure socket closes immediately (no TIME_WAIT delay)
+	struct linger sl = {1, 0}; // l_onoff = 1, l_linger = 0
+	if (setsockopt(server_fd, SOL_SOCKET, SO_LINGER, &sl, sizeof(sl)) < 0)
+	{
+		perror("setsockopt(SO_LINGER) failed");
 		close(server_fd);
 		return -1;
 	}
@@ -117,7 +132,14 @@ int tcp_server_send(double *data, int size)
 int tcp_server_receive(double *data, Timer *interval_timer, int *first_sample)
 {
 	// Receive data from client
-	int bytes_read = recv(client_fd, data, sizeof(double), 0);
+	int total_read = 0;
+	while (total_read < sizeof(double))
+	{
+		int r = recv(client_fd, ((char *)data) + total_read, sizeof(double) - total_read, 0);
+		if (r <= 0)
+			return r; // error or closed
+		total_read += r;
+	}
 
 	// Timing logic here
 	if (*first_sample)
@@ -141,24 +163,24 @@ int tcp_server_receive(double *data, Timer *interval_timer, int *first_sample)
 		timer_start(interval_timer);
 	}
 
-	if (bytes_read == 0)
+	if (total_read == 0)
 	{
 		printf("\nConnection closed by Simulink.\n");
 
 		return 0;
 	}
-	else if (bytes_read < 0)
+	else if (total_read < 0)
 	{
 		perror("\nError: recv failed");
 		return -1;
 	}
-	else if (bytes_read != sizeof(double))
+	else if (total_read != sizeof(double))
 	{
-		fprintf(stderr, "\nError: recv returned %d bytes, expected %zu bytes\n", bytes_read, sizeof(double));
+		fprintf(stderr, "\nError: recv returned %d bytes, expected %zu bytes\n", total_read, sizeof(double));
 		return -1;
 	}
 
-	return bytes_read;
+	return total_read;
 }
 
 int run_tcp_server(void)
@@ -197,7 +219,6 @@ int run_tcp_server(void)
 		printf("Starting data reception...\n");
 
 		// Initialize buffer
-		CircularBufferDouble cir_buffer;
 		cb_init(&cir_buffer);
 		double sample;
 		Timer interval_timer;

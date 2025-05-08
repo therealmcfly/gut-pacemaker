@@ -1,5 +1,10 @@
-#include <stdio.h>
 #include "mode_select.h"
+#include <stdio.h>
+#include "config.h"
+#include "data_init.h"
+#include "signal_buffering.h"
+#include "tcp_server.h"
+#include "timer_util.h"
 
 RunMode select_mode(void)
 {
@@ -24,4 +29,49 @@ RunMode select_mode(void)
 		else
 			printf("Invalid choice. Try again.\n");
 	}
+}
+
+int static_dataset_mode(int argc, char *argv[])
+{
+	size_t signal_length;
+	int channel_num;
+	char file_name[100]; // Buffer for file name
+	int cur_data_freq;	 // Buffer for exp data frequency
+	// INITIALIZE SAMPLE DATA
+	// Sample data loading, channel selection, and downsampling is all handled within the get_sample_data function
+	// The function will return a pointer to sample data on success, NULL on error
+	double *signal = get_sample_data(argc, argv, &signal_length, &channel_num, file_name, &cur_data_freq);
+
+	if (signal == NULL)
+	{
+		printf("\nError occured while initializing sample data.\n");
+
+		return 1;
+	}
+
+	/*----------------------------------------------------------------------------------*/
+	/*----------------------------- SIGNAL BUFFERING -----------------------------------*/
+	/*----------------------------------------------------------------------------------*/
+
+	if (signal_buffering(signal, signal_length, &channel_num, file_name, &cur_data_freq))
+	{
+		printf("\nError occured while buffering signal.\n");
+
+		return 1;
+	}
+
+	// Free allocated memory
+	if (signal != NULL)
+	{
+		free(signal);
+		signal = NULL; // Avoid double free
+	}
+
+	return 0;
+}
+
+int realtime_dataset_mode(int argc, char *argv[])
+{
+	run_tcp_server();
+	return 0;
 }
