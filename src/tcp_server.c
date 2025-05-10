@@ -1,13 +1,7 @@
 #include "tcp_server.h"
-#include <pthread.h>
 
 int server_fd = -1;
 int client_fd = -1;
-
-pthread_mutex_t buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t buffer_not_empty = PTHREAD_COND_INITIALIZER;
-int client_active = 1;
-CircularBufferDouble cir_buffer;
 
 void handle_sigint(int sig)
 {
@@ -183,7 +177,7 @@ int tcp_server_receive(double *data, Timer *interval_timer, int *first_sample)
 	return total_read;
 }
 
-int run_tcp_server(void)
+int run_tcp_server(RingBufferDouble *cir_buffer)
 {
 	signal(SIGINT, handle_sigint);
 
@@ -219,7 +213,7 @@ int run_tcp_server(void)
 		printf("Starting data reception...\n");
 
 		// Initialize buffer
-		cb_init(&cir_buffer);
+		cb_init(cir_buffer);
 		double sample;
 		Timer interval_timer;
 		int first_sample = 1;
@@ -239,9 +233,10 @@ int run_tcp_server(void)
 				break;
 			}
 			else if (bytes_read == sizeof(double))
+
 			{
-				cb_push_sample(&cir_buffer, sample);
-				if (cir_buffer.is_full)
+				cb_push_sample(cir_buffer, sample);
+				if (cir_buffer->is_full)
 				{
 					printf("Buffer full. Run detection pipeline...\n");
 				}

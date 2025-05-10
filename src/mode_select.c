@@ -5,6 +5,7 @@
 #include "signal_buffering.h"
 #include "tcp_server.h"
 #include "timer_util.h"
+#include <pthread.h>
 
 RunMode select_mode(void)
 {
@@ -72,6 +73,11 @@ int static_dataset_mode(int argc, char *argv[])
 
 int realtime_dataset_mode(int argc, char *argv[])
 {
-	run_tcp_server();
+	pthread_mutex_t buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
+	pthread_cond_t buffer_not_empty = PTHREAD_COND_INITIALIZER;
+	int client_active = 1;
+	RingBufferDouble cir_buffer;
+
+	run_tcp_server(&cir_buffer);
 	return 0;
 }
