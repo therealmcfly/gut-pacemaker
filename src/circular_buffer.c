@@ -1,7 +1,7 @@
 #include "circular_buffer.h"
 
 // Initialize buffer
-void cb_init(CircularBufferDouble *cb)
+void cb_init(RingBufferDouble *cb)
 {
 	cb->head = cb->buffer;
 	cb->tail = cb->buffer;
@@ -11,7 +11,7 @@ void cb_init(CircularBufferDouble *cb)
 }
 
 // Check if full
-bool cb_is_full(CircularBufferDouble *cb)
+bool cb_is_full(RingBufferDouble *cb)
 {
 	double *next = cb->head + 1;
 	if (next == cb->end)
@@ -19,19 +19,19 @@ bool cb_is_full(CircularBufferDouble *cb)
 	return next == cb->tail;
 }
 
-bool full_check(CircularBufferDouble *cb)
+bool full_check(RingBufferDouble *cb)
 {
 	return cb->head == cb->tail;
 }
 
 // Check if empty
-bool cb_is_empty(CircularBufferDouble *cb)
+bool cb_is_empty(RingBufferDouble *cb)
 {
 	return cb->head == cb->tail;
 }
 
 // Push data
-bool cb_push(CircularBufferDouble *cb, double data)
+bool cb_push(RingBufferDouble *cb, double data)
 {
 	// *(cb->head) = data;
 	// // if head is at the end, wrap around
@@ -59,7 +59,7 @@ bool cb_push(CircularBufferDouble *cb, double data)
 }
 
 // Pop data
-bool cb_pop(CircularBufferDouble *cb, double *data)
+bool cb_pop(RingBufferDouble *cb, double *data)
 {
 	if (cb_is_empty(cb))
 		return false;
@@ -72,7 +72,7 @@ bool cb_pop(CircularBufferDouble *cb, double *data)
 }
 
 // Peek data
-bool cb_peek(CircularBufferDouble *cb, double *data)
+bool cb_peek(RingBufferDouble *cb, double *data)
 {
 	if (cb_is_empty(cb))
 		return false;
@@ -81,7 +81,7 @@ bool cb_peek(CircularBufferDouble *cb, double *data)
 	return true;
 }
 
-void cb_push_sample(CircularBufferDouble *cb, double data)
+void cb_push_sample(RingBufferDouble *cb, double data)
 {
 
 	*(cb->head) = data;
@@ -108,7 +108,7 @@ void cb_push_sample(CircularBufferDouble *cb, double data)
 	printf("Tail value: %f at buf_num [%d]\n", *(cb->tail), tail_index);
 }
 
-void cb_reset(CircularBufferDouble *cb)
+void cb_reset(RingBufferDouble *cb)
 {
 	cb->head = cb->buffer;
 	cb->tail = cb->buffer;
