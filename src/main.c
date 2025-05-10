@@ -17,6 +17,7 @@ int main(int argc, char *argv[])
 		{
 			printf("\nError occured while running static dataset mode.\n");
 		}
+		printf("\nExiting Static Dataset Mode...\n");
 		break;
 	case MODE_REALTIME_DATASET:
 
@@ -26,6 +27,8 @@ int main(int argc, char *argv[])
 		{
 			printf("\nError occured while running Real-time Dataset Mode.\n");
 		}
+
+		printf("\nExiting Real-time Dataset Mode...\n");
 
 		break;
 	case MODE_GUT_MODEL:

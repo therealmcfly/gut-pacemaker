@@ -1,11 +1,12 @@
 #include "mode_select.h"
+#include <stdlib.h> /* malloc, free */
 #include <stdio.h>
+#include <pthread.h>
 #include "config.h"
 #include "data_init.h"
 #include "signal_buffering.h"
 #include "tcp_server.h"
 #include "timer_util.h"
-#include <pthread.h>
 
 RunMode select_mode(void)
 {
@@ -57,7 +58,8 @@ int static_dataset_mode(int argc, char *argv[])
 	if (signal_buffering(signal, signal_length, &channel_num, file_name, &cur_data_freq))
 	{
 		printf("\nError occured while buffering signal.\n");
-
+		if (signal) /* prevent leak on failure */
+			free(signal);
 		return 1;
 	}
 
@@ -78,6 +80,15 @@ int realtime_dataset_mode(int argc, char *argv[])
 	int client_active = 1;
 	RingBufferDouble cir_buffer;
 
-	run_tcp_server(&cir_buffer);
+	if (run_tcp_server(&cir_buffer) != 0)
+	{
+		printf("\nError occured while running TCP server.\n");
+		return 1;
+	}
+	return 0;
+}
+int gut_model_mode(int argc, char *argv[])
+{
+	printf("\nGut Model Mode is not implemented yet.\n");
 	return 0;
 }
