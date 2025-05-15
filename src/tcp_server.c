@@ -148,7 +148,7 @@ int tcp_server_receive(double *data, Timer *interval_timer, int *first_sample)
 		double freq_hz = interval_ms > 0 ? 1000.0 / interval_ms : 0;
 		if (interval_ms > 0)
 		{
-			printf("Sample interval: %.3f ms (%.2f Hz)\n", interval_ms, freq_hz);
+			// printf("Sample interval: %.3f ms (%.2f Hz)\n", interval_ms, freq_hz);
 		}
 		else
 		{
@@ -177,8 +177,11 @@ int tcp_server_receive(double *data, Timer *interval_timer, int *first_sample)
 	return total_read;
 }
 
-int run_tcp_server(RingBufferDouble *cir_buffer)
+int run_tcp_server(SharedData *shared_data)
 {
+
+	pthread_mutex_lock(shared_data->mutex);
+
 	signal(SIGINT, handle_sigint);
 
 	if (tcp_server_init() < 0)
@@ -213,7 +216,7 @@ int run_tcp_server(RingBufferDouble *cir_buffer)
 		printf("Starting data reception...\n");
 
 		// Initialize buffer
-		cb_init(cir_buffer);
+		rb_init(shared_data->buffer);
 		double sample;
 		Timer interval_timer;
 		int first_sample = 1;
@@ -233,11 +236,12 @@ int run_tcp_server(RingBufferDouble *cir_buffer)
 				break;
 			}
 			else if (bytes_read == sizeof(double))
-
 			{
-				cb_push_sample(cir_buffer, sample);
-				if (cir_buffer->is_full)
+				rb_push_sample(shared_data->buffer, sample);
+				if (shared_data->buffer->is_full)
 				{
+					pthread_mutex_unlock(shared_data->mutex);
+					pthread_cond_signal(shared_data->cond);
 					printf("Buffer full. Run detection pipeline...\n");
 				}
 				else

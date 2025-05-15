@@ -1,17 +1,18 @@
-#include "circular_buffer.h"
+#include "ring_buffer.h"
 
 // Initialize buffer
-void cb_init(RingBufferDouble *cb)
+void rb_init(RingBuffer *rb)
 {
-	cb->head = cb->buffer;
-	cb->tail = cb->buffer;
-	cb->end = cb->buffer + C_BUFFER_SIZE;
-	cb->is_full = false;
+	rb->head = rb->buffer;
+	rb->tail = rb->buffer;
+	rb->end = rb->buffer + C_BUFFER_SIZE;
+	rb->is_full = false;
+	rb->is_ready = false;
 	printf("Circular buffer initialized.\n");
 }
 
 // Check if full
-bool cb_is_full(RingBufferDouble *cb)
+bool rb_is_full(RingBuffer *cb)
 {
 	double *next = cb->head + 1;
 	if (next == cb->end)
@@ -19,19 +20,19 @@ bool cb_is_full(RingBufferDouble *cb)
 	return next == cb->tail;
 }
 
-bool full_check(RingBufferDouble *cb)
+bool full_check(RingBuffer *cb)
 {
 	return cb->head == cb->tail;
 }
 
 // Check if empty
-bool cb_is_empty(RingBufferDouble *cb)
+bool rb_is_empty(RingBuffer *cb)
 {
 	return cb->head == cb->tail;
 }
 
 // Push data
-bool cb_push(RingBufferDouble *cb, double data)
+bool rb_push(RingBuffer *cb, double data)
 {
 	// *(cb->head) = data;
 	// // if head is at the end, wrap around
@@ -42,7 +43,7 @@ bool cb_push(RingBufferDouble *cb, double data)
 	// 	cb->head++;
 
 	// If full, advance tail to discard the oldest value
-	if (cb_is_full(cb))
+	if (rb_is_full(cb))
 	{
 		cb->tail++;
 		if (cb->tail == cb->end)
@@ -59,9 +60,9 @@ bool cb_push(RingBufferDouble *cb, double data)
 }
 
 // Pop data
-bool cb_pop(RingBufferDouble *cb, double *data)
+bool rb_pop(RingBuffer *cb, double *data)
 {
-	if (cb_is_empty(cb))
+	if (rb_is_empty(cb))
 		return false;
 
 	*data = *(cb->tail);
@@ -72,23 +73,23 @@ bool cb_pop(RingBufferDouble *cb, double *data)
 }
 
 // Peek data
-bool cb_peek(RingBufferDouble *cb, double *data)
+bool rb_peek(RingBuffer *cb, double *data)
 {
-	if (cb_is_empty(cb))
+	if (rb_is_empty(cb))
 		return false;
 
 	*data = *(cb->tail);
 	return true;
 }
 
-void cb_push_sample(RingBufferDouble *cb, double data)
+void rb_push_sample(RingBuffer *cb, double data)
 {
 
 	*(cb->head) = data;
 
 	// printf("\nStored %f at %p\n", *(cb->head), cb->head);
-	int stored_index = cb->head - cb->buffer + 1;
-	printf("\nStored %f at buf_num [%d]\n", *(cb->head), stored_index);
+	// int stored_index = cb->head - cb->buffer + 1;
+	// printf("\nStored %f at buf_num [%d]\n", *(cb->head), stored_index);
 
 	cb->head++;
 	if (cb->head == cb->end)
@@ -101,14 +102,14 @@ void cb_push_sample(RingBufferDouble *cb, double data)
 	// printf("Next head value: %f at %p\n", *(cb->head), cb->head);
 	// printf("Tail value: %f at %p\n", *(cb->tail), cb->tail);
 
-	int next_index = cb->head - cb->buffer + 1;
-	int tail_index = cb->tail - cb->buffer + 1;
+	// int next_index = cb->head - cb->buffer + 1;
+	// int tail_index = cb->tail - cb->buffer + 1;
 
-	printf("Next head value: %f at buf_num [%d]\n", *(cb->head), next_index);
-	printf("Tail value: %f at buf_num [%d]\n", *(cb->tail), tail_index);
+	// printf("Next head value: %f at buf_num [%d]\n", *(cb->head), next_index);
+	// printf("Tail value: %f at buf_num [%d]\n", *(cb->tail), tail_index);
 }
 
-void cb_reset(RingBufferDouble *cb)
+void rb_reset(RingBuffer *cb)
 {
 	cb->head = cb->buffer;
 	cb->tail = cb->buffer;

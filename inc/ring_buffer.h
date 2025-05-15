@@ -1,5 +1,5 @@
-#ifndef CIRCULAR_BUFFER_H
-#define CIRCULAR_BUFFER_H
+#ifndef RING_BUFFER_H
+#define RING_BUFFER_H
 
 #include <stdio.h>
 #include <stdbool.h>
@@ -16,27 +16,28 @@ typedef struct
 	double *tail;									// Read pointer
 	double *end;									// Pointer to buffer + BUFFER_SIZE
 	int is_full;									// Flag to indicate if the buffer is full
-} RingBufferDouble;
+	bool is_ready;
+} RingBuffer;
 
 // Initializes the buffer
-void cb_init(RingBufferDouble *cb);
+void rb_init(RingBuffer *cb);
 
 // Returns true if the buffer is full
-bool cb_is_full(RingBufferDouble *cb);
+bool rb_is_full(RingBuffer *cb);
 
 // Returns true if the buffer is empty
-bool cb_is_empty(RingBufferDouble *cb);
+bool rb_is_empty(RingBuffer *cb);
 
 // Adds a value to the buffer (returns false if full)
-bool cb_push(RingBufferDouble *cb, double data);
+bool rb_push(RingBuffer *cb, double data);
 
 // Removes a value from the buffer (returns false if empty)
-bool cb_pop(RingBufferDouble *cb, double *data);
+bool rb_pop(RingBuffer *cb, double *data);
 
 // Peeks at the next value without removing (returns false if empty)
-bool cb_peek(RingBufferDouble *cb, double *data);
+bool rb_peek(RingBuffer *cb, double *data);
 
-void cb_push_sample(RingBufferDouble *cb, double data);
-void cb_reset(RingBufferDouble *cb);
+void rb_push_sample(RingBuffer *cb, double data);
+void rb_reset(RingBuffer *cb);
 
-#endif // CIRCULAR_BUFFER_H
+#endif // RING_BUFFER_H

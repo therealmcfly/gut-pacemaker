@@ -7,6 +7,7 @@
 #include "signal_buffering.h"
 #include "tcp_server.h"
 #include "timer_util.h"
+#include "shared_data.h"
 
 RunMode select_mode(void)
 {
@@ -73,20 +74,83 @@ int static_dataset_mode(int argc, char *argv[])
 	return 0;
 }
 
-int realtime_dataset_mode(int argc, char *argv[])
+void *process_thread(void *data)
 {
-	pthread_mutex_t buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
-	pthread_cond_t buffer_not_empty = PTHREAD_COND_INITIALIZER;
-	int client_active = 1;
-	RingBufferDouble cir_buffer;
+	SharedData *shared_data = (SharedData *)data;
 
-	if (run_tcp_server(&cir_buffer) != 0)
+	pthread_mutex_lock(shared_data->mutex);
+	while (!shared_data->buffer->is_full || !shared_data->buffer->is_ready)
+	{
+		printf("\nWaiting for data...\n");
+		pthread_cond_wait(shared_data->cond, shared_data->mutex);
+	}
+	pthread_mutex_unlock(shared_data->mutex);
+
+	printf("\nSignal processing data...\n"); // this
+
+	shared_data->buffer->is_ready = false; // this should be done in buffer instead of here
+}
+
+void *receive_thread(void *data)
+{
+	SharedData *shared_data = (SharedData *)data;
+	if (run_tcp_server(shared_data) != 0)
 	{
 		printf("\nError occured while running TCP server.\n");
+		return NULL;
+	}
+}
+
+int realtime_dataset_mode(int argc, char *argv[])
+{
+
+	pthread_mutex_t buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
+	pthread_cond_t buffer_ready = PTHREAD_COND_INITIALIZER;
+	RingBuffer cir_buffer;
+	rb_init(&cir_buffer);
+	SharedData shared_data = {
+			.buffer = &cir_buffer,
+			.mutex = &buffer_mutex,
+			.cond = &buffer_ready};
+
+	pthread_t recv_thtread, proc_thread;
+
+	pthread_mutex_init(&buffer_mutex, NULL);
+	pthread_cond_init(&buffer_ready, NULL);
+
+	if (pthread_create(&recv_thtread, NULL, receive_thread, &shared_data) != 0)
+	{
+		printf("\nError creating TCP server thread.\n");
 		return 1;
 	}
+
+	if (pthread_create(&proc_thread, NULL, process_thread, &shared_data) != 0)
+	{
+		printf("\nError creating signal buffering thread.\n");
+		return 1;
+	}
+
+	if (pthread_join(recv_thtread, NULL) != 0)
+	{
+		printf("\nError joining TCP server thread.\n");
+		return 1;
+	}
+	if (pthread_join(proc_thread, NULL) != 0)
+	{
+		printf("\nError joining signal buffering thread.\n");
+		return 1;
+	}
+	pthread_mutex_destroy(&buffer_mutex);
+
+	// if (run_tcp_server(&cir_buffer) != 0)
+	// {
+	// 	printf("\nError occured while running TCP server.\n");
+	// 	return 1;
+	// }
+
 	return 0;
 }
+
 int gut_model_mode(int argc, char *argv[])
 {
 	printf("\nGut Model Mode is not implemented yet.\n");
