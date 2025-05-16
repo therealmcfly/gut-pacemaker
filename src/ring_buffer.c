@@ -7,32 +7,33 @@ void rb_init(RingBuffer *rb)
 	rb->tail = rb->buffer;
 	rb->end = rb->buffer + C_BUFFER_SIZE;
 	rb->is_full = false;
-	rb->is_ready = false;
+	rb->ready_to_read = false;
+	rb->write_count = -1; // initially set to -1 because first time it is full, it should not be considered a write count
 	printf("Circular buffer initialized.\n");
 }
 
 // Check if full
-bool rb_is_full(RingBuffer *cb)
+bool rb_is_full(RingBuffer *rb)
 {
-	double *next = cb->head + 1;
-	if (next == cb->end)
-		next = cb->buffer;
-	return next == cb->tail;
+	double *next = rb->head + 1;
+	if (next == rb->end)
+		next = rb->buffer;
+	return next == rb->tail;
 }
 
-bool full_check(RingBuffer *cb)
+bool full_check(RingBuffer *rb)
 {
-	return cb->head == cb->tail;
+	return rb->head == rb->tail;
 }
 
 // Check if empty
-bool rb_is_empty(RingBuffer *cb)
+bool rb_is_empty(RingBuffer *rb)
 {
-	return cb->head == cb->tail;
+	return rb->head == rb->tail;
 }
 
 // Push data
-bool rb_push(RingBuffer *cb, double data)
+bool rb_push(RingBuffer *rb, double data)
 {
 	// *(cb->head) = data;
 	// // if head is at the end, wrap around
@@ -43,59 +44,61 @@ bool rb_push(RingBuffer *cb, double data)
 	// 	cb->head++;
 
 	// If full, advance tail to discard the oldest value
-	if (rb_is_full(cb))
+	if (rb_is_full(rb))
 	{
-		cb->tail++;
-		if (cb->tail == cb->end)
-			cb->tail = cb->buffer;
+		rb->tail++;
+		if (rb->tail == rb->end)
+			rb->tail = rb->buffer;
 	}
 
-	*(cb->head) = data;
+	*(rb->head) = data;
 
-	cb->head++;
-	if (cb->head == cb->end)
-		cb->head = cb->buffer;
+	rb->head++;
+	if (rb->head == rb->end)
+		rb->head = rb->buffer;
 
 	return false;
 }
 
 // Pop data
-bool rb_pop(RingBuffer *cb, double *data)
+bool rb_pop(RingBuffer *rb, double *data)
 {
-	if (rb_is_empty(cb))
+	if (rb_is_empty(rb))
 		return false;
 
-	*data = *(cb->tail);
-	cb->tail++;
-	if (cb->tail == cb->end)
-		cb->tail = cb->buffer;
+	*data = *(rb->tail);
+	rb->tail++;
+	if (rb->tail == rb->end)
+		rb->tail = rb->buffer;
 	return true;
 }
 
 // Peek data
-bool rb_peek(RingBuffer *cb, double *data)
+bool rb_peek(RingBuffer *rb, double *data)
 {
-	if (rb_is_empty(cb))
+	if (rb_is_empty(rb))
 		return false;
 
-	*data = *(cb->tail);
+	*data = *(rb->tail);
 	return true;
 }
 
-void rb_push_sample(RingBuffer *cb, double data)
+void rb_push_sample(RingBuffer *rb, double data)
 {
 
-	*(cb->head) = data;
+	*(rb->head) = data;
 
 	// printf("\nStored %f at %p\n", *(cb->head), cb->head);
 	// int stored_index = cb->head - cb->buffer + 1;
 	// printf("\nStored %f at buf_num [%d]\n", *(cb->head), stored_index);
 
-	cb->head++;
-	if (cb->head == cb->end)
+	rb->head++;
+	rb->write_count++;
+
+	if (rb->head == rb->end)
 	{
-		cb->head = cb->buffer;
-		cb->is_full = true;
+		rb->head = rb->buffer;
+		rb->is_full = true;
 	}
 
 	// printf("Next head: %p\n", cb->head);
@@ -109,9 +112,16 @@ void rb_push_sample(RingBuffer *cb, double data)
 	// printf("Tail value: %f at buf_num [%d]\n", *(cb->tail), tail_index);
 }
 
-void rb_reset(RingBuffer *cb)
+void rb_reset(RingBuffer *rb)
 {
-	cb->head = cb->buffer;
-	cb->tail = cb->buffer;
-	cb->is_full = false;
+	rb->head = rb->buffer;
+	rb->tail = rb->buffer;
+	rb->is_full = false;
+}
+
+void rb_snapshot(RingBuffer *rb)
+{
+	rb->write_count = 0;
+	rb->ready_to_read = false;
+	printf("Taking snapshot of ring buffer!");
 }

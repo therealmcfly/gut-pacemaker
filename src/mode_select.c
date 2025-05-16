@@ -77,18 +77,20 @@ int static_dataset_mode(int argc, char *argv[])
 void *process_thread(void *data)
 {
 	SharedData *shared_data = (SharedData *)data;
-
-	pthread_mutex_lock(shared_data->mutex);
-	while (!shared_data->buffer->is_full || !shared_data->buffer->is_ready)
+	while (shared_data->server_fd > 0)
 	{
-		printf("\nWaiting for data...\n");
-		pthread_cond_wait(shared_data->cond, shared_data->mutex);
+		pthread_mutex_lock(shared_data->mutex);
+		while (!shared_data->buffer->ready_to_read)
+		{
+			printf("\nWaiting for data to be ready...\n");
+			pthread_cond_wait(shared_data->cond, shared_data->mutex);
+		}
+		pthread_mutex_unlock(shared_data->mutex);
+
+		printf("\nSignal processing data...\n"); // this
+
+		rb_snapshot(shared_data->buffer);
 	}
-	pthread_mutex_unlock(shared_data->mutex);
-
-	printf("\nSignal processing data...\n"); // this
-
-	shared_data->buffer->is_ready = false; // this should be done in buffer instead of here
 }
 
 void *receive_thread(void *data)
@@ -111,7 +113,9 @@ int realtime_dataset_mode(int argc, char *argv[])
 	SharedData shared_data = {
 			.buffer = &cir_buffer,
 			.mutex = &buffer_mutex,
-			.cond = &buffer_ready};
+			.cond = &buffer_ready,
+			.server_fd = -1,
+			.client_fd = -1};
 
 	pthread_t recv_thtread, proc_thread;
 
