@@ -91,6 +91,7 @@ void *process_thread(void *data)
 
 		rb_snapshot(shared_data->buffer);
 	}
+	return NULL;
 }
 
 void *receive_thread(void *data)
@@ -99,8 +100,8 @@ void *receive_thread(void *data)
 	if (run_tcp_server(shared_data) != 0)
 	{
 		printf("\nError occured while running TCP server.\n");
-		return NULL;
 	}
+	return NULL;
 }
 
 int realtime_dataset_mode(int argc, char *argv[])
@@ -145,12 +146,7 @@ int realtime_dataset_mode(int argc, char *argv[])
 		return 1;
 	}
 	pthread_mutex_destroy(&buffer_mutex);
-
-	// if (run_tcp_server(&cir_buffer) != 0)
-	// {
-	// 	printf("\nError occured while running TCP server.\n");
-	// 	return 1;
-	// }
+	pthread_cond_destroy(&buffer_ready);
 
 	return 0;
 }
