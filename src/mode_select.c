@@ -81,22 +81,23 @@ void *process_thread(void *data)
 	int process_count = 1;
 	while (shared_data->server_fd > 0)
 	{
-		pthread_mutex_lock(shared_data->mutex);
+		pthread_mutex_lock(&shared_data->mutex);
 		while (!shared_data->buffer->ready_to_read)
 		{
 			printf("\nWaiting for data to be ready...\n");
-			pthread_cond_wait(shared_data->cond, shared_data->mutex);
+			pthread_cond_wait(&shared_data->cond, &shared_data->mutex);
 		}
 
 		rb_snapshot(shared_data->buffer, curr_buff_copy, shared_data->buff_overlap_count);
-		pthread_mutex_unlock(shared_data->mutex);
+		pthread_mutex_unlock(&shared_data->mutex);
 		printf("Signal processing data for buffer %d...\n", process_count);
 
-		for (int i = 0; i < BUFFER_SIZE; i++)
-		{
-			if (i < 5 || i > BUFFER_SIZE - 5)
-				printf("[%d] %.15f\n", i, curr_buff_copy[i]);
-		}
+		// // Process the buffer
+		// if (detection_pipeline(curr_buff_copy))
+		// {
+		// 	printf("\nError occured while processing buffer %d.\n", process_count);
+		// 	return NULL;
+		// }
 
 		printf("Finished processing buffer %d...\n", process_count);
 		process_count++;

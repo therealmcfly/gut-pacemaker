@@ -263,11 +263,11 @@ int run_tcp_server(SharedData *shared_data)
 						sig_process_count++;
 						printf("\nBuffer is full! Ready to process buffer %d.\n", sig_process_count);
 
-						pthread_mutex_lock(shared_data->mutex);
+						pthread_mutex_lock(&shared_data->mutex);
 						shared_data->buffer->write_count = 0; // reset write count
 						shared_data->buffer->ready_to_read = true;
-						pthread_cond_signal(shared_data->cond);
-						pthread_mutex_unlock(shared_data->mutex);
+						pthread_cond_signal(&shared_data->cond);
+						pthread_mutex_unlock(&shared_data->mutex);
 					}
 					continue; // skip to next iteration
 				}
@@ -276,14 +276,14 @@ int run_tcp_server(SharedData *shared_data)
 				// check how many signals were writen after last snapshot
 				if (shared_data->buffer->write_count >= shared_data->buff_overlap_count)
 				{
-					pthread_mutex_lock(shared_data->mutex);
+					pthread_mutex_lock(&shared_data->mutex);
 					sig_process_count++;
 
 					printf("\n%d new samples recieved! Ready to process buffer %d\n", shared_data->buffer->write_count, sig_process_count);
 					shared_data->buffer->write_count = 0; // reset write count
 					shared_data->buffer->ready_to_read = true;
-					pthread_cond_signal(shared_data->cond);
-					pthread_mutex_unlock(shared_data->mutex);
+					pthread_cond_signal(&shared_data->cond);
+					pthread_mutex_unlock(&shared_data->mutex);
 				}
 				// else
 				// {

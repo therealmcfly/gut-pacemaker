@@ -20,11 +20,6 @@ typedef struct
 	int write_count;		// count of write after last read
 } RingBuffer;
 
-// typedef struct
-// {
-// 	double *read_
-// } BufferState;
-
 // Initializes the buffer
 void rb_init(RingBuffer *cb);
 

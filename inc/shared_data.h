@@ -6,9 +6,9 @@
 
 typedef struct
 {
-	RingBuffer *buffer;
-	pthread_mutex_t *mutex;
-	pthread_cond_t *cond;
+	RingBuffer *buffer; // pointer (big memory block)
+	pthread_mutex_t mutex;
+	pthread_cond_t cond;
 	int server_fd;
 	int client_fd;
 	int buff_overlap_count;
