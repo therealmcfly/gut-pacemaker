@@ -87,7 +87,7 @@ void *process_thread(void *data)
 		}
 		pthread_mutex_unlock(shared_data->mutex);
 
-		printf("\nSignal processing data...\n"); // this
+		printf("Signal processing data...\n"); // this
 
 		rb_snapshot(shared_data->buffer);
 	}
@@ -116,7 +116,8 @@ int realtime_dataset_mode(int argc, char *argv[])
 			.mutex = &buffer_mutex,
 			.cond = &buffer_ready,
 			.server_fd = -1,
-			.client_fd = -1};
+			.client_fd = -1,
+			.overlap_count = BUFFER_SIZE_HALF};
 
 	pthread_t recv_thtread, proc_thread;
 

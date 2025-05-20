@@ -11,6 +11,7 @@ typedef struct
 	pthread_cond_t *cond;
 	int server_fd;
 	int client_fd;
+	int overlap_count;
 } SharedData;
 
 #endif

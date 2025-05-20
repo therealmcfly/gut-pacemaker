@@ -225,7 +225,9 @@ int run_tcp_server(SharedData *shared_data)
 		// Timer variables
 		Timer interval_timer;
 		int first_sample = 1;
+		int sig_process_count = 0;
 
+		printf("Receiving signal...\n");
 		while (1) // === Inner loop: receive data from current client ===
 		{
 
@@ -252,14 +254,16 @@ int run_tcp_server(SharedData *shared_data)
 					// check if buffer is full
 					if (!shared_data->buffer->is_full)
 					{
-						printf("Not full. Waiting for more data...\n");
 						shared_data->buffer->ready_to_read = false;
 					}
 					else
 					{
 						initial_full = true;
+						sig_process_count++;
+						printf("\nBuffer is full! Ready to process buffer %d.\n", sig_process_count);
 
 						pthread_mutex_lock(shared_data->mutex);
+						shared_data->buffer->write_count = 0; // reset write count
 						shared_data->buffer->ready_to_read = true;
 						pthread_cond_signal(shared_data->cond);
 						pthread_mutex_unlock(shared_data->mutex);
@@ -269,18 +273,21 @@ int run_tcp_server(SharedData *shared_data)
 
 				// after buffer is initially filled
 				// check how many signals were writen after last snapshot
-				if (shared_data->buffer->write_count >= 5)
+				if (shared_data->buffer->write_count >= shared_data->overlap_count)
 				{
 					pthread_mutex_lock(shared_data->mutex);
-					printf("write_count : %d\n", shared_data->buffer->write_count);
+					sig_process_count++;
+
+					printf("\n%d new samples recieved! Ready to process buffer %d\n", shared_data->buffer->write_count, sig_process_count);
+					shared_data->buffer->write_count = 0; // reset write count
 					shared_data->buffer->ready_to_read = true;
 					pthread_cond_signal(shared_data->cond);
 					pthread_mutex_unlock(shared_data->mutex);
 				}
-				else
-				{
-					printf("write_count : %d\n", shared_data->buffer->write_count);
-				}
+				// else
+				// {
+				// 	printf("write_count : %d\n", shared_data->buffer->write_count);
+				// }
 			}
 			else
 			{

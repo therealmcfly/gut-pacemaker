@@ -5,7 +5,7 @@ void rb_init(RingBuffer *rb)
 {
 	rb->head = rb->buffer;
 	rb->tail = rb->buffer;
-	rb->end = rb->buffer + C_BUFFER_SIZE;
+	rb->end = rb->buffer + BUFFER_SIZE;
 	rb->is_full = false;
 	rb->ready_to_read = false;
 	rb->write_count = -1; // initially set to -1 because first time it is full, it should not be considered a write count

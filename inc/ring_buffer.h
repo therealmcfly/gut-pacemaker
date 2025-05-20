@@ -7,17 +7,16 @@
 #include <config.h>
 
 // Circular buffer size
-#define C_BUFFER_SIZE 10 // Must be a multiple of 2
 
 typedef struct
 {
-	double buffer[C_BUFFER_SIZE]; // Fixed-size buffer
-	double *head;									// Write pointer
-	double *tail;									// Read pointer
-	double *end;									// Pointer to buffer + BUFFER_SIZE
-	bool is_full;									// Flag to indicate if the buffer is full
-	bool ready_to_read;						// Flag to indicate if the buffer is ready
-	int write_count;							// count of write after last read
+	double buffer[BUFFER_SIZE]; // Fixed-size buffer
+	double *head;								// Write pointer
+	double *tail;								// Read pointer
+	double *end;								// Pointer to buffer + BUFFER_SIZE
+	bool is_full;								// Flag to indicate if the buffer is full
+	bool ready_to_read;					// Flag to indicate if the buffer is ready
+	int write_count;						// count of write after last read
 } RingBuffer;
 
 // typedef struct
