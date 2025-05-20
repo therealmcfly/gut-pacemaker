@@ -20,26 +20,34 @@ typedef struct
 	int write_count;		// count of write after last read
 } RingBuffer;
 
-// Initializes the buffer
+/**
+ + * Initializes a ring buffer
+ + * @param cb Pointer to the RingBuffer to initialize
+ + */
 void rb_init(RingBuffer *cb);
 
-// Returns true if the buffer is full
-bool rb_is_full(RingBuffer *cb);
-
-// Returns true if the buffer is empty
-bool rb_is_empty(RingBuffer *cb);
-
-// Adds a value to the buffer (returns false if full)
-bool rb_push(RingBuffer *cb, double data);
-
-// Removes a value from the buffer (returns false if empty)
-bool rb_pop(RingBuffer *cb, double *data);
-
-// Peeks at the next value without removing (returns false if empty)
-bool rb_peek(RingBuffer *cb, double *data);
-
+/**
+ * Pushes a sample into the ring buffer
+ *
+ * @param cb Pointer to the RingBuffer to push data into
+ * @param data The sample data to push
+ */
 void rb_push_sample(RingBuffer *cb, double data);
-void rb_reset(RingBuffer *cb);
+
+/**
+ * Takes a snapshot of the current buffer contents
+ *
+ * @param rb Pointer to the RingBuffer to snapshot
+ * @param buff_copy Destination buffer to copy data into
+ * @param next_overlap_count Number of new samples needed before the next snapshot
+ */
 void rb_snapshot(RingBuffer *rb, double *buff_copy, int next_overlap_count);
+
+/**
+ * Resets the ring buffer
+ *
+ * @param cb Pointer to the RingBuffer to reset
+ */
+void rb_reset(RingBuffer *cb);
 
 #endif // RING_BUFFER_H

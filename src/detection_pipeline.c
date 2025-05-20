@@ -154,7 +154,6 @@ int detection_pipeline(double *buffer, int shift, int i, int num_activations, in
 	printf("Edge detection verification successful.\n");
 #endif
 
-	shift++;
 	/* --------------------------- Activation Detection --------------------------- */
 
 	int buff_activation_indices[BUFFER_ACTIVATION_ARRAY_SIZE];

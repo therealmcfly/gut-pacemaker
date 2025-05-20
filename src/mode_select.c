@@ -124,8 +124,8 @@ int realtime_dataset_mode(int argc, char *argv[])
 	rb_init(&cir_buffer);
 	SharedData shared_data = {
 			.buffer = &cir_buffer,
-			.mutex = &buffer_mutex,
-			.cond = &buffer_ready,
+			.mutex = buffer_mutex,
+			.cond = buffer_ready,
 			.server_fd = -1,
 			.client_fd = -1,
 			.buff_overlap_count = BUFFER_SIZE_HALF};
