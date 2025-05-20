@@ -11,12 +11,13 @@
 typedef struct
 {
 	double buffer[BUFFER_SIZE]; // Fixed-size buffer
-	double *head;								// Write pointer
-	double *tail;								// Read pointer
-	double *end;								// Pointer to buffer + BUFFER_SIZE
-	bool is_full;								// Flag to indicate if the buffer is full
-	bool ready_to_read;					// Flag to indicate if the buffer is ready
-	int write_count;						// count of write after last read
+	int size;
+	double *head;				// Write pointer
+	double *tail;				// Read pointer
+	double *end;				// Pointer to buffer + BUFFER_SIZE
+	bool is_full;				// Flag to indicate if the buffer is full
+	bool ready_to_read; // Flag to indicate if the buffer is ready
+	int write_count;		// count of write after last read
 } RingBuffer;
 
 // typedef struct
@@ -44,6 +45,6 @@ bool rb_peek(RingBuffer *cb, double *data);
 
 void rb_push_sample(RingBuffer *cb, double data);
 void rb_reset(RingBuffer *cb);
-void rb_snapshot(RingBuffer *cb);
+void rb_snapshot(RingBuffer *rb, double *buff_copy, int next_overlap_count);
 
 #endif // RING_BUFFER_H

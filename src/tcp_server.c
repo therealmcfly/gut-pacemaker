@@ -247,6 +247,7 @@ int run_tcp_server(SharedData *shared_data)
 			{
 
 				rb_push_sample(shared_data->buffer, sample);
+				// printf("Received sample: %f\n", sample);
 
 				// before ring buffer is initially filled
 				if (!initial_full)
@@ -273,7 +274,7 @@ int run_tcp_server(SharedData *shared_data)
 
 				// after buffer is initially filled
 				// check how many signals were writen after last snapshot
-				if (shared_data->buffer->write_count >= shared_data->overlap_count)
+				if (shared_data->buffer->write_count >= shared_data->buff_overlap_count)
 				{
 					pthread_mutex_lock(shared_data->mutex);
 					sig_process_count++;

@@ -76,7 +76,9 @@ int static_dataset_mode(int argc, char *argv[])
 
 void *process_thread(void *data)
 {
+	double curr_buff_copy[BUFFER_SIZE];
 	SharedData *shared_data = (SharedData *)data;
+	int process_count = 1;
 	while (shared_data->server_fd > 0)
 	{
 		pthread_mutex_lock(shared_data->mutex);
@@ -85,11 +87,19 @@ void *process_thread(void *data)
 			printf("\nWaiting for data to be ready...\n");
 			pthread_cond_wait(shared_data->cond, shared_data->mutex);
 		}
+
+		rb_snapshot(shared_data->buffer, curr_buff_copy, shared_data->buff_overlap_count);
 		pthread_mutex_unlock(shared_data->mutex);
+		printf("Signal processing data for buffer %d...\n", process_count);
 
-		printf("Signal processing data...\n"); // this
+		for (int i = 0; i < BUFFER_SIZE; i++)
+		{
+			if (i < 5 || i > BUFFER_SIZE - 5)
+				printf("[%d] %.15f\n", i, curr_buff_copy[i]);
+		}
 
-		rb_snapshot(shared_data->buffer);
+		printf("Finished processing buffer %d...\n", process_count);
+		process_count++;
 	}
 	return NULL;
 }
@@ -117,7 +127,7 @@ int realtime_dataset_mode(int argc, char *argv[])
 			.cond = &buffer_ready,
 			.server_fd = -1,
 			.client_fd = -1,
-			.overlap_count = BUFFER_SIZE_HALF};
+			.buff_overlap_count = BUFFER_SIZE_HALF};
 
 	pthread_t recv_thtread, proc_thread;
 

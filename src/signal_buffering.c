@@ -41,6 +41,11 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 		{
 			buffer[k] = in_signal[i + k];
 		}
+		for (int k = 0; k < BUFFER_SIZE; k++)
+		{
+			if (k < 5 || k > BUFFER_SIZE - 5)
+				printf("[%d] %.15f\n", k, buffer[k]);
+		}
 
 		/* -----------------------------------------------------------------------------*/
 		/*                                 PREPROCESSING                                */
