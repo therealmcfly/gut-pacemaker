@@ -283,7 +283,8 @@ int detect_remove_artifacts(double *in_signal, int signal_length)
 			printf("x1 = %d, x2 = %d\n", x1, x2);
 #endif
 
-			if (x2 <= ARTIFACT_DETECT_WINDOW_WIDTH && x1 > 0)
+			if (x2 < ARTIFACT_DETECT_WINDOW_WIDTH && x1 >= 0) // this make sence but it is not the same as MATLAB logic
+			// if (x2 < ARTIFACT_DETECT_WINDOW_WIDTH && x1 >= 2) // this mimics the MATLAB logic
 			{
 				printf("Removing artifact at index %d\n", i + loc);
 

@@ -9,7 +9,7 @@
 #define SUCCESS 0
 #define ERROR 1
 
-int detection_pipeline(double *buffer, int shift, int i, int num_activations, int *activations)
+int detection_pipeline(double *buffer, int shift, int i, int *num_activations, int *activations)
 {
 	printf("Starting detection pipeline...\n");
 	// start the timer for the current buffer
@@ -167,25 +167,25 @@ int detection_pipeline(double *buffer, int shift, int i, int num_activations, in
 
 	if (buff_num_activations)
 	{
-		if (num_activations + buff_num_activations > ACTIVATIONS_ARRAY_SIZE)
+		if (*num_activations + buff_num_activations > ACTIVATIONS_ARRAY_SIZE)
 		{
-			printf("\nError: Not enough space in 'activations' array. Number of activations detected (%d) before close proximity removals are greater than the allocated size of the activations array(%d). This will result to unexpected outcomes due to overflow. Please reset ACTIVATIONS_ARRAY_SIZE to higher value in config.h.\n", num_activations + buff_num_activations, ACTIVATIONS_ARRAY_SIZE);
+			printf("\nError: Not enough space in 'activations' array. Number of activations detected (%d) before close proximity removals are greater than the allocated size of the activations array(%d). This will result to unexpected outcomes due to overflow. Please reset ACTIVATIONS_ARRAY_SIZE to higher value in config.h.\n", *num_activations + buff_num_activations, ACTIVATIONS_ARRAY_SIZE);
 
 			return ERROR;
 		}
 		for (int k = 0; k < buff_num_activations; k++)
 		{
-			activations[k + num_activations] = buff_activation_indices[k];
+			activations[k + *num_activations] = buff_activation_indices[k];
 		}
-		num_activations += buff_num_activations;
+		*num_activations += buff_num_activations;
 	}
 
 	// Print all activation indices
 
 	// printf("\nActivation Indices:\n");
-	// for (int k = 0; k < num_activations; k++)
+	// for (int k = 0; k < *num_activations; k++)
 	// {
-	// 	printf("out_activation_indices[%d]: %d\n", k, activations[k]);
+	// 	printf("activation_indices[%d]: %d\n", k, activations[k]);
 	// }
 
 	/* -----------------------------------------------------------------------------*/
