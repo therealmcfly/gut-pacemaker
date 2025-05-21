@@ -94,6 +94,7 @@ void *process_thread(void *data)
 			pthread_cond_wait(shared_data->cond, shared_data->mutex);
 		}
 
+		shared_data->buffer->ready_to_read = false;
 		rb_snapshot(shared_data->buffer, curr_buff_copy, shared_data->buff_overlap_count);
 		pthread_mutex_unlock(shared_data->mutex);
 		printf("Signal processing data for buffer %d...\n", *sig_count + 1);
@@ -144,6 +145,7 @@ int realtime_dataset_mode(int argc, char *argv[])
 			.cond = &buffer_ready,
 			.server_fd = -1,
 			.client_fd = -1,
+			.buffer_initial_fill = false,
 			.buff_overlap_count = BUFFER_SIZE_HALF,
 			.sig_process_count = &sig_process_count};
 

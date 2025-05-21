@@ -12,12 +12,12 @@ typedef struct
 {
 	double buffer[BUFFER_SIZE]; // Fixed-size buffer
 	int size;
-	double *head;				// Write pointer
-	double *tail;				// Read pointer
-	double *end;				// Pointer to buffer + BUFFER_SIZE
-	bool is_full;				// Flag to indicate if the buffer is full
-	bool ready_to_read; // Flag to indicate if the buffer is ready
-	int write_count;		// count of write after last read
+	double *head;					// Write pointer
+	double *tail;					// Read pointer
+	double *end;					// Pointer to buffer + BUFFER_SIZE
+	bool is_full;					// Flag to indicate if the buffer is full
+	bool ready_to_read;		// Flag to indicate if the buffer is ready
+	int new_signal_count; // count of write after last read
 } RingBuffer;
 
 /**

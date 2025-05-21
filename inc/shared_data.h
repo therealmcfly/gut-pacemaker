@@ -13,6 +13,7 @@ typedef struct
 	int client_fd;
 	int buff_overlap_count;
 	int *sig_process_count;
+	bool buffer_initial_fill;
 } SharedData;
 
 #endif
