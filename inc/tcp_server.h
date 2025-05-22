@@ -8,24 +8,22 @@
 #include <unistd.h>
 #include <arpa/inet.h> // defines sockaddr_in, htons(), INADDR_ANY, and all TCP/IP functions
 #include <signal.h>
+#include <pthread.h>
 
 #include "config.h"
 #include "signal_buffering.h"
-#include "circular_buffer.h"
+#include "ring_buffer.h"
 #include "timer_util.h"
-
-// TCP Server Constants
-#define PORT 8080
-#define SAMPLE_DELAY_US 5000 // 200 Hz = 5000 µs delayactual size
+#include "shared_data.h"
 
 void handle_sigint(int sig);
 
-int tcp_server_init(void);
-int tcp_server_accept(void);
-int tcp_server_receive(double *data, Timer *interval_timer, int *first_sample);
-int tcp_server_send(double *data, int size);
-int tcp_server_close();
+int tcp_server_init(int *server_fd);
+int tcp_server_accept(int *client_fd, int *server_fd);
+int tcp_server_receive(double *data, Timer *interval_timer, int *first_sample, int *client_fd);
+int tcp_server_send(double *data, int size, int *client_fd, int *server_fd);
+int tcp_server_close(int *client_fd, int *server_fd);
 
-int run_tcp_server(void);
+int run_tcp_server(SharedData *shared_data);
 
-#endif // MODE_SELECT_H
+#endif

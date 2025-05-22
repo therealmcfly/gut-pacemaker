@@ -42,6 +42,13 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 			buffer[k] = in_signal[i + k];
 		}
 
+		// Print first and last 5 samples of the buffer
+		// for (int k = 0; k < BUFFER_SIZE; k++)
+		// {
+		// 	if (k < 5 || k > BUFFER_SIZE - 5)
+		// 		printf("[%d] %.15f\n", k, buffer[k]);
+		// }
+
 		/* -----------------------------------------------------------------------------*/
 		/*                                 PREPROCESSING                                */
 		/* -----------------------------------------------------------------------------*/
@@ -205,7 +212,6 @@ int signal_buffering(double *in_signal, size_t signal_length, int *channel_num, 
 		}
 
 		// Print all activation indices
-
 		// printf("\nActivation Indices:\n");
 		// for (int k = 0; k < num_activations; k++)
 		// {

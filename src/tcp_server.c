@@ -1,32 +1,23 @@
 #include "tcp_server.h"
 
-int server_fd = -1;
-int client_fd = -1;
+// SharedData *g_shared_data = NULL; // Global shared data pointer for SIGINT
+
+// TCP Server Constants
+#define PORT 8080
+#define SAMPLE_DELAY_US 5000 // 200 Hz = 5000 µs delayactual size
 
 void handle_sigint(int sig)
 {
-	printf("\nSIGINT received. Closing sockets...\n");
-	if (client_fd > 0)
-	{
-		printf("Closing client socket...\n");
-		close(client_fd);
-		client_fd = -1;
-	}
-	if (server_fd > 0)
-	{
-		printf("Closing server socket...\n");
-		close(server_fd);
-		server_fd = -1;
-	}
-	exit(0);
+	printf("\nSIGINT received. Forcing shutdown.\n");
+	_exit(0); // Immediately terminate all threads without cleanup
 }
 
-int tcp_server_init(void)
+int tcp_server_init(int *server_fd)
 {
 
 	// Create socket
-	server_fd = socket(AF_INET, SOCK_STREAM, 0);
-	if (server_fd < 0)
+	*server_fd = socket(AF_INET, SOCK_STREAM, 0);
+	if (*server_fd < 0)
 	{
 		perror("Socket creation failed");
 		return -1;
@@ -34,10 +25,19 @@ int tcp_server_init(void)
 
 	// Allow quick reuse of the port after program exits
 	int opt = 1;
-	if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
+	if (setsockopt(*server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
 	{
 		perror("setsockopt(SO_REUSEADDR) failed");
-		close(server_fd);
+		close(*server_fd);
+		return -1;
+	}
+
+	// Ensure socket closes immediately (no TIME_WAIT delay)
+	struct linger sl = {1, 0}; // l_onoff = 1, l_linger = 0
+	if (setsockopt(*server_fd, SOL_SOCKET, SO_LINGER, &sl, sizeof(sl)) < 0)
+	{
+		perror("setsockopt(SO_LINGER) failed");
+		close(*server_fd);
 		return -1;
 	}
 
@@ -49,50 +49,50 @@ int tcp_server_init(void)
 	server_addr.sin_port = htons(PORT);
 
 	// Bind socket to address
-	if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+	if (bind(*server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
 	{
 		perror("Bind failed");
-		close(server_fd);
+		close(*server_fd);
 		return -1;
 	}
 
 	// Listen for incoming connections
-	if (listen(server_fd, 5) < 0)
+	if (listen(*server_fd, 5) < 0)
 	{
 		perror("\nError: Listen failed");
-		close(server_fd);
+		close(*server_fd);
 		return -1;
 	}
 
 	printf("Server listening on port %d...\n", PORT);
-	return server_fd;
+	return *server_fd;
 }
-int tcp_server_close(void)
+int tcp_server_close(int *client_fd, int *server_fd)
 {
-	if (client_fd > 0)
+	if (*client_fd > 0)
 	{
-		close(client_fd);
-		client_fd = -1;
+		close(*client_fd);
+		*client_fd = -1;
 	}
 
-	if (server_fd > 0)
+	if (*server_fd > 0)
 	{
-		close(server_fd);
-		server_fd = -1;
+		close(*server_fd);
+		*server_fd = -1;
 	}
 	printf("\nServer closed.\n");
 
 	return 0;
 }
-int tcp_server_accept(void)
+int tcp_server_accept(int *client_fd, int *server_fd)
 {
 	printf("Waiting for client connection...\n");
 	struct sockaddr_in client_addr;
 	socklen_t addr_len = sizeof(client_addr);
 
 	// Accept incoming connection
-	client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &addr_len);
-	if (client_fd < 0)
+	*client_fd = accept(*server_fd, (struct sockaddr *)&client_addr, &addr_len);
+	if (*client_fd < 0)
 	{
 		perror("\nError: Accept failed");
 
@@ -100,12 +100,12 @@ int tcp_server_accept(void)
 	}
 
 	printf("Client connected: %s:%d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-	return client_fd;
+	return *client_fd;
 }
-int tcp_server_send(double *data, int size)
+int tcp_server_send(double *data, int size, int *client_fd, int *server_fd)
 {
 	// Send data to client
-	int bytes_sent = send(client_fd, data, size * sizeof(double), 0);
+	int bytes_sent = send(*client_fd, data, size * sizeof(double), 0);
 	if (bytes_sent < 0)
 	{
 		perror("\nError: Send failed");
@@ -114,10 +114,17 @@ int tcp_server_send(double *data, int size)
 
 	return bytes_sent;
 }
-int tcp_server_receive(double *data, Timer *interval_timer, int *first_sample)
+int tcp_server_receive(double *data, Timer *interval_timer, int *first_sample, int *client_fd)
 {
 	// Receive data from client
-	int bytes_read = recv(client_fd, data, sizeof(double), 0);
+	int total_read = 0;
+	while (total_read < sizeof(double))
+	{
+		int r = recv(*client_fd, ((char *)data) + total_read, sizeof(double) - total_read, 0);
+		if (r <= 0)
+			return r; // error or closed
+		total_read += r;
+	}
 
 	// Timing logic here
 	if (*first_sample)
@@ -132,7 +139,7 @@ int tcp_server_receive(double *data, Timer *interval_timer, int *first_sample)
 		double freq_hz = interval_ms > 0 ? 1000.0 / interval_ms : 0;
 		if (interval_ms > 0)
 		{
-			printf("Sample interval: %.3f ms (%.2f Hz)\n", interval_ms, freq_hz);
+			// printf("Sample interval: %.3f ms (%.2f Hz)\n", interval_ms, freq_hz);
 		}
 		else
 		{
@@ -141,31 +148,31 @@ int tcp_server_receive(double *data, Timer *interval_timer, int *first_sample)
 		timer_start(interval_timer);
 	}
 
-	if (bytes_read == 0)
+	if (total_read == 0)
 	{
 		printf("\nConnection closed by Simulink.\n");
 
 		return 0;
 	}
-	else if (bytes_read < 0)
+	else if (total_read < 0)
 	{
 		perror("\nError: recv failed");
 		return -1;
 	}
-	else if (bytes_read != sizeof(double))
+	else if (total_read != sizeof(double))
 	{
-		fprintf(stderr, "\nError: recv returned %d bytes, expected %zu bytes\n", bytes_read, sizeof(double));
+		fprintf(stderr, "\nError: recv returned %d bytes, expected %zu bytes\n", total_read, sizeof(double));
 		return -1;
 	}
 
-	return bytes_read;
+	return total_read;
 }
 
-int run_tcp_server(void)
+int run_tcp_server(SharedData *shared_data)
 {
 	signal(SIGINT, handle_sigint);
 
-	if (tcp_server_init() < 0)
+	if (tcp_server_init(&shared_data->server_fd) < 0)
 	{
 		printf("\nError: Failed to initialize TCP server.\n");
 		return -1;
@@ -173,7 +180,7 @@ int run_tcp_server(void)
 
 	while (1) // === Outer loop: wait for new client ===
 	{
-		if (tcp_server_accept() < 0)
+		if (tcp_server_accept(&shared_data->client_fd, &shared_data->server_fd) < 0)
 		{
 			printf("\nError: Failed to accept client.\n");
 			continue;
@@ -183,29 +190,33 @@ int run_tcp_server(void)
 
 		// Receive filename first
 		char filename[256] = {0};
-		int meta_bytes = recv(client_fd, filename, sizeof(filename) - 1, 0);
+		int meta_bytes = recv(shared_data->client_fd, filename, sizeof(filename) - 1, 0);
 
 		if (meta_bytes <= 0)
 		{
 			printf("Failed to receive filename. Closing connection.\n");
-			close(client_fd);
-			client_fd = -1;
+			close(shared_data->client_fd);
+			shared_data->client_fd = -1;
 			continue; // go back to accept new client
 		}
 
 		printf("Received filename: %s\n", filename);
 		printf("Starting data reception...\n");
 
-		// Initialize buffer
-		CircularBufferDouble cir_buffer;
-		cb_init(&cir_buffer);
 		double sample;
+		int buffer_initial_fill = false;
+
+		// Timer variables
 		Timer interval_timer;
 		int first_sample = 1;
 
+		printf("Receiving signal...\n");
 		while (1) // === Inner loop: receive data from current client ===
 		{
-			int bytes_read = tcp_server_receive(&sample, &interval_timer, &first_sample);
+
+			int bytes_read = tcp_server_receive(&sample, &interval_timer, &first_sample, &shared_data->client_fd);
+
+			int rtr_signal_count = 0;
 
 			if (bytes_read == 0)
 			{
@@ -219,15 +230,65 @@ int run_tcp_server(void)
 			}
 			else if (bytes_read == sizeof(double))
 			{
-				cb_push_sample(&cir_buffer, sample);
-				if (cir_buffer.is_full)
+				pthread_mutex_lock(shared_data->mutex);
+
+				rb_push_sample(shared_data->buffer, sample); // this function must only be made when the mutex is locked
+
+				// printf("Received sample: %f\n", sample);
+
+				if (!buffer_initial_fill) // before ring buffer is initially filled
 				{
-					printf("Buffer full. Run detection pipeline...\n");
+					// check if buffer is full
+					if (!shared_data->buffer->is_full)
+					{
+						// Print animation
+						printf("\rReceiving data");
+						printf("... (%d)", shared_data->buffer->new_signal_count + 1); // Print count and clear leftovers
+						fflush(stdout);
+					}
+					else
+					{
+						buffer_initial_fill = true;
+
+						printf("\nBuffer is full!\n");
+						printf("\n%d new samples recieved! Ready to process buffer %d\n", shared_data->buffer->new_signal_count, shared_data->buffer_count + 1);
+						shared_data->buffer->rtr_flag = true;
+						shared_data->buffer->new_signal_count = 0; // reset new_signal_count
+						pthread_cond_signal(shared_data->ready_to_read_cond);
+					}
+
+					pthread_mutex_unlock(shared_data->mutex);
+					continue; // skip to next iteration
 				}
-				else
+				else // after buffer is initially filled
 				{
-					printf("Not full. Waiting for more data...\n");
+					// check how many signals were writen after last snapshot
+					// if (!shared_data->buffer->rtr_flag && shared_data->buffer->new_signal_count >= shared_data->buff_overlap_count)
+					if (shared_data->buffer->new_signal_count >= shared_data->buff_overlap_count)
+					{
+						(shared_data->buffer_count)++;
+						printf("\n%d new samples recieved! Ready to process buffer %d\n", shared_data->buffer->new_signal_count, shared_data->buffer_count + 1);
+						if (!shared_data->buffer->rtr_flag)
+						{
+							rtr_signal_count = 0; // reset rtr signal count
+							shared_data->buffer->rtr_flag = true;
+						}
+						else
+						{
+							printf("\nProcess thread skipped buffer %d time(s)! Ready to process buffer %d\n", rtr_signal_count, shared_data->buffer_count + 1);
+						}
+						pthread_cond_signal(shared_data->ready_to_read_cond);
+						rtr_signal_count++;
+					}
+					else
+					{
+						// Print animation
+						printf("\rReceiving data");
+						printf("... (%d)", shared_data->buffer->new_signal_count + 1); // Print count and clear leftovers
+						fflush(stdout);
+					}
 				}
+				pthread_mutex_unlock(shared_data->mutex);
 			}
 			else
 			{
@@ -236,12 +297,12 @@ int run_tcp_server(void)
 		}
 
 		// Clean up after client disconnects
-		close(client_fd);
-		client_fd = -1;
+		close(shared_data->client_fd);
+		shared_data->client_fd = -1;
 
 		// Go back to outer loop to accept a new connection
 	}
 
-	tcp_server_close(); // Only called if outer loop exits (e.g., via SIGINT)
+	tcp_server_close(&shared_data->client_fd, &shared_data->server_fd); // Only called if outer loop exits (e.g., via SIGINT)
 	return 0;
 }

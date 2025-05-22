@@ -29,6 +29,8 @@
 #define DEFAULT_FILE "exp_16_output_512.csv"
 #define BUFFER_SIZE 1001 // Must be a multiple of 2
 
+#define BUFFER_SIZE_HALF (BUFFER_SIZE / 2) // Half of the buffer size
+
 #define PRECISION 1e-6	// Precision for floating point comparisons
 #define ED_PRECISION 10 // Precision for edge detection
 
