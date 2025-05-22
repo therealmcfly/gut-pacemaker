@@ -5,7 +5,13 @@
 #include "data_init.h"
 #include "shared_data.h"
 #include "multithreading.h"
-#include "signal_buffering.h"
+// #include "signal_buffering.h"
+#include "signal_processing.h"
+
+size_t signal_length;
+int channel_num;
+char file_name[100]; // Buffer for file name
+int cur_data_freq;	 // Buffer for exp data frequency
 
 RunMode select_mode(void)
 {
@@ -34,10 +40,8 @@ RunMode select_mode(void)
 
 int static_dataset_mode(int argc, char *argv[])
 {
-	size_t signal_length;
-	int channel_num;
-	char file_name[100]; // Buffer for file name
-	int cur_data_freq;	 // Buffer for exp data frequency
+	// Initialize variables
+
 	// INITIALIZE SAMPLE DATA
 	// Sample data loading, channel selection, and downsampling is all handled within the get_sample_data function
 	// The function will return a pointer to sample data on success, NULL on error
@@ -54,9 +58,9 @@ int static_dataset_mode(int argc, char *argv[])
 	/*----------------------------- SIGNAL BUFFERING -----------------------------------*/
 	/*----------------------------------------------------------------------------------*/
 
-	if (signal_buffering(signal, signal_length, &channel_num, file_name, &cur_data_freq))
+	if (detect_activations(signal, signal_length, &channel_num, file_name, &cur_data_freq))
 	{
-		printf("\nError occured while buffering signal.\n");
+		printf("\nError occured in static dataset mode.\n");
 		if (signal) /* prevent leak on failure */
 			free(signal);
 		return 1;
@@ -74,6 +78,8 @@ int static_dataset_mode(int argc, char *argv[])
 
 int realtime_dataset_mode(int argc, char *argv[])
 {
+
+	cur_data_freq = TARGET_FREQUENCY;
 
 	// Initialize mutex and condition variable
 	pthread_mutex_t buffer_mutex;

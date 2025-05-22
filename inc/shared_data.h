@@ -1,8 +1,12 @@
 #ifndef SHARED_DATA_H
 #define SHARED_DATA_H
 
+#include "config.h"
 #include <pthread.h>
+
 #include "ring_buffer.h" // If you use RingBufferDouble
+
+#include <stddef.h> // for size_t
 
 typedef struct
 {
@@ -19,5 +23,11 @@ typedef struct
 	// for Process Thread
 
 } SharedData;
+
+// Global vars (for static dataset mode, can remove for embedded implimentaion)
+extern size_t signal_length;
+extern int channel_num;
+extern char file_name[100];
+extern int cur_data_freq;
 
 #endif

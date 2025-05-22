@@ -68,7 +68,6 @@ bool rb_snapshot(RingBuffer *rb, double *buff_copy, int next_overlap_count)
 	rb->rtr_flag = false; // reset rtr_flag flag
 
 	printf("Taking snapshot of ring buffer!\n");
-	rb->new_signal_count = 0;
 	// rtr_flag is reset outside this function after
 	double *curr = rb->tail;
 	for (int i = 0; i < rb->size; i++)

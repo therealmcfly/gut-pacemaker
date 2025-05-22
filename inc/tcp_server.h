@@ -1,20 +1,8 @@
 #ifndef TCP_SERVER_H
 #define TCP_SERVER_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdint.h> // for close(), usleep()
-#include <unistd.h>
-#include <arpa/inet.h> // defines sockaddr_in, htons(), INADDR_ANY, and all TCP/IP functions
-#include <signal.h>
-#include <pthread.h>
-
-#include "config.h"
-#include "signal_buffering.h"
-#include "ring_buffer.h"
-#include "timer_util.h"
 #include "shared_data.h"
+#include "timer_util.h"
 
 void handle_sigint(int sig);
 

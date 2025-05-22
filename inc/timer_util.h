@@ -1,7 +1,7 @@
 #ifndef TIMER_UTIL_H
 #define TIMER_UTIL_H
 
-#include <time.h>
+#include <time.h> // for timespec
 
 typedef struct
 {

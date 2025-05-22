@@ -1,5 +1,19 @@
 #include "tcp_server.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h> // for close(), usleep()
+#include <unistd.h>
+#include <arpa/inet.h> // defines sockaddr_in, htons(), INADDR_ANY, and all TCP/IP functions
+#include <signal.h>
+#include <pthread.h>
+
+#include "config.h"
+#include "signal_buffering.h"
+#include "ring_buffer.h"
+#include "file_io.h"
+
 // SharedData *g_shared_data = NULL; // Global shared data pointer for SIGINT
 
 // TCP Server Constants
@@ -189,10 +203,10 @@ int run_tcp_server(SharedData *shared_data)
 		printf("Simulink connected.\n");
 
 		// Receive filename first
-		char filename[256] = {0};
-		int meta_bytes = recv(shared_data->client_fd, filename, sizeof(filename) - 1, 0);
 
-		if (meta_bytes <= 0)
+		int filename_bytes = recv(shared_data->client_fd, file_name, sizeof(file_name) - 1, 0);
+
+		if (filename_bytes <= 0)
 		{
 			printf("Failed to receive filename. Closing connection.\n");
 			close(shared_data->client_fd);
@@ -200,7 +214,29 @@ int run_tcp_server(SharedData *shared_data)
 			continue; // go back to accept new client
 		}
 
-		printf("Received filename: %s\n", filename);
+		printf("Received filename: %s\n", file_name);
+
+		int channel_bytes = recv(shared_data->client_fd, &channel_num, sizeof(channel_num), 0);
+
+		if (channel_bytes != sizeof(channel_num))
+		{
+			printf("Failed to receive full int channel number.\n");
+			close(shared_data->client_fd);
+			shared_data->client_fd = -1;
+			continue;
+		}
+
+		// char *ch_ptr = strstr(file_name, "ch");
+		// if (ch_ptr != NULL)
+		// {
+		// 	channel_num = atoi(ch_ptr + 2);
+		// }
+		// else
+		// {
+		// 	printf("Error: 'ch' not found in filename.\n");
+		// 	return 1;
+		// }
+
 		printf("Starting data reception...\n");
 
 		double sample;
@@ -210,31 +246,20 @@ int run_tcp_server(SharedData *shared_data)
 		Timer interval_timer;
 		int first_sample = 1;
 
-		printf("Receiving signal...\n");
+		printf("Start signal reception...\n");
+		int rtr_signal_count = 0;
 		while (1) // === Inner loop: receive data from current client ===
 		{
 
 			int bytes_read = tcp_server_receive(&sample, &interval_timer, &first_sample, &shared_data->client_fd);
 
-			int rtr_signal_count = 0;
-
-			if (bytes_read == 0)
-			{
-				printf("Client disconnected.\n");
-				break; // exit inner loop, go back to accept()
-			}
-			else if (bytes_read < 0)
-			{
-				printf("Receive error. Closing client.\n");
-				break;
-			}
-			else if (bytes_read == sizeof(double))
+			if (bytes_read == sizeof(double))
 			{
 				pthread_mutex_lock(shared_data->mutex);
 
 				rb_push_sample(shared_data->buffer, sample); // this function must only be made when the mutex is locked
 
-				// printf("Received sample: %f\n", sample);
+				// printf("Sample[%d]: %f\n", shared_data->buffer->new_signal_count, sample);
 
 				if (!buffer_initial_fill) // before ring buffer is initially filled
 				{
@@ -242,19 +267,19 @@ int run_tcp_server(SharedData *shared_data)
 					if (!shared_data->buffer->is_full)
 					{
 						// Print animation
-						printf("\rReceiving data");
-						printf("... (%d)", shared_data->buffer->new_signal_count + 1); // Print count and clear leftovers
+						printf("\r(%d)", shared_data->buffer->new_signal_count); // Print count and clear leftovers;
 						fflush(stdout);
 					}
 					else
 					{
 						buffer_initial_fill = true;
-
-						printf("\nBuffer is full!\n");
-						printf("\n%d new samples recieved! Ready to process buffer %d\n", shared_data->buffer->new_signal_count, shared_data->buffer_count + 1);
+						printf("\r(%d)", shared_data->buffer->new_signal_count); // Print count and clear leftovers;
+						fflush(stdout);
+						printf(" new samples recieved. Ready to process buffer %d. (Buffer filled)\n", shared_data->buffer_count + 1);
 						shared_data->buffer->rtr_flag = true;
 						shared_data->buffer->new_signal_count = 0; // reset new_signal_count
 						pthread_cond_signal(shared_data->ready_to_read_cond);
+						rtr_signal_count++;
 					}
 
 					pthread_mutex_unlock(shared_data->mutex);
@@ -264,31 +289,44 @@ int run_tcp_server(SharedData *shared_data)
 				{
 					// check how many signals were writen after last snapshot
 					// if (!shared_data->buffer->rtr_flag && shared_data->buffer->new_signal_count >= shared_data->buff_overlap_count)
-					if (shared_data->buffer->new_signal_count >= shared_data->buff_overlap_count)
+					if (shared_data->buffer->new_signal_count < shared_data->buff_overlap_count)
+					{
+						// Print animation
+						printf("\r(%d)", shared_data->buffer->new_signal_count); // Print count and clear leftovers;
+						fflush(stdout);
+					}
+					else
 					{
 						(shared_data->buffer_count)++;
-						printf("\n%d new samples recieved! Ready to process buffer %d\n", shared_data->buffer->new_signal_count, shared_data->buffer_count + 1);
+						printf("\r(%d)", shared_data->buffer->new_signal_count); // Print count and clear leftovers;
+						fflush(stdout);
+						printf(" new samples recieved. Ready to process buffer %d. ", shared_data->buffer_count + 1);
+						shared_data->buffer->new_signal_count = 0; // reset new_signal_count
 						if (!shared_data->buffer->rtr_flag)
 						{
+							printf("\n");
 							rtr_signal_count = 0; // reset rtr signal count
 							shared_data->buffer->rtr_flag = true;
 						}
 						else
 						{
-							printf("\nProcess thread skipped buffer %d time(s)! Ready to process buffer %d\n", rtr_signal_count, shared_data->buffer_count + 1);
+							printf("(%d buffer skipped)\n", rtr_signal_count);
 						}
 						pthread_cond_signal(shared_data->ready_to_read_cond);
 						rtr_signal_count++;
 					}
-					else
-					{
-						// Print animation
-						printf("\rReceiving data");
-						printf("... (%d)", shared_data->buffer->new_signal_count + 1); // Print count and clear leftovers
-						fflush(stdout);
-					}
 				}
 				pthread_mutex_unlock(shared_data->mutex);
+			}
+			else if (bytes_read == 0)
+			{
+				printf("Client disconnected.\n");
+				break; // exit inner loop, go back to accept()
+			}
+			else if (bytes_read < 0)
+			{
+				printf("Receive error. Closing client.\n");
+				break;
 			}
 			else
 			{

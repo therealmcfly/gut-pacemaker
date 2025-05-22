@@ -3,7 +3,7 @@
 #include "config.h"
 #include "shared_data.h"
 
-#include "detection_pipeline.h"
+#include "signal_processing.h"
 #include "tcp_server.h"
 #include "ring_buffer.h"
 #include "signal_buffering.h" // need to be removed when signal_buffering.c migrates to detection_pipeline.c
@@ -41,6 +41,7 @@ void *process_thread(void *data)
 			pthread_cond_wait(shared_data->ready_to_read_cond, shared_data->mutex);
 		}
 
+		printf("\nStart activation detection process for buffer %d...\n", shared_data->buffer_count + 1);
 		// take snapshot of buffer
 		if (!rb_snapshot(shared_data->buffer, curr_buff_copy, shared_data->buff_overlap_count))
 		{
@@ -48,8 +49,6 @@ void *process_thread(void *data)
 			pthread_mutex_unlock(shared_data->mutex);
 			return NULL;
 		}
-
-		printf("Signal processing data for buffer %d...\n", shared_data->buffer_count + 1);
 		pthread_mutex_unlock(shared_data->mutex);
 
 		// Process the buffer
@@ -61,7 +60,7 @@ void *process_thread(void *data)
 		}
 		start_sig_idx += shared_data->buff_overlap_count;
 
-		printf("Finished processing buffer %d...\n", shared_data->buffer_count + 1);
+		printf("Finished activation detection process for buffer %d...\n", shared_data->buffer_count + 1);
 	}
 	return NULL;
 }
