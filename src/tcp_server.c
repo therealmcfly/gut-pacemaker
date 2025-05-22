@@ -1,27 +1,32 @@
 #include "tcp_server.h"
 
-SharedData *g_shared_data = NULL; // Global shared data pointer for SIGINT
+// SharedData *g_shared_data = NULL; // Global shared data pointer for SIGINT
 
 // TCP Server Constants
 #define PORT 8080
 #define SAMPLE_DELAY_US 5000 // 200 Hz = 5000 µs delayactual size
 
+// void handle_sigint(int sig)
+// {
+// 	printf("\nSIGINT received. Closing sockets...\n");
+// 	if (g_shared_data->client_fd > 0)
+// 	{
+// 		printf("Closing client socket...\n");
+// 		close(g_shared_data->client_fd);
+// 		g_shared_data->client_fd = -1;
+// 	}
+// 	if (g_shared_data->server_fd > 0)
+// 	{
+// 		printf("Closing server socket...\n");
+// 		close(g_shared_data->server_fd);
+// 		g_shared_data->server_fd = -1;
+// 	}
+// 	exit(0);
+// }
 void handle_sigint(int sig)
 {
-	printf("\nSIGINT received. Closing sockets...\n");
-	if (g_shared_data->client_fd > 0)
-	{
-		printf("Closing client socket...\n");
-		close(g_shared_data->client_fd);
-		g_shared_data->client_fd = -1;
-	}
-	if (g_shared_data->server_fd > 0)
-	{
-		printf("Closing server socket...\n");
-		close(g_shared_data->server_fd);
-		g_shared_data->server_fd = -1;
-	}
-	exit(0);
+	printf("\nSIGINT received. Forcing shutdown.\n");
+	_exit(0); // Immediately terminate all threads without cleanup
 }
 
 int tcp_server_init(int *server_fd)
@@ -182,8 +187,6 @@ int tcp_server_receive(double *data, Timer *interval_timer, int *first_sample, i
 
 int run_tcp_server(SharedData *shared_data)
 {
-	g_shared_data = shared_data; // Set global pointer for signal handler
-
 	signal(SIGINT, handle_sigint);
 
 	if (tcp_server_init(&shared_data->server_fd) < 0)
