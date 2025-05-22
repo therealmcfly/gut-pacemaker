@@ -6,23 +6,6 @@
 #define PORT 8080
 #define SAMPLE_DELAY_US 5000 // 200 Hz = 5000 µs delayactual size
 
-// void handle_sigint(int sig)
-// {
-// 	printf("\nSIGINT received. Closing sockets...\n");
-// 	if (g_shared_data->client_fd > 0)
-// 	{
-// 		printf("Closing client socket...\n");
-// 		close(g_shared_data->client_fd);
-// 		g_shared_data->client_fd = -1;
-// 	}
-// 	if (g_shared_data->server_fd > 0)
-// 	{
-// 		printf("Closing server socket...\n");
-// 		close(g_shared_data->server_fd);
-// 		g_shared_data->server_fd = -1;
-// 	}
-// 	exit(0);
-// }
 void handle_sigint(int sig)
 {
 	printf("\nSIGINT received. Forcing shutdown.\n");
