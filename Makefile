@@ -1,22 +1,25 @@
 CC = gcc
-# CFLAGS = -Wall -g -O2 -I$(INCDIR)
-CFLAGS = -Wall -g -O0 -I$(INCDIR) -pthread
-
-TARGET = pacemaker.out
 SRCDIR = src
 INCDIR = inc
 OBJDIR = obj
 
-# Find all .c files in src/
-SRCS = $(wildcard $(SRCDIR)/*.c)
+# Default build settings
+# CFLAGS = -Wall -g -O2 -I$(INCDIR)
+CFLAGS = -Wall -g -O0 -I$(INCDIR) -pthread
+TARGET = pacemaker.out
 
-# Convert src/file.c → obj/file.o
+# TSan build settings
+TSAN_FLAGS = -Wall -g -O1 -fsanitize=thread -I$(INCDIR) -pthread
+TSAN_TARGET = pacemaker_tsan.out
+
+# Source and object files
+SRCS = $(wildcard $(SRCDIR)/*.c)
 OBJS = $(patsubst $(SRCDIR)/%.c, $(OBJDIR)/%.o, $(SRCS))
 
-# # Compile .c to .o
-# # Compile .c to .o (assumes obj/ already exists)
-# $(OBJDIR)/%.o: $(SRCDIR)/%.c
-# 	$(CC) $(CFLAGS) -c $< -o $@
+# Default target
+all: $(TARGET)
+
+# Create object directory and compile .c to .o
 $(OBJDIR)/%.o: $(SRCDIR)/%.c
 ifeq ($(OS),Windows_NT)
 	@if not exist $(OBJDIR) mkdir $(OBJDIR)
@@ -27,16 +30,28 @@ endif
 	
 	
 # Link the final executable
+# $(TARGET): $(OBJS)
+# 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS)
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $(OBJS)
+
+# Link the TSan target
+$(TSAN_TARGET): $(OBJS)
+	$(CC) $(TSAN_FLAGS) -o $@ $(OBJS)
 
 # Clean build files (Windows & Unix compatible)
 clean:
 ifeq ($(OS),Windows_NT)
 	@if exist $(OBJDIR) (rmdir /S /Q $(OBJDIR))
 	@if exist $(TARGET).exe (del /F /Q $(TARGET).exe)
+	@if exist $(TSAN_TARGET).exe (del /F /Q $(TSAN_TARGET).exe)
 else
-	rm -rf $(OBJDIR) $(TARGET)
+	rm -rf $(OBJDIR) $(TARGET) $(TSAN_TARGET)
 endif
 
-.PHONY: clean
+# .PHONY: clean
+
+# ThreadSanitizer build
+tsan: clean $(TSAN_TARGET)
+
+.PHONY: clean tsan all

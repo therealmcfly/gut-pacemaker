@@ -6,14 +6,18 @@
 
 typedef struct
 {
+	// for all threads(Receive and Process)
 	RingBuffer *buffer; // pointer (big memory block)
 	pthread_mutex_t *mutex;
-	pthread_cond_t *cond;
+	pthread_cond_t *ready_to_read_cond;
+	int buffer_count;
+
+	// for Receive Thread
 	int server_fd;
 	int client_fd;
 	int buff_overlap_count;
-	int *sig_process_count;
-	bool buffer_initial_fill;
+	// for Process Thread
+
 } SharedData;
 
 #endif

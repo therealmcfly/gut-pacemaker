@@ -16,7 +16,7 @@ typedef struct
 	double *tail;					// Read pointer
 	double *end;					// Pointer to buffer + BUFFER_SIZE
 	bool is_full;					// Flag to indicate if the buffer is full
-	bool ready_to_read;		// Flag to indicate if the buffer is ready
+	bool rtr_flag;				// Flag to indicate if the buffer is ready
 	int new_signal_count; // count of write after last read
 } RingBuffer;
 
@@ -31,17 +31,20 @@ void rb_init(RingBuffer *cb);
  *
  * @param cb Pointer to the RingBuffer to push data into
  * @param data The sample data to push
+ * @return true if the sample was successfully pushed, false otherwise
  */
-void rb_push_sample(RingBuffer *cb, double data);
+bool rb_push_sample(RingBuffer *cb, double data);
 
 /**
- * Takes a snapshot of the current buffer contents
+ * Takes a snapshot of the ring buffer
  *
  * @param rb Pointer to the RingBuffer to snapshot
- * @param buff_copy Destination buffer to copy data into
- * @param next_overlap_count Number of new samples needed before the next snapshot
+ * @param buff_copy Pointer to the buffer to copy data into
+ * @param next_overlap_count Number of samples to overlap in the next buffer
+ * @param reset_flag Function pointer to reset the flag
+ * @return true if the snapshot was successful, false otherwise
  */
-void rb_snapshot(RingBuffer *rb, double *buff_copy, int next_overlap_count);
+bool rb_snapshot(RingBuffer *rb, double *buff_copy, int next_overlap_count);
 
 /**
  * Resets the ring buffer

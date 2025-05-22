@@ -1,14 +1,11 @@
 #include "mode_select.h"
-#include <stdlib.h> /* malloc, free */
 #include <stdio.h>
 #include <pthread.h>
 #include "config.h"
 #include "data_init.h"
-#include "signal_buffering.h"
-#include "tcp_server.h"
-#include "timer_util.h"
 #include "shared_data.h"
-#include "detection_pipeline.h"
+#include "multithreading.h"
+#include "signal_buffering.h"
 
 RunMode select_mode(void)
 {
@@ -75,85 +72,35 @@ int static_dataset_mode(int argc, char *argv[])
 	return 0;
 }
 
-void *process_thread(void *data)
-{
-	double curr_buff_copy[BUFFER_SIZE];
-	SharedData *shared_data = (SharedData *)data;
-
-	int start_sig_idx = 0;
-	int *sig_count = shared_data->sig_process_count;
-
-	int activations[ACTIVATIONS_ARRAY_SIZE]; // Buffer for activation indices
-	int num_activations = 0;
-	while (shared_data->server_fd > 0)
-	{
-		pthread_mutex_lock(shared_data->mutex);
-		while (!shared_data->buffer->ready_to_read)
-		{
-			printf("\nWaiting for data to be ready...\n");
-			pthread_cond_wait(shared_data->cond, shared_data->mutex);
-		}
-
-		shared_data->buffer->ready_to_read = false;
-		rb_snapshot(shared_data->buffer, curr_buff_copy, shared_data->buff_overlap_count);
-		pthread_mutex_unlock(shared_data->mutex);
-		printf("Signal processing data for buffer %d...\n", *sig_count + 1);
-
-		// Process the buffer
-		if (detection_pipeline(curr_buff_copy, *sig_count, start_sig_idx, &num_activations, activations))
-		{
-			printf("\nError occured while processing buffer %d.\n", *sig_count + 1);
-			return NULL;
-		}
-		start_sig_idx += shared_data->buff_overlap_count;
-
-		printf("Finished processing buffer %d...\n", *sig_count + 1);
-		(*sig_count)++;
-	}
-	return NULL;
-}
-
-void *receive_thread(void *data)
-{
-	SharedData *shared_data = (SharedData *)data;
-	if (run_tcp_server(shared_data) != 0)
-	{
-		printf("\nError occured while running TCP server.\n");
-	}
-	return NULL;
-}
-
 int realtime_dataset_mode(int argc, char *argv[])
 {
 
 	// Initialize mutex and condition variable
 	pthread_mutex_t buffer_mutex;
-	pthread_cond_t buffer_ready;
+	pthread_cond_t ready_to_read_cond;
 	pthread_mutex_init(&buffer_mutex, NULL);
-	pthread_cond_init(&buffer_ready, NULL);
+	pthread_cond_init(&ready_to_read_cond, NULL);
 
 	// Initialize ring buffer
 	RingBuffer cir_buffer;
 	rb_init(&cir_buffer);
 
-	int sig_process_count = 0;
-
 	// Initialize shared data
 	SharedData shared_data = {
 			.buffer = &cir_buffer,
 			.mutex = &buffer_mutex,
-			.cond = &buffer_ready,
+			.ready_to_read_cond = &ready_to_read_cond,
 			.server_fd = -1,
 			.client_fd = -1,
-			.buffer_initial_fill = false,
 			.buff_overlap_count = BUFFER_SIZE_HALF,
-			.sig_process_count = &sig_process_count};
+			.buffer_count = 0};
 
 	pthread_t recv_thtread, proc_thread;
 
 	if (pthread_create(&recv_thtread, NULL, receive_thread, &shared_data) != 0)
 	{
 		printf("\nError creating TCP server thread.\n");
+
 		return 1;
 	}
 
@@ -174,7 +121,7 @@ int realtime_dataset_mode(int argc, char *argv[])
 		return 1;
 	}
 	pthread_mutex_destroy(&buffer_mutex);
-	pthread_cond_destroy(&buffer_ready);
+	pthread_cond_destroy(&ready_to_read_cond);
 
 	return 0;
 }

@@ -218,7 +218,7 @@ int run_tcp_server(SharedData *shared_data)
 		printf("Starting data reception...\n");
 
 		double sample;
-		shared_data->buffer_initial_fill = false;
+		int buffer_initial_fill = false;
 
 		// Timer variables
 		Timer interval_timer;
@@ -229,6 +229,8 @@ int run_tcp_server(SharedData *shared_data)
 		{
 
 			int bytes_read = tcp_server_receive(&sample, &interval_timer, &first_sample, &shared_data->client_fd);
+
+			int rtr_signal_count = 0;
 
 			if (bytes_read == 0)
 			{
@@ -243,40 +245,54 @@ int run_tcp_server(SharedData *shared_data)
 			else if (bytes_read == sizeof(double))
 			{
 				pthread_mutex_lock(shared_data->mutex);
-				rb_push_sample(shared_data->buffer, sample);
+
+				rb_push_sample(shared_data->buffer, sample); // this function must only be made when the mutex is locked
 
 				// printf("Received sample: %f\n", sample);
 
-				if (!shared_data->buffer_initial_fill) // before ring buffer is initially filled
+				if (!buffer_initial_fill) // before ring buffer is initially filled
 				{
 					// check if buffer is full
-					if (shared_data->buffer->is_full)
-					{
-						shared_data->buffer_initial_fill = true;
-
-						printf("\nBuffer is full! Ready to process buffer %d.\n", *shared_data->sig_process_count + 1);
-						shared_data->buffer->ready_to_read = true;
-						pthread_cond_signal(shared_data->cond);
-					}
-					else
+					if (!shared_data->buffer->is_full)
 					{
 						// Print animation
 						printf("\rReceiving data");
 						printf("... (%d)", shared_data->buffer->new_signal_count + 1); // Print count and clear leftovers
 						fflush(stdout);
 					}
+					else
+					{
+						buffer_initial_fill = true;
+
+						printf("\nBuffer is full!\n");
+						printf("\n%d new samples recieved! Ready to process buffer %d\n", shared_data->buffer->new_signal_count, shared_data->buffer_count + 1);
+						shared_data->buffer->rtr_flag = true;
+						shared_data->buffer->new_signal_count = 0; // reset new_signal_count
+						pthread_cond_signal(shared_data->ready_to_read_cond);
+					}
+
 					pthread_mutex_unlock(shared_data->mutex);
 					continue; // skip to next iteration
 				}
 				else // after buffer is initially filled
 				{
 					// check how many signals were writen after last snapshot
-					if (!shared_data->buffer->ready_to_read && shared_data->buffer->new_signal_count >= shared_data->buff_overlap_count)
-					// if (shared_data->buffer->new_signal_count >= shared_data->buff_overlap_count)
+					// if (!shared_data->buffer->rtr_flag && shared_data->buffer->new_signal_count >= shared_data->buff_overlap_count)
+					if (shared_data->buffer->new_signal_count >= shared_data->buff_overlap_count)
 					{
-						printf("\n%d new samples recieved! Ready to process buffer %d\n", shared_data->buffer->new_signal_count, *shared_data->sig_process_count + 1);
-						shared_data->buffer->ready_to_read = true;
-						pthread_cond_signal(shared_data->cond);
+						(shared_data->buffer_count)++;
+						printf("\n%d new samples recieved! Ready to process buffer %d\n", shared_data->buffer->new_signal_count, shared_data->buffer_count + 1);
+						if (!shared_data->buffer->rtr_flag)
+						{
+							rtr_signal_count = 0; // reset rtr signal count
+							shared_data->buffer->rtr_flag = true;
+						}
+						else
+						{
+							printf("\nProcess thread skipped buffer %d time(s)! Ready to process buffer %d\n", rtr_signal_count, shared_data->buffer_count + 1);
+						}
+						pthread_cond_signal(shared_data->ready_to_read_cond);
+						rtr_signal_count++;
 					}
 					else
 					{
