@@ -1,34 +1,17 @@
 #include "preprocessing.h"
 #include <stdlib.h> // for malloc/free (if allowed in your environment)
 
-int lowpass_filter(double *in_signal, double *lpf_signal, int signal_length)
+#include <stdio.h> // for printf (if desired)
+#include "config.h"
+#include "filter_coeffs.h" // for filter coefficients
+
+int lowpass_filter(double *in_signal, double *lpf_signal, int signal_length, int is_bad_signal)
 {
-	const double COEFFS[] = {// bad signal coeffs
-													 -0.000175523523401278, -4.21964700295067e-05, 0.000358539018147976,
-													 0.000818885111422960, 0.000880009800921136, 0.000146593519844785,
-													 -0.00126741644966190, -0.00253045483942841, -0.00244556829945420,
-													 -0.000319706972940245, 0.00317857417147882, 0.00592145559962027,
-													 0.00539613367777395, 0.000551550182268367, -0.00676355540997375,
-													 -0.0120612610944701, -0.0105955267789609, -0.000810680537608409,
-													 0.0133368278569080, 0.0232430247578836, 0.0201144233650769,
-													 0.00105005485701899, -0.0268395094187461, -0.0474572229190745,
-													 -0.0425069593752636, -0.00121950816368866, 0.0720776679538792,
-													 0.157159542594032, 0.225209268764937, 0.251185078042975,
-													 0.225209268764937, 0.157159542594032, 0.0720776679538792,
-													 -0.00121950816368866, -0.0425069593752636, -0.0474572229190745,
-													 -0.0268395094187461, 0.00105005485701899, 0.0201144233650769,
-													 0.0232430247578836, 0.0133368278569080, -0.000810680537608409,
-													 -0.0105955267789609, -0.0120612610944701, -0.00676355540997375,
-													 0.000551550182268367, 0.00539613367777395, 0.00592145559962027,
-													 0.00317857417147882, -0.000319706972940245, -0.00244556829945420,
-													 -0.00253045483942841, -0.00126741644966190, 0.000146593519844785,
-													 0.000880009800921136, 0.000818885111422960, 0.000358539018147976,
-													 -4.21964700295067e-05, -0.000175523523401278};
+	const double *lpf_coeff = is_bad_signal ? bad_sig_lpf_coeffs : good_sig_lpf_coeffs;
+	// const double *lpf_coeff = good_sig_lpf_coeffs;
 
-	// const double COEFFS[] = {// good signal coeffs
-	// 												 0.000194720086237888, 0.000144930119587125, -0.000171837033034261, -0.000628819090270635, -0.000827573615659776, -0.000356935142036995, 0.000778687791273994, 0.00191555010349220, 0.00200911579138445, 0.000417689179478792, -0.00231422386294391, -0.00439206856301906, -0.00378608506916193, 0.000133188407427823, 0.00550817643781035, 0.00857801369674978, 0.00604150270935343, -0.00212401169156005, -0.0115088652086568, -0.0152356778642469, -0.00848338661742213, 0.00713185040005169, 0.0226819358786512, 0.0262354806038224, 0.0106961936678084, -0.0194009704345960, -0.0470528888039203, -0.0498720349755645, -0.0122454797441033, 0.0640048867098359, 0.157091856763482, 0.233409595561307, 0.262854967616885, 0.233409595561307, 0.157091856763482, 0.0640048867098359, -0.0122454797441033, -0.0498720349755645, -0.0470528888039203, -0.0194009704345960, 0.0106961936678084, 0.0262354806038224, 0.0226819358786512, 0.00713185040005169, -0.00848338661742213, -0.0152356778642469, -0.0115088652086568, -0.00212401169156005, 0.00604150270935343, 0.00857801369674978, 0.00550817643781035, 0.000133188407427823, -0.00378608506916193, -0.00439206856301906, -0.00231422386294391, 0.000417689179478792, 0.00200911579138445, 0.00191555010349220, 0.000778687791273994, -0.000356935142036995, -0.000827573615659776, -0.000628819090270635, -0.000171837033034261, 0.000144930119587125, 0.000194720086237888};
-
-	int filter_order = sizeof(COEFFS) / sizeof(COEFFS[0]) - 1;
+	int filter_order = is_bad_signal ? bad_sig_lpf_coeffs_len - 1 : good_sig_lpf_coeffs_len - 1;
+	// int filter_order = good_sig_lpf_coeffs_len - 1;
 
 	double padded_signal[LPF_PADDED_BUFFER_SIZE];
 	for (int i = 0; i < LPF_PADDED_BUFFER_SIZE; i++) // this for loop is to mirror the MATLAB logic, romove if not needed
@@ -49,7 +32,7 @@ int lowpass_filter(double *in_signal, double *lpf_signal, int signal_length)
 	}
 
 	// Step 2: Apply FIR Filtering
-	if (lowpass_fir_filter(COEFFS, filter_order + 1, padded_signal, padded_lpf_signal, signal_length + (LPF_PADDING_SIZE * 2)))
+	if (lowpass_fir_filter(lpf_coeff, filter_order + 1, padded_signal, padded_lpf_signal, signal_length + (LPF_PADDING_SIZE * 2)))
 	{
 		printf("Error: FIR filtering failed.\n");
 		return 1;
@@ -140,28 +123,13 @@ int lowpass_fir_filter(const double *coeffs, int coeff_len, const double *in_sig
 
 int highpass_filter(double *in_signal, int in_signal_len, double *out_hpf_signal, int *out_hpf_signal_len)
 {
-	const double COEFFS[HPF_FILTER_ORDER + 1] = {
-			-0.00788739916497821, -0.00883748945388316, -0.00982539957188940, -0.0108458743104990,
-			-0.0118931431763899, -0.0129609677159769, -0.0140426954726160, -0.0151313200039590,
-			-0.0162195462972988, -0.0172998608393711, -0.0183646055252676, -0.0194060545299731,
-			-0.0204164932165573, -0.0213882981180202, -0.0223140170058552, -0.0231864480479760,
-			-0.0239987170620023, -0.0247443518870506, -0.0254173529279569, -0.0260122589698998,
-			-0.0265242074181275, -0.0269489881861568, -0.0272830905354722, -0.0275237422592968,
-			-0.0276689407011917, 0.972282524795331, -0.0276689407011917, -0.0275237422592968,
-			-0.0272830905354722, -0.0269489881861568, -0.0265242074181275, -0.0260122589698998,
-			-0.0254173529279569, -0.0247443518870505, -0.0239987170620022, -0.0231864480479760,
-			-0.0223140170058552, -0.0213882981180202, -0.0204164932165573, -0.0194060545299731,
-			-0.0183646055252676, -0.0172998608393711, -0.0162195462972988, -0.0151313200039590,
-			-0.0140426954726160, -0.0129609677159769, -0.0118931431763899, -0.0108458743104990,
-			-0.00982539957188940, -0.00883748945388316, -0.00788739916497821}; // the filter order is declared in config.h. If the coeff length changes, the filter order should be updated in config.h. Else, the code will throw error below.
-
-	if (sizeof(COEFFS) / sizeof(COEFFS[0]) != HPF_FILTER_ORDER + 1)
+	if (hpf_coeffs_len != HPF_FILTER_ORDER + 1)
 	{
 		printf("\nError: Highpass filter order mismatch. HPF_FILTER_ORDER must equal coeff length -1. Check HPF_FILTER_ORDER value at config.h.\n");
 		return 1;
 	}
 
-	int filter_order = sizeof(COEFFS) / sizeof(COEFFS[0]) - 1;
+	int filter_order = hpf_coeffs_len - 1;
 
 	double padded_signal[HPF_PADDED_SIGNAL_SIZE];
 	for (int i = 0; i < HPF_PADDED_SIGNAL_SIZE; i++) // this for loop is to mirror the MATLAB logic, romove if not needed
@@ -181,7 +149,7 @@ int highpass_filter(double *in_signal, int in_signal_len, double *out_hpf_signal
 	}
 
 	// Step 2: Apply FIR Filtering
-	if (highpass_fir_filter(COEFFS, filter_order + 1, padded_signal, HPF_PADDED_SIGNAL_SIZE, hpf_conv_signal, HPF_CONV_PADDED_SIGNAL_SIZE))
+	if (highpass_fir_filter(hpf_coeffs, filter_order + 1, padded_signal, HPF_PADDED_SIGNAL_SIZE, hpf_conv_signal, HPF_CONV_PADDED_SIGNAL_SIZE))
 	{
 		printf("\nError: FIR filtering failed.\n");
 		return 1;

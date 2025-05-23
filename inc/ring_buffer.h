@@ -1,9 +1,7 @@
 #ifndef RING_BUFFER_H
 #define RING_BUFFER_H
 
-#include <stdio.h>
 #include <stdbool.h>
-#include <stddef.h> // for NULL
 #include <config.h>
 
 // Circular buffer size

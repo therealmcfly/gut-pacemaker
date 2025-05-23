@@ -119,8 +119,15 @@ int detection_pipeline(double *buffer, int shift, int i, int *num_activations, i
 	/* ---------------------------- Low-Pass Filtering ---------------------------  */
 	double lowpass_signal[BUFFER_SIZE];
 	int lpf_signal_len = sizeof(lowpass_signal) / sizeof(lowpass_signal[0]);
+	int is_bad_signal = 0; // 0 means good signal, 1 means bad signal
 
-	if (lowpass_filter(buffer, lowpass_signal, lpf_signal_len))
+	// check file_name if it starts with "exp" then is_bad_signal = 1, this makes this module not reuseable. need to be changed in the future
+	if (file_name[0] == 'e' && file_name[1] == 'x' && file_name[2] == 'p')
+	{
+		is_bad_signal = 1;
+	}
+
+	if (lowpass_filter(buffer, lowpass_signal, lpf_signal_len, is_bad_signal))
 	{
 		printf("\nError: Low-pass filtering failed in %dth buffer.\n", shift);
 		return ERROR;

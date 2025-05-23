@@ -1,5 +1,8 @@
 #include "ring_buffer.h"
 
+#include <stdio.h>
+#include <stddef.h> // for NULL
+
 #define WRITE_COUNT_INIT_VAL 0
 #define READY_TO_READ_INIT_VAL 0
 #define IS_FULL_INIT_VAL 0

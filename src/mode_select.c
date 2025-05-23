@@ -32,7 +32,14 @@ RunMode select_mode(void)
 			continue;
 		}
 		if (choice >= 1 && choice <= 3)
+		{
+			while (getchar() != '\n')
+			{
+				// flush input
+			}
 			return (RunMode)choice;
+		}
+
 		else
 			printf("Invalid choice. Try again.\n");
 	}
