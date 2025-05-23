@@ -26,7 +26,8 @@
 #define TARGET_FREQUENCY 32		 // Signal frequency in Hz
 #define DATA_DIRECTORY "data/" // Set to data directory from where the executable is being run
 #define INITIAL_CAPACITY 500	 // Start memory allocation for rows
-#define DEFAULT_FILE "exp_16_output_512.csv"
+// #define DEFAULT_FILE "exp_16_output_512.csv"
+#define DEFAULT_FILE "pig41exp2_30.csv"
 #define BUFFER_SIZE 1001 // Must be a multiple of 2
 
 #define BUFFER_SIZE_HALF (BUFFER_SIZE / 2) // Half of the buffer size
