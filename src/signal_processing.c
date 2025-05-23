@@ -12,7 +12,7 @@
 #define ERROR 1
 #define ERROR_BUFFER_SIZE 2
 
-int detect_activations(double *in_signal, size_t signal_length, int *channel_num, char *file_name, int *cur_data_freq)
+int detect_activations(double *in_signal, size_t signal_length, int *channel, char *filename, int *cur_data_freq)
 {
 	int activations[ACTIVATIONS_ARRAY_SIZE]; // Buffer for activation indices
 	int num_activations = 0;								 // Number of activations
@@ -65,7 +65,7 @@ int detect_activations(double *in_signal, size_t signal_length, int *channel_num
 #ifdef PRE_ACTIVATION_DETECTION_VERIFICATION
 	// int activations_len = sizeof(activations) / sizeof(activations[0]);
 
-	if (check_activations(activations, num_activations, *channel_num, file_name, "actdpre"))
+	if (check_activations(activations, num_activations, *channel, filename, "actdpre"))
 	{
 		printf("\nError occured while checking activation detection result.\n");
 		return ERROR;
@@ -77,7 +77,7 @@ int detect_activations(double *in_signal, size_t signal_length, int *channel_num
 
 #ifdef ACTIVATION_DETECTION_VERIFICATION
 	// Check Activation Removal Result
-	if (check_activations(activations, num_activations, *channel_num, file_name, "actd"))
+	if (check_activations(activations, num_activations, *channel, filename, "actd"))
 	{
 		printf("\nError occured while checking activation detection result.\n");
 		return ERROR;
@@ -86,8 +86,8 @@ int detect_activations(double *in_signal, size_t signal_length, int *channel_num
 #endif
 
 	printf("\n--------------------- RESULTS ---------------------\n\n");
-	printf("Signal name: %s\n", file_name);
-	printf("Channel number: %d\n", *channel_num);
+	printf("Signal name: %s\n", filename);
+	printf("Channel number: %d\n", *channel);
 	printf("Number of samples: %zu\n", signal_length);
 	printf("Number of samples processed: %d\n", last_sample_index);
 	printf("Number of activations detected: %d\n", num_activations);
@@ -105,6 +105,10 @@ int detect_activations(double *in_signal, size_t signal_length, int *channel_num
 int detection_pipeline(double *buffer, int shift, int i, int *num_activations, int *activations)
 {
 	printf("\n\tStart detection pipeline...\n");
+
+	char *filename = file_name;
+	int channel = channel_num;
+	int freq = cur_data_freq;
 	// start the timer for the current buffer
 	Timer buffer_timer;
 	timer_start(&buffer_timer);
@@ -121,8 +125,8 @@ int detection_pipeline(double *buffer, int shift, int i, int *num_activations, i
 	int lpf_signal_len = sizeof(lowpass_signal) / sizeof(lowpass_signal[0]);
 	int is_bad_signal = 0; // 0 means good signal, 1 means bad signal
 
-	// check file_name if it starts with "exp" then is_bad_signal = 1, this makes this module not reuseable. need to be changed in the future
-	if (file_name[0] == 'e' && file_name[1] == 'x' && file_name[2] == 'p')
+	// check filename if it starts with "exp" then is_bad_signal = 1, this makes this module not reuseable. need to be changed in the future
+	if (filename[0] == 'e' && filename[1] == 'x' && filename[2] == 'p')
 	{
 		is_bad_signal = 1;
 	}
@@ -147,7 +151,7 @@ int detection_pipeline(double *buffer, int shift, int i, int *num_activations, i
 #endif
 #ifdef LOW_PASS_FILTER_VERIFICATION
 	// Check Low-Pass Filtering Result
-	if (check_processing_result(lowpass_signal, lpf_signal_len, channel_num, file_name, "lpf", shift, PRECISION))
+	if (check_processing_result(lowpass_signal, lpf_signal_len, channel, filename, "lpf", shift, PRECISION))
 	{
 		printf("\nError occured while checking low pass filtering result.\n");
 		return ERROR;
@@ -172,7 +176,7 @@ int detection_pipeline(double *buffer, int shift, int i, int *num_activations, i
 #endif
 #ifdef HIGH_PASS_FILTER_VERIFICATION
 	// Check High-Pass Filtering Result
-	if (check_processing_result(preprocessed_signal, preprocessed_signal_len, channel_num, file_name, "hpf", shift, PRECISION))
+	if (check_processing_result(preprocessed_signal, preprocessed_signal_len, channel, filename, "hpf", shift, PRECISION))
 	{
 		printf("\nError occured while checking high pass filtering result.\n");
 		return ERROR;
@@ -188,7 +192,7 @@ int detection_pipeline(double *buffer, int shift, int i, int *num_activations, i
 	}
 #ifdef ARTIFACT_REMOVAL_VERIFICATION
 	// Check Artifact Removal Result
-	if (check_processing_result(preprocessed_signal, preprocessed_signal_len, channel_num, file_name, "ad", shift, PRECISION))
+	if (check_processing_result(preprocessed_signal, preprocessed_signal_len, channel, filename, "ad", shift, PRECISION))
 	{
 		printf("\nError occured while checking artifact detection and removal result.\n");
 		return ERROR;
@@ -210,7 +214,7 @@ int detection_pipeline(double *buffer, int shift, int i, int *num_activations, i
 	}
 #ifdef NEO_TRANSFORM_VERIFICATION
 	// Check NEO Transform Result
-	if (check_processing_result(neo_signal, neo_signal_len, channel_num, file_name, "neo", shift, PRECISION))
+	if (check_processing_result(neo_signal, neo_signal_len, channel, filename, "neo", shift, PRECISION))
 	{
 		printf("\nError occured while checking NEO Transform result.\n");
 		return ERROR;
@@ -222,7 +226,6 @@ int detection_pipeline(double *buffer, int shift, int i, int *num_activations, i
 
 	double maf_signal[NEO_MAF_ED_SIGNAL_SIZE];
 	int maf_signal_len = sizeof(maf_signal) / sizeof(maf_signal[0]);
-	int freq = TARGET_FREQUENCY;
 
 	if (moving_average_filtering(neo_signal, maf_signal, maf_signal_len, &freq))
 	{
@@ -231,7 +234,7 @@ int detection_pipeline(double *buffer, int shift, int i, int *num_activations, i
 	}
 #ifdef MOVING_AVERAGE_FILTER_VERIFICATION
 	// Check Moving Average Filtering Result
-	if (check_processing_result(maf_signal, maf_signal_len, channel_num, file_name, "maf", shift, PRECISION))
+	if (check_processing_result(maf_signal, maf_signal_len, channel, filename, "maf", shift, PRECISION))
 	{
 		printf("\nError occured while checking moving average filtering result.\n");
 		return ERROR;
@@ -252,7 +255,7 @@ int detection_pipeline(double *buffer, int shift, int i, int *num_activations, i
 
 #ifdef EDGE_DETECTION_VERIFICATION
 	// Check Edge Detection Result
-	if (check_processing_result(edge_signal, maf_signal_len, channel_num, file_name, "ed", shift, ED_PRECISION))
+	if (check_processing_result(edge_signal, maf_signal_len, channel, filename, "ed", shift, ED_PRECISION))
 	{
 		printf("\nError occured while checking edge detection result.\n");
 		return ERROR;
