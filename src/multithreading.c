@@ -1,12 +1,13 @@
 #include "multithreading.h"
 
+#include <stdio.h>
+
 #include "config.h"
 #include "shared_data.h"
 
 #include "signal_processing.h"
 #include "tcp_server.h"
 #include "ring_buffer.h"
-#include "signal_buffering.h" // need to be removed when signal_buffering.c migrates to detection_pipeline.c
 
 void reset_flag(bool *flag)
 {
@@ -39,8 +40,7 @@ void *process_thread(void *data)
 	int start_sig_idx = 0;
 	int activations[ACTIVATIONS_ARRAY_SIZE]; // Buffer for activation indices
 	int num_activations = 0;
-	// print server_fd
-	printf("\nClient fd: %d\n", shared_data->server_fd);
+
 	while (shared_data->client_fd > 0)
 	{
 

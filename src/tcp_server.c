@@ -10,7 +10,7 @@
 #include <pthread.h>
 
 #include "config.h"
-#include "signal_buffering.h"
+#include "signal_processing.h"
 #include "ring_buffer.h"
 #include "file_io.h"
 
@@ -140,27 +140,27 @@ int tcp_server_receive(double *data, Timer *interval_timer, int *first_sample, i
 		total_read += r;
 	}
 
-	// Timing logic here
-	if (*first_sample)
-	{
-		timer_start(interval_timer);
-		*first_sample = 0;
-	}
-	else
-	{
-		timer_stop(interval_timer);
-		double interval_ms = timer_elapsed_ms(interval_timer);
-		double freq_hz = interval_ms > 0 ? 1000.0 / interval_ms : 0;
-		if (interval_ms > 0)
-		{
-			// printf("Sample interval: %.3f ms (%.2f Hz)\n", interval_ms, freq_hz);
-		}
-		else
-		{
-			printf("Sample interval: %.3f ms (infinity Hz)\n", interval_ms);
-		}
-		timer_start(interval_timer);
-	}
+	// // Timing logic here
+	// if (*first_sample)
+	// {
+	// 	timer_start(interval_timer);
+	// 	*first_sample = 0;
+	// }
+	// else
+	// {
+	// 	timer_stop(interval_timer);
+	// 	double interval_ms = timer_elapsed_ms(interval_timer);
+	// 	double freq_hz = interval_ms > 0 ? 1000.0 / interval_ms : 0;
+	// 	if (interval_ms > 0)
+	// 	{
+	// 		printf("Sample interval: %.3f ms (%.2f Hz)\n", interval_ms, freq_hz);
+	// 	}
+	// 	else
+	// 	{
+	// 		printf("Sample interval: %.3f ms (infinity Hz)\n", interval_ms);
+	// 	}
+	// 	timer_start(interval_timer);
+	// }
 
 	if (total_read == 0)
 	{
