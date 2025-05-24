@@ -185,7 +185,6 @@ int tcp_server_receive(double *data, Timer *interval_timer, int *first_sample, i
 int run_tcp_server(SharedData *shared_data)
 {
 	signal(SIGINT, handle_sigint);
-
 	if (tcp_server_init(&shared_data->server_fd) < 0)
 	{
 		printf("\nError: Failed to initialize TCP server.\n");
@@ -200,6 +199,7 @@ int run_tcp_server(SharedData *shared_data)
 			continue;
 		}
 
+		pthread_mutex_lock(shared_data->mutex);
 		printf("Simulink connected.\n");
 
 		// Receive filename first
@@ -216,6 +216,16 @@ int run_tcp_server(SharedData *shared_data)
 
 		printf("Received filename: %s\n", file_name);
 
+		int freq_bytes = recv(shared_data->client_fd, &cur_data_freq, sizeof(cur_data_freq), 0);
+		if (freq_bytes != sizeof(cur_data_freq))
+		{
+			printf("Failed to receive full int frequency.\n");
+			close(shared_data->client_fd);
+			shared_data->client_fd = -1;
+			continue;
+		}
+		printf("Received frequency information: %d hz\n", cur_data_freq);
+
 		int channel_bytes = recv(shared_data->client_fd, &channel_num, sizeof(channel_num), 0);
 
 		if (channel_bytes != sizeof(channel_num))
@@ -225,17 +235,9 @@ int run_tcp_server(SharedData *shared_data)
 			shared_data->client_fd = -1;
 			continue;
 		}
-
-		// char *ch_ptr = strstr(file_name, "ch");
-		// if (ch_ptr != NULL)
-		// {
-		// 	channel_num = atoi(ch_ptr + 2);
-		// }
-		// else
-		// {
-		// 	printf("Error: 'ch' not found in filename.\n");
-		// 	return 1;
-		// }
+		printf("Received channel number: %d\n", channel_num);
+		pthread_cond_signal(shared_data->client_connct_cond);
+		pthread_mutex_unlock(shared_data->mutex);
 
 		printf("Starting data reception...\n");
 
@@ -246,7 +248,6 @@ int run_tcp_server(SharedData *shared_data)
 		Timer interval_timer;
 		int first_sample = 1;
 
-		printf("Start signal reception...\n");
 		int rtr_signal_count = 0;
 		while (1) // === Inner loop: receive data from current client ===
 		{
@@ -267,13 +268,13 @@ int run_tcp_server(SharedData *shared_data)
 					if (!shared_data->buffer->is_full)
 					{
 						// Print animation
-						printf("\r(%d)", shared_data->buffer->new_signal_count); // Print count and clear leftovers;
+						printf("\r%s(%d)", RT_TITLE, shared_data->buffer->new_signal_count); // Print count and clear leftovers;
 						fflush(stdout);
 					}
 					else
 					{
 						buffer_initial_fill = true;
-						printf("\r(%d)", shared_data->buffer->new_signal_count); // Print count and clear leftovers;
+						printf("\r%s(%d)", RT_TITLE, shared_data->buffer->new_signal_count); // Print count and clear leftovers;
 						fflush(stdout);
 						printf(" new samples recieved. Ready to process buffer %d. (Buffer filled)\n", shared_data->buffer_count + 1);
 						shared_data->buffer->rtr_flag = true;
@@ -292,13 +293,13 @@ int run_tcp_server(SharedData *shared_data)
 					if (shared_data->buffer->new_signal_count < shared_data->buff_overlap_count)
 					{
 						// Print animation
-						printf("\r(%d)", shared_data->buffer->new_signal_count); // Print count and clear leftovers;
+						printf("\r%s(%d)", RT_TITLE, shared_data->buffer->new_signal_count); // Print count and clear leftovers;
 						fflush(stdout);
 					}
 					else
 					{
 						(shared_data->buffer_count)++;
-						printf("\r(%d)", shared_data->buffer->new_signal_count); // Print count and clear leftovers;
+						printf("\r%s(%d)", RT_TITLE, shared_data->buffer->new_signal_count); // Print count and clear leftovers;
 						fflush(stdout);
 						printf(" new samples recieved. Ready to process buffer %d. ", shared_data->buffer_count + 1);
 						shared_data->buffer->new_signal_count = 0; // reset new_signal_count

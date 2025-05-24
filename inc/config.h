@@ -7,13 +7,13 @@
 #define END_ROW 5
 
 // Verification flags
-#define CHANNEL_RETRIEVAL_VERIFICATION
-#define DOWNSAMPLING_VERIFICATION
-#define LOW_PASS_FILTER_VERIFICATION
-#define HIGH_PASS_FILTER_VERIFICATION
-#define ARTIFACT_REMOVAL_VERIFICATION
-#define NEO_TRANSFORM_VERIFICATION
-#define MOVING_AVERAGE_FILTER_VERIFICATION
+// #define CHANNEL_RETRIEVAL_VERIFICATION
+// #define DOWNSAMPLING_VERIFICATION
+// #define LOW_PASS_FILTER_VERIFICATION
+// #define HIGH_PASS_FILTER_VERIFICATION
+// #define ARTIFACT_REMOVAL_VERIFICATION
+// #define NEO_TRANSFORM_VERIFICATION
+// #define MOVING_AVERAGE_FILTER_VERIFICATION
 #define EDGE_DETECTION_VERIFICATION
 #define PRE_ACTIVATION_DETECTION_VERIFICATION
 #define ACTIVATION_DETECTION_VERIFICATION
@@ -26,8 +26,8 @@
 #define TARGET_FREQUENCY 32		 // Signal frequency in Hz
 #define DATA_DIRECTORY "data/" // Set to data directory from where the executable is being run
 #define INITIAL_CAPACITY 500	 // Start memory allocation for rows
-// #define DEFAULT_FILE "exp_16_output_512.csv"
-#define DEFAULT_FILE "pig41exp2_30.csv"
+#define DEFAULT_FILE "exp_16_output_512.csv"
+// #define DEFAULT_FILE "pig41exp2_30.csv"
 #define BUFFER_SIZE 1001 // Must be a multiple of 2
 
 #define BUFFER_SIZE_HALF (BUFFER_SIZE / 2) // Half of the buffer size
@@ -58,5 +58,9 @@
 #define ED_SCALAR_VALUE 59
 // Activation detection
 #define ACTIVATION_REMOVAL_THRESHOLD 500
+
+// Thread logs
+#define PT_TITLE "[Process Thread] "
+#define RT_TITLE "[Receive Thread] "
 
 #endif // CONFIG_H

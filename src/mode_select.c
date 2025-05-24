@@ -8,6 +8,7 @@
 // #include "signal_buffering.h"
 #include "signal_processing.h"
 
+// Initialize global variables
 size_t signal_length;
 int channel_num;
 char file_name[100]; // Buffer for file name
@@ -47,8 +48,6 @@ RunMode select_mode(void)
 
 int static_dataset_mode(int argc, char *argv[])
 {
-	// Initialize variables
-
 	// INITIALIZE SAMPLE DATA
 	// Sample data loading, channel selection, and downsampling is all handled within the get_sample_data function
 	// The function will return a pointer to sample data on success, NULL on error
@@ -86,12 +85,12 @@ int static_dataset_mode(int argc, char *argv[])
 int realtime_dataset_mode(int argc, char *argv[])
 {
 
-	cur_data_freq = TARGET_FREQUENCY;
-
 	// Initialize mutex and condition variable
 	pthread_mutex_t buffer_mutex;
+	pthread_cond_t client_connct_cond;
 	pthread_cond_t ready_to_read_cond;
 	pthread_mutex_init(&buffer_mutex, NULL);
+	pthread_cond_init(&client_connct_cond, NULL);
 	pthread_cond_init(&ready_to_read_cond, NULL);
 
 	// Initialize ring buffer
@@ -102,6 +101,7 @@ int realtime_dataset_mode(int argc, char *argv[])
 	SharedData shared_data = {
 			.buffer = &cir_buffer,
 			.mutex = &buffer_mutex,
+			.client_connct_cond = &client_connct_cond,
 			.ready_to_read_cond = &ready_to_read_cond,
 			.server_fd = -1,
 			.client_fd = -1,

@@ -13,6 +13,7 @@ typedef struct
 	// for all threads(Receive and Process)
 	RingBuffer *buffer; // pointer (big memory block)
 	pthread_mutex_t *mutex;
+	pthread_cond_t *client_connct_cond;
 	pthread_cond_t *ready_to_read_cond;
 	int buffer_count;
 	int buff_overlap_count;
