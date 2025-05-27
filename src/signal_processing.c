@@ -28,7 +28,6 @@ int detect_activations(double *in_signal, size_t signal_length, int *channel, ch
 	// double lowpass_signal[MIRROR_MATLAB_LOGIC ? BUFFER_SIZE + 1 /*+1 is to mirror the MATLAB logic*/ : BUFFER_SIZE];
 	// double hpf_signal[MIRROR_MATLAB_LOGIC ? (BUFFER_SIZE + 1 /*+1 is to mirror the MATLAB logic*/) + HPF_FILTER_ORDER : BUFFER_SIZE + HPF_FILTER_ORDER];
 	// double artifact_signal[MIRROR_MATLAB_LOGIC ? BUFFER_SIZE + 1 /*+1 is to mirror the MATLAB logic*/ + HPF_FILTER_ORDER : BUFFER_SIZE + HPF_FILTER_ORDER];
-	double buffer[BUFFER_SIZE];
 	// int cur_buffer_size = BUFFER_SIZE; // mirroring of the MATLAB logic, romove if not needed and replace all cur_buffer_size with BUFFER_SIZE
 
 	printf("\nStarting signal buffering...\n");
@@ -46,10 +45,14 @@ int detect_activations(double *in_signal, size_t signal_length, int *channel, ch
 		// Copy Original Signal into Buffer
 		for (int k = 0; k < BUFFER_SIZE; k++)
 		{
-			buffer[k] = in_signal[i + k];
+			if (!rb_push_sample(shared_data.buffer, in_signal[i + k])) // Push sample to ring buffer
+			{
+				printf("\nError: Failed to push sample to ring buffer at index %d.\n", i + k);
+				return ERROR;
+			}
 		}
 
-		if (detection_pipeline(buffer, shift, i, &num_activations, activations))
+		if (processing_pipeline(shift, i, &num_activations, activations, NULL))
 		{
 			printf("\nError occured in detect activations.\n");
 
@@ -102,7 +105,7 @@ int detect_activations(double *in_signal, size_t signal_length, int *channel, ch
 	return SUCCESS;
 }
 
-int detection_pipeline(double *buffer, int shift, int i, int *num_activations, int *activations)
+int processing_pipeline(int shift, int i, int *num_activations, int *activations, void (*callback_unlock_mutex)(void))
 {
 	printf("\n\tStart detection pipeline...\n");
 
@@ -131,11 +134,12 @@ int detection_pipeline(double *buffer, int shift, int i, int *num_activations, i
 		is_bad_signal = 1;
 	}
 
-	if (lowpass_filter(buffer, lowpass_signal, lpf_signal_len, is_bad_signal))
+	if (new_lowpass_filter(lowpass_signal, lpf_signal_len, is_bad_signal, callback_unlock_mutex))
 	{
 		printf("\nError: Low-pass filtering failed in %dth buffer.\n", shift);
 		return ERROR;
 	}
+
 	// for (int j = 0; j < lpf_signal_len; j++)
 	// {
 	// 	printf("lowpass_signal[%d] = %f\n", j, lowpass_signal[j]);
