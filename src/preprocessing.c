@@ -5,60 +5,7 @@
 #include "config.h"
 #include "filter_coeffs.h" // for filter coefficients
 #include "shared_data.h"
-
-int lowpass_filter(double *in_signal, double *lpf_signal, int signal_length, int is_bad_signal)
-{
-	const double *lpf_coeff = is_bad_signal ? bad_sig_lpf_coeffs : good_sig_lpf_coeffs;
-	// const double *lpf_coeff = good_sig_lpf_coeffs;
-
-	int filter_order = is_bad_signal ? bad_sig_lpf_coeffs_len - 1 : good_sig_lpf_coeffs_len - 1;
-	// int filter_order = good_sig_lpf_coeffs_len - 1;
-
-	double padded_signal[LPF_PADDED_BUFFER_SIZE];
-	for (int i = 0; i < LPF_PADDED_BUFFER_SIZE; i++) // this for loop is to mirror the MATLAB logic, romove if not needed
-	{
-		padded_signal[i] = 0.0;
-	}
-	double padded_lpf_signal[LPF_PADDED_BUFFER_SIZE];
-	for (int i = 0; i < LPF_PADDED_BUFFER_SIZE; i++) // this for loop is to mirror the MATLAB logic, romove if not needed
-	{
-		padded_lpf_signal[i] = 0.0;
-	}
-
-	// Step 1: Apply PADDING_SIZE padding front(left) and back(right) of signal (Replicating MATLAB's Strategy)
-	if (apply_padding(in_signal, signal_length, padded_signal, LPF_PADDED_BUFFER_SIZE, LPF_PADDING_SIZE))
-	{
-		printf("Error: Padding for low pass filtering failed.\n");
-		return 1;
-	}
-
-	// Step 2: Apply FIR Filtering
-	if (lowpass_fir_filter(lpf_coeff, filter_order + 1, padded_signal, padded_lpf_signal, signal_length + (LPF_PADDING_SIZE * 2)))
-	{
-		printf("Error: FIR filtering failed.\n");
-		return 1;
-	}
-
-	// Step 3: Remove padding
-	for (int i = 0; i < signal_length; i++)
-	{
-		lpf_signal[i] = padded_lpf_signal[i + LPF_PADDING_SIZE];
-		// printf("lpf_signal[%d]: %.15f\n", i, lpf_signal[i]);
-	}
-
-	// check the padding removal
-	if (lpf_signal[0] != padded_lpf_signal[LPF_PADDING_SIZE] || lpf_signal[signal_length - 1] != padded_lpf_signal[LPF_PADDING_SIZE + signal_length - 1])
-	{
-		printf("\nError in lowpass_filter(): Padding removal failed, check the padding logic.\n");
-		printf("lpf_signal[%d]: %.15f\n", 0, lpf_signal[0]);
-		printf("lpf_signal_wp[%d]: %.15f\n", LPF_PADDING_SIZE, padded_lpf_signal[LPF_PADDING_SIZE]);
-		printf("\nlpf_signal[%d]: %.15f\n", signal_length - 1, lpf_signal[signal_length - 1]);
-		printf("lpf_signal_wp[%d]: %.15f\n", LPF_PADDING_SIZE + signal_length - 1, padded_lpf_signal[LPF_PADDING_SIZE + signal_length - 1]);
-		return 1;
-	}
-
-	return 0;
-}
+#include "ring_buffer.h" // for RingBuffer functions
 
 int new_lowpass_filter(double *lpf_signal, int signal_length, int is_bad_signal, void (*callback_unlock_mutex)(void))
 {
@@ -250,64 +197,6 @@ int highpass_fir_filter(const double *coeffs, int num_coeffs, const double *in_s
 			}
 		}
 	}
-
-	return 0;
-}
-
-int apply_padding(double *in_signal, int in_signal_len, double *out_padded_signal, int out_padded_signal_len, int padding_size)
-{
-	// Ensure the padded_signal buffer is large enough
-	if (out_padded_signal_len != in_signal_len + (2 * padding_size))
-	{
-		printf("\nError: out_padded_signal_len buffer size in apply_padding is incorrect. out_padded_signal_len is %d\n", out_padded_signal_len);
-		return 1;
-	}
-
-	// Step 1: Apply PADDING_SIZE padding front(left) and back(right) of signal (Replicating MATLAB's Strategy)
-	double start_signal = in_signal[0];
-	double end_signal = in_signal[in_signal_len - 1];
-	for (int i = 0; i < out_padded_signal_len; i++)
-	{
-		if (i < padding_size)
-		{
-			out_padded_signal[i] = start_signal; // First PADDING_SIZE padding to left with start_signal
-		}
-		else if (i >= padding_size && i < padding_size + in_signal_len)
-		{
-			out_padded_signal[i] = in_signal[i - padding_size]; // Copying signal to middle of padded_signal
-		}
-		else
-		{
-			out_padded_signal[i] = end_signal; // Last PADDING_SIZE padding to right with end_signal
-		}
-	}
-
-	return 0;
-}
-
-int apply_padding_from_rb(int in_signal_len, double *out_padded_signal, int out_padded_signal_len, int padding_size)
-{
-	// Ensure the padded_signal buffer is large enough
-	if (out_padded_signal_len != in_signal_len + (2 * padding_size))
-	{
-		printf("\nError: out_padded_signal_len buffer size in apply_padding is incorrect. out_padded_signal_len is %d\n", out_padded_signal_len);
-		return 1;
-	}
-
-	// Step 1: Apply PADDING_SIZE padding front(left) and back(right) of signal (Replicating MATLAB's Strategy)
-
-	double *out_sig_mid_start_ptr = out_padded_signal + padding_size;												// Pointer to the start of the middle part of the padded signal
-	rb_snapshot(shared_data.buffer, out_sig_mid_start_ptr, shared_data.buff_overlap_count); // Copy the ring buffer to the output padded signal
-
-	double *start_signal = out_sig_mid_start_ptr;
-	double *end_signal = out_sig_mid_start_ptr + in_signal_len - 1;
-
-	for (int i = 0; i < padding_size; i++)
-	{
-		out_padded_signal[i] = *start_signal;															// First PADDING_SIZE padding to left
-		out_padded_signal[(out_padded_signal_len - 1) - i] = *end_signal; // Last PADDING_SIZE padding to right
-	}
-
 	return 0;
 }
 
@@ -351,7 +240,6 @@ int detect_remove_artifacts(double *in_signal, int signal_length)
 					in_signal[i + k] = window[k];
 				}
 			}
-
 			else
 			{
 #if DEBUG
@@ -414,6 +302,71 @@ void remove_artifact(double *window, int window_len, int x1, int x2)
 		window[i] = evaluate_spline(a, b, c, d, x1, x2, i);
 		// printf("window[%d]: %lf\n", i, window[i]); // Debugging output
 	}
+}
+
+/* ---------↓↓↓↓↓↓------- Utility Functions ---------↓↓↓↓↓↓------- */
+
+int apply_padding(double *in_signal, int in_signal_len, double *out_padded_signal, int out_padded_signal_len, int padding_size)
+{
+	// Ensure the padded_signal buffer is large enough
+	if (out_padded_signal_len != in_signal_len + (2 * padding_size))
+	{
+		printf("\nError: out_padded_signal_len buffer size in apply_padding is incorrect. out_padded_signal_len is %d\n", out_padded_signal_len);
+		return 1;
+	}
+
+	// Step 1: Apply PADDING_SIZE padding front(left) and back(right) of signal (Replicating MATLAB's Strategy)
+	double start_signal = in_signal[0];
+	double end_signal = in_signal[in_signal_len - 1];
+	for (int i = 0; i < out_padded_signal_len; i++)
+	{
+		if (i < padding_size)
+		{
+			out_padded_signal[i] = start_signal; // First PADDING_SIZE padding to left with start_signal
+		}
+		else if (i >= padding_size && i < padding_size + in_signal_len)
+		{
+			out_padded_signal[i] = in_signal[i - padding_size]; // Copying signal to middle of padded_signal
+		}
+		else
+		{
+			out_padded_signal[i] = end_signal; // Last PADDING_SIZE padding to right with end_signal
+		}
+	}
+
+	return 0;
+}
+
+int apply_padding_from_rb(int in_signal_len, double *out_padded_signal, int out_padded_signal_len, int padding_size)
+{
+	// Ensure the padded_signal buffer is large enough
+	if (out_padded_signal_len != in_signal_len + (2 * padding_size))
+	{
+		printf("\nError: out_padded_signal_len buffer size in apply_padding is incorrect. out_padded_signal_len is %d\n", out_padded_signal_len);
+		return 1;
+	}
+	// Validate shared data
+	if (shared_data.buffer == NULL)
+	{
+		printf("\nError: shared_data.buffer is NULL\n");
+		return 1;
+	}
+
+	// Step 1: Apply PADDING_SIZE padding front(left) and back(right) of signal (Replicating MATLAB's Strategy)
+
+	double *out_sig_mid_start_ptr = out_padded_signal + padding_size;												// Pointer to the start of the middle part of the padded signal
+	rb_snapshot(shared_data.buffer, out_sig_mid_start_ptr, shared_data.buff_overlap_count); // Copy the ring buffer to the output padded signal
+
+	double *start_signal = out_sig_mid_start_ptr;
+	double *end_signal = out_sig_mid_start_ptr + in_signal_len - 1;
+
+	for (int i = 0; i < padding_size; i++)
+	{
+		out_padded_signal[i] = *start_signal;															// First PADDING_SIZE padding to left
+		out_padded_signal[(out_padded_signal_len - 1) - i] = *end_signal; // Last PADDING_SIZE padding to right
+	}
+
+	return 0;
 }
 
 // Function to compute cubic spline coefficients for a single segment

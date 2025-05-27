@@ -62,6 +62,11 @@ int static_dataset_mode(int argc, char *argv[])
 		return 1;
 	}
 
+	// Initialize ring buffer
+	RingBuffer cir_buffer;
+	rb_init(&cir_buffer);
+	shared_data.buffer = &cir_buffer; // pointer to ring buffer
+
 	/*----------------------------------------------------------------------------------*/
 	/*----------------------------- SIGNAL BUFFERING -----------------------------------*/
 	/*----------------------------------------------------------------------------------*/
