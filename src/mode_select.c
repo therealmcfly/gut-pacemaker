@@ -14,6 +14,8 @@ int channel_num;
 char file_name[100]; // Buffer for file name
 int cur_data_freq;	 // Buffer for exp data frequency
 
+SharedData shared_data; // Global shared data for all threads
+
 RunMode select_mode(void)
 {
 	int choice;
@@ -98,26 +100,25 @@ int realtime_dataset_mode(int argc, char *argv[])
 	rb_init(&cir_buffer);
 
 	// Initialize shared data
-	SharedData shared_data = {
-			.buffer = &cir_buffer,
-			.mutex = &buffer_mutex,
-			.client_connct_cond = &client_connct_cond,
-			.ready_to_read_cond = &ready_to_read_cond,
-			.server_fd = -1,
-			.client_fd = -1,
-			.buff_overlap_count = BUFFER_SIZE_HALF,
-			.buffer_count = 0};
+	shared_data.buffer = &cir_buffer; // pointer to ring buffer
+	shared_data.mutex = &buffer_mutex;
+	shared_data.client_connct_cond = &client_connct_cond;
+	shared_data.ready_to_read_cond = &ready_to_read_cond;
+	shared_data.buffer_count = 0;											 // buffer count
+	shared_data.buff_overlap_count = BUFFER_SIZE_HALF; // overlap count
+	shared_data.server_fd = -1;												 // server file descriptor
+	shared_data.client_fd = -1;												 // client file descriptor
 
 	pthread_t recv_thtread, proc_thread;
 
-	if (pthread_create(&recv_thtread, NULL, receive_thread, &shared_data) != 0)
+	if (pthread_create(&recv_thtread, NULL, receive_thread, NULL) != 0)
 	{
 		printf("\nError creating TCP server thread.\n");
 
 		return 1;
 	}
 
-	if (pthread_create(&proc_thread, NULL, process_thread, &shared_data) != 0)
+	if (pthread_create(&proc_thread, NULL, process_thread, NULL) != 0)
 	{
 		printf("\nError creating signal buffering thread.\n");
 		return 1;

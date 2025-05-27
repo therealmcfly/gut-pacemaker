@@ -31,4 +31,6 @@ extern int channel_num;
 extern char file_name[100];
 extern int cur_data_freq;
 
+extern SharedData shared_data; // Global shared data for all threads
+
 #endif

@@ -41,12 +41,12 @@
 // PREPROCESSING CONSTANTS
 // Low-pass filter
 #define LPF_PADDING_SIZE 60
-#define LPF_PADDED_BUFFER_SIZE ((BUFFER_SIZE + 1 /* + 1 to mirror the MATLAB logic, romove if not needed*/) + (2 * LPF_PADDING_SIZE))
+#define LPF_PADDED_BUFFER_SIZE ((BUFFER_SIZE) + (2 * LPF_PADDING_SIZE))
 // High-pass filter
 #define HPF_FILTER_ORDER 50 // coefficient is declared in highpass_filter function
 #define HPF_PADDING_SIZE 50
 #define HPF_AD_SIGNAL_LEN (BUFFER_SIZE + HPF_FILTER_ORDER)
-#define HPF_PADDED_SIGNAL_SIZE ((BUFFER_SIZE + 1 /* + 1 to mirror the MATLAB logic, romove if not needed*/) + (2 * HPF_PADDING_SIZE))
+#define HPF_PADDED_SIGNAL_SIZE ((BUFFER_SIZE) + (2 * HPF_PADDING_SIZE))
 #define HPF_CONV_PADDED_SIGNAL_SIZE (HPF_PADDED_SIGNAL_SIZE + HPF_FILTER_ORDER)
 // Artifact detection and removal
 #define ARTIFACT_DETECT_WINDOW_WIDTH 101 // Window size for artifact detection

@@ -4,6 +4,7 @@
 #include <stdio.h> // for printf (if desired)
 #include "config.h"
 #include "filter_coeffs.h" // for filter coefficients
+#include "shared_data.h"
 
 int lowpass_filter(double *in_signal, double *lpf_signal, int signal_length, int is_bad_signal)
 {
@@ -29,6 +30,65 @@ int lowpass_filter(double *in_signal, double *lpf_signal, int signal_length, int
 	{
 		printf("Error: Padding for low pass filtering failed.\n");
 		return 1;
+	}
+
+	// Step 2: Apply FIR Filtering
+	if (lowpass_fir_filter(lpf_coeff, filter_order + 1, padded_signal, padded_lpf_signal, signal_length + (LPF_PADDING_SIZE * 2)))
+	{
+		printf("Error: FIR filtering failed.\n");
+		return 1;
+	}
+
+	// Step 3: Remove padding
+	for (int i = 0; i < signal_length; i++)
+	{
+		lpf_signal[i] = padded_lpf_signal[i + LPF_PADDING_SIZE];
+		// printf("lpf_signal[%d]: %.15f\n", i, lpf_signal[i]);
+	}
+
+	// check the padding removal
+	if (lpf_signal[0] != padded_lpf_signal[LPF_PADDING_SIZE] || lpf_signal[signal_length - 1] != padded_lpf_signal[LPF_PADDING_SIZE + signal_length - 1])
+	{
+		printf("\nError in lowpass_filter(): Padding removal failed, check the padding logic.\n");
+		printf("lpf_signal[%d]: %.15f\n", 0, lpf_signal[0]);
+		printf("lpf_signal_wp[%d]: %.15f\n", LPF_PADDING_SIZE, padded_lpf_signal[LPF_PADDING_SIZE]);
+		printf("\nlpf_signal[%d]: %.15f\n", signal_length - 1, lpf_signal[signal_length - 1]);
+		printf("lpf_signal_wp[%d]: %.15f\n", LPF_PADDING_SIZE + signal_length - 1, padded_lpf_signal[LPF_PADDING_SIZE + signal_length - 1]);
+		return 1;
+	}
+
+	return 0;
+}
+
+int new_lowpass_filter(double *lpf_signal, int signal_length, int is_bad_signal, void (*callback_unlock_mutex)(void))
+{
+	const double *lpf_coeff = is_bad_signal ? bad_sig_lpf_coeffs : good_sig_lpf_coeffs;
+	// const double *lpf_coeff = good_sig_lpf_coeffs;
+
+	int filter_order = is_bad_signal ? bad_sig_lpf_coeffs_len - 1 : good_sig_lpf_coeffs_len - 1;
+	// int filter_order = good_sig_lpf_coeffs_len - 1;
+
+	double padded_signal[LPF_PADDED_BUFFER_SIZE];
+	for (int i = 0; i < LPF_PADDED_BUFFER_SIZE; i++) // this for loop is to mirror the MATLAB logic, romove if not needed
+	{
+		padded_signal[i] = 0.0;
+	}
+	double padded_lpf_signal[LPF_PADDED_BUFFER_SIZE];
+	for (int i = 0; i < LPF_PADDED_BUFFER_SIZE; i++) // this for loop is to mirror the MATLAB logic, romove if not needed
+	{
+		padded_lpf_signal[i] = 0.0;
+	}
+
+	// Step 1: Apply PADDING_SIZE padding front(left) and back(right) of signal (Replicating MATLAB's Strategy)
+	if (apply_padding_from_rb(signal_length, padded_signal, LPF_PADDED_BUFFER_SIZE, LPF_PADDING_SIZE))
+	{
+		printf("Error: Padding for low pass filtering failed.\n");
+		return 1;
+	}
+
+	if (callback_unlock_mutex != NULL)
+	{
+		callback_unlock_mutex(); // unlock mutex after padding
 	}
 
 	// Step 2: Apply FIR Filtering
@@ -197,16 +257,16 @@ int highpass_fir_filter(const double *coeffs, int num_coeffs, const double *in_s
 int apply_padding(double *in_signal, int in_signal_len, double *out_padded_signal, int out_padded_signal_len, int padding_size)
 {
 	// Ensure the padded_signal buffer is large enough
-	if (out_padded_signal_len < in_signal_len + (2 * padding_size))
+	if (out_padded_signal_len != in_signal_len + (2 * padding_size))
 	{
-		printf("\nError: out_padded_signal buffer too small in apply_padding\n");
+		printf("\nError: out_padded_signal_len buffer size in apply_padding is incorrect. out_padded_signal_len is %d\n", out_padded_signal_len);
 		return 1;
 	}
 
 	// Step 1: Apply PADDING_SIZE padding front(left) and back(right) of signal (Replicating MATLAB's Strategy)
 	double start_signal = in_signal[0];
 	double end_signal = in_signal[in_signal_len - 1];
-	for (int i = 0; i < in_signal_len + (padding_size * 2); i++)
+	for (int i = 0; i < out_padded_signal_len; i++)
 	{
 		if (i < padding_size)
 		{
@@ -221,6 +281,33 @@ int apply_padding(double *in_signal, int in_signal_len, double *out_padded_signa
 			out_padded_signal[i] = end_signal; // Last PADDING_SIZE padding to right with end_signal
 		}
 	}
+
+	return 0;
+}
+
+int apply_padding_from_rb(int in_signal_len, double *out_padded_signal, int out_padded_signal_len, int padding_size)
+{
+	// Ensure the padded_signal buffer is large enough
+	if (out_padded_signal_len != in_signal_len + (2 * padding_size))
+	{
+		printf("\nError: out_padded_signal_len buffer size in apply_padding is incorrect. out_padded_signal_len is %d\n", out_padded_signal_len);
+		return 1;
+	}
+
+	// Step 1: Apply PADDING_SIZE padding front(left) and back(right) of signal (Replicating MATLAB's Strategy)
+
+	double *out_sig_mid_start_ptr = out_padded_signal + padding_size;												// Pointer to the start of the middle part of the padded signal
+	rb_snapshot(shared_data.buffer, out_sig_mid_start_ptr, shared_data.buff_overlap_count); // Copy the ring buffer to the output padded signal
+
+	double *start_signal = out_sig_mid_start_ptr;
+	double *end_signal = out_sig_mid_start_ptr + in_signal_len - 1;
+
+	for (int i = 0; i < padding_size; i++)
+	{
+		out_padded_signal[i] = *start_signal;															// First PADDING_SIZE padding to left
+		out_padded_signal[(out_padded_signal_len - 1) - i] = *end_signal; // Last PADDING_SIZE padding to right
+	}
+
 	return 0;
 }
 
