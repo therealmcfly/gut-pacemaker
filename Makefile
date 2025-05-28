@@ -6,11 +6,11 @@ OBJDIR = obj
 # Default build settings
 # CFLAGS = -Wall -g -O2 -I$(INCDIR)
 CFLAGS = -Wall -g -O0 -I$(INCDIR) -pthread
-TARGET = pacemaker.out
+TARGET = p.o
 
 # TSan build settings
 TSAN_FLAGS = -Wall -g -O1 -fsanitize=thread -I$(INCDIR) -pthread
-TSAN_TARGET = pacemaker_tsan.out
+TSAN_TARGET = p_tsan.o
 
 # Source and object files
 SRCS = $(wildcard $(SRCDIR)/*.c)
