@@ -1,57 +1,82 @@
+# Default compiler
 CC = gcc
+
 SRCDIR = src
 INCDIR = inc
-OBJDIR = obj
+OBJDIR_PC = obj/pc
+OBJDIR_TSAN = obj/tsan
+OBJDIR_DE1SOC = de1soc/obj
 
-# Default build settings
-# CFLAGS = -Wall -g -O2 -I$(INCDIR)
-CFLAGS = -Wall -g -O0 -I$(INCDIR) -pthread
-TARGET = p.o
+# Build settings
+CFLAGS_PC = -Wall -g -O0 -I$(INCDIR) -pthread
+CFLAGS_TSAN = -Wall -g -O1 -fsanitize=thread -I$(INCDIR) -pthread
+CFLAGS_DE1SOC = -Wall -O2 -std=gnu99 -I$(INCDIR) -march=armv7-a -mtune=cortex-a9 -mfloat-abi=hard -mfpu=neon
 
-# TSan build settings
-TSAN_FLAGS = -Wall -g -O1 -fsanitize=thread -I$(INCDIR) -pthread
-TSAN_TARGET = p_tsan.o
-
-# Source and object files
+# Source files
 SRCS = $(wildcard $(SRCDIR)/*.c)
-OBJS = $(patsubst $(SRCDIR)/%.c, $(OBJDIR)/%.o, $(SRCS))
 
-# Default target
-all: $(TARGET)
+# Object files per target
+OBJS_PC = $(patsubst $(SRCDIR)/%.c, $(OBJDIR_PC)/%.o, $(SRCS))
+OBJS_TSAN = $(patsubst $(SRCDIR)/%.c, $(OBJDIR_TSAN)/%.o, $(SRCS))
+OBJS_DE1SOC = $(patsubst $(SRCDIR)/%.c, $(OBJDIR_DE1SOC)/%.o, $(SRCS))
 
-# Create object directory and compile .c to .o
-$(OBJDIR)/%.o: $(SRCDIR)/%.c
-ifeq ($(OS),Windows_NT)
-	@if not exist $(OBJDIR) mkdir $(OBJDIR)
-else
-	@mkdir -p $(OBJDIR)
-endif
-	$(CC) $(CFLAGS) -c $< -o $@
-	
-	
-# Link the final executable
-# $(TARGET): $(OBJS)
-# 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS)
-$(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $(OBJS)
+# Executable file names
+TARGET_PC = p.o
+TARGET_TSAN = p_tsan.o
+TARGET_DE1SOC = de1soc/p_de1soc.o
 
-# Link the TSan target
-$(TSAN_TARGET): $(OBJS)
-	$(CC) $(TSAN_FLAGS) -o $@ $(OBJS)
+# All target: builds all variants
+all: pc tsan de1soc
 
-# Clean build files (Windows & Unix compatible)
+# PC build
+pc: CFLAGS = $(CFLAGS_PC)
+pc: $(TARGET_PC)
+
+# TSAN build
+tsan: CFLAGS = $(CFLAGS_TSAN)
+tsan: $(TARGET_TSAN)
+
+# DE1-SoC build
+de1soc: CC = $(HOME)/toolchains/gcc-linaro-4.9-2016.02-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc
+de1soc: CFLAGS = $(CFLAGS_DE1SOC)
+SYSROOT = $(HOME)/toolchains/de1soc_rootfs
+de1soc: $(TARGET_DE1SOC)
+
+# Compile source to object files per target
+$(OBJDIR_PC)/%.o: $(SRCDIR)/%.c
+	@mkdir -p $(OBJDIR_PC)
+	$(CC) $(CFLAGS_PC) -c $< -o $@
+
+$(OBJDIR_TSAN)/%.o: $(SRCDIR)/%.c
+	@mkdir -p $(OBJDIR_TSAN)
+	$(CC) $(CFLAGS_TSAN) -c $< -o $@
+
+$(OBJDIR_DE1SOC)/%.o: $(SRCDIR)/%.c
+	@mkdir -p $(OBJDIR_DE1SOC)
+	$(CC) $(CFLAGS_DE1SOC) --sysroot=$(SYSROOT) -c $< -o $@
+
+# Link targets
+$(TARGET_PC): $(OBJS_PC)
+	$(CC) $(CFLAGS_PC) $^ -o $@
+
+$(TARGET_TSAN): $(OBJS_TSAN)
+	$(CC) $(CFLAGS_TSAN) $^ -o $@
+
+$(TARGET_DE1SOC): $(OBJS_DE1SOC)
+	@mkdir -p de1soc
+	$(CC) --sysroot=$(SYSROOT) $(CFLAGS_DE1SOC) -static $^ -lpthread -o $@
+
+# Clean build files
 clean:
-ifeq ($(OS),Windows_NT)
-	@if exist $(OBJDIR) (rmdir /S /Q $(OBJDIR))
-	@if exist $(TARGET).exe (del /F /Q $(TARGET).exe)
-	@if exist $(TSAN_TARGET).exe (del /F /Q $(TSAN_TARGET).exe)
-else
-	rm -rf $(OBJDIR) $(TARGET) $(TSAN_TARGET)
-endif
+	rm -rf $(OBJDIR_PC) $(OBJDIR_TSAN) de1soc $(TARGET_PC) $(TARGET_TSAN)
 
-# .PHONY: clean
+clean-pc:
+	rm -rf $(OBJDIR_PC) $(TARGET_PC)
 
-# ThreadSanitizer build
-tsan: clean $(TSAN_TARGET)
+clean-tsan:
+	rm -rf $(OBJDIR_TSAN) $(TARGET_TSAN)
 
-.PHONY: clean tsan all
+clean-de1soc:
+	rm -rf de1soc
+
+.PHONY: all clean clean-pc clean-tsan clean-de1soc pc tsan de1soc
