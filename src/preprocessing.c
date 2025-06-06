@@ -12,7 +12,219 @@ static double post_lpf_pad_buffer[LPF_PADDED_BUFFER_SIZE];
 static double hpf_pad_sig_buffer[HPF_PADDED_SIGNAL_SIZE];
 static double hpf_conv_sig_buffer[HPF_CONV_PADDED_SIGNAL_SIZE];
 
-int new_lowpass_filter(double *lpf_signal, int signal_length, int is_bad_signal, void (*callback_unlock_mutex)(void))
+/* ---------↓↓↓↓↓↓------- Utility Functions ---------↓↓↓↓↓↓------- */
+
+static int apply_padding(double *in_signal, int in_signal_len, double *out_padded_signal, int out_padded_signal_len, int padding_size)
+{
+	// Ensure the hpf_pad_sig_buffer buffer is large enough
+	if (out_padded_signal_len != in_signal_len + (2 * padding_size))
+	{
+		printf("\nError: out_padded_signal_len buffer size in apply_padding is incorrect. out_padded_signal_len is %d\n", out_padded_signal_len);
+		return 1;
+	}
+
+	// Step 1: Apply PADDING_SIZE padding front(left) and back(right) of signal (Replicating MATLAB's Strategy)
+	double start_signal = in_signal[0];
+	double end_signal = in_signal[in_signal_len - 1];
+	for (int i = 0; i < out_padded_signal_len; i++)
+	{
+		if (i < padding_size)
+		{
+			out_padded_signal[i] = start_signal; // First PADDING_SIZE padding to left with start_signal
+		}
+		else if (i >= padding_size && i < padding_size + in_signal_len)
+		{
+			out_padded_signal[i] = in_signal[i - padding_size]; // Copying signal to middle of hpf_pad_sig_buffer
+		}
+		else
+		{
+			out_padded_signal[i] = end_signal; // Last PADDING_SIZE padding to right with end_signal
+		}
+	}
+
+	return 0;
+}
+
+static int apply_padding_from_rb(int in_signal_len, double *out_padded_signal, int out_padded_signal_len, int padding_size)
+{
+	// Ensure the hpf_pad_sig_buffer buffer is large enough
+	if (out_padded_signal_len != in_signal_len + (2 * padding_size))
+	{
+		printf("\nError: out_padded_signal_len buffer size in apply_padding is incorrect. out_padded_signal_len is %d\n", out_padded_signal_len);
+		return 1;
+	}
+	// Validate shared data
+	if (shared_data.buffer == NULL)
+	{
+		printf("\nError: shared_data.buffer is NULL\n");
+		return 1;
+	}
+
+	// Step 1: Apply PADDING_SIZE padding front(left) and back(right) of signal (Replicating MATLAB's Strategy)
+
+	double *out_sig_mid_start_ptr = out_padded_signal + padding_size;												// Pointer to the start of the middle part of the padded signal
+	rb_snapshot(shared_data.buffer, out_sig_mid_start_ptr, shared_data.buff_overlap_count); // Copy the ring buffer to the output padded signal
+
+	double *start_signal = out_sig_mid_start_ptr;
+	double *end_signal = out_sig_mid_start_ptr + in_signal_len - 1;
+
+	for (int i = 0; i < padding_size; i++)
+	{
+		out_padded_signal[i] = *start_signal;															// First PADDING_SIZE padding to left
+		out_padded_signal[(out_padded_signal_len - 1) - i] = *end_signal; // Last PADDING_SIZE padding to right
+	}
+
+	return 0;
+}
+
+// Function to compute cubic spline coefficients for a single segment
+static void compute_single_spline(double x1, double y1, double dy1,
+																	double x2, double y2, double dy2,
+																	double *a, double *b, double *c, double *d)
+{
+	double h = x2 - x1;
+
+	// Ensure h is not too small to avoid division issues
+	// if (h < 1e-6) /*<--- OLD VER */
+	if (h < PRECISION)
+	{
+		*a = y1;
+		*b = dy1;
+		*c = 0;
+		*d = 0;
+		return;
+	}
+
+	*a = y1;
+	*b = dy1;
+	*c = (3 * (y2 - y1) / (h * h)) - (2 * dy1 / h) - (dy2 / h);
+	*d = (2 * (y1 - y2) / (h * h * h)) + ((dy1 + dy2) / (h * h));
+
+	// // Debugging output to verify coefficients
+	// printf("Spline Coefficients (x1=%.2f, x2=%.2f):\n", x1, x2);
+	// printf("a: %f, b: %f, c: %f, d: %f\n", *a, *b, *c, *d);
+}
+
+// Function to evaluate the cubic spline at a given x_query
+static double evaluate_spline(double a, double b, double c, double d, double x1, double x2, double x_query)
+{
+	double dx = x_query - x1;
+	double h = x2 - x1;
+
+	// Ensure dx does not exceed h to avoid instability
+	// if (dx > h)
+	// 	dx = h;
+	// if (dx < 0)
+	// 	dx = 0;
+	if (dx < -PRECISION)
+		dx = 0;
+	if (dx > h + PRECISION)
+		dx = h;
+
+	return a + b * dx + c * dx * dx + d * dx * dx * dx;
+}
+
+static int lowpass_fir_filter(const double *coeffs, int coeff_len, const double *in_signal, double *out_signal, int signal_length, int is_bad_signal)
+{
+	int filt_delay = (coeff_len - 1) / 2; // filter order is coeff length -1, and delay is half of the filter order
+	// signal_length here = BUFFER_SIZE + LPF_PADDING_SIZE * 2
+	// filt_delay here = BAD_SIG_LPF_COEFFS_LEN or GOOD_SIG_LPF_COEFFS_LEN - 1 / 2
+	int temp_output_len = (BUFFER_SIZE + (LPF_PADDING_SIZE * 2)) + ((is_bad_signal ? BAD_SIG_LPF_COEFFS_LEN : GOOD_SIG_LPF_COEFFS_LEN) - 1 / 2);
+	double temp_output[(BUFFER_SIZE + (LPF_PADDING_SIZE * 2)) + ((is_bad_signal ? BAD_SIG_LPF_COEFFS_LEN : GOOD_SIG_LPF_COEFFS_LEN) - 1 / 2)];
+
+	// Apply FIR filter
+	for (int n = 0; n < temp_output_len; n++)
+	{
+		double yn = 0.0; // Initialize output sample
+
+		// printf("\nProcessing out_signal[%d]:\n", n); // Debug
+
+		for (int i = 0; i < coeff_len /*<== filter order is coeff length -1 */; i++) // Apply filter
+		{
+			if (n - i >= 0) // Ensure index is within bounds
+			{
+				// if (n > 1059)
+				// printf("  Adding coeffs[%d] * in_signal[%d] = %lf * %lf\n", i, n - i, coeffs[i], in_signal[n - i]);
+				yn += coeffs[i] * in_signal[n - i];
+				// if (n > 1059)
+				// printf("  -> yn = %lf\n", yn); // Debug
+			}
+		}
+		temp_output[n] = yn; // Store filtered output
+	}
+
+	// Remove initial delay compensation (shift output)
+	for (int i = 0; i < signal_length; i++)
+	{
+		out_signal[i] = temp_output[i + filt_delay]; // Compensate for delay
+	}
+
+	return 0;
+}
+
+static int highpass_fir_filter(const double *coeffs, int num_coeffs, const double *in_signal, int in_signal_len, double *out_conv_signal, int out_conv_signal_len)
+{
+	// Unlike the lowpass_fir_filter, the highpass_fir_filter doesn't account for filter delay
+	// Perform Convolution
+	for (int i = 0; i < out_conv_signal_len; i++)
+	{
+		out_conv_signal[i] = 0.0; // Initialize
+		for (int j = 0; j < num_coeffs; j++)
+		{
+			if (i - j >= 0 && i - j < in_signal_len)
+			{
+				out_conv_signal[i] += in_signal[i - j] * coeffs[j];
+			}
+		}
+	}
+	return 0;
+}
+
+// Function to detect artifacts in a signal window
+static int detect_artifact(const double *window, int window_size, double threshold)
+{
+	int peak_index = -1;
+	double max_value = 0.0;
+
+	for (int i = 0; i < window_size; i++)
+	{
+		double abs_val = (window[i] < 0) ? -window[i] : window[i]; // Absolute value of signal sample
+		if (abs_val > threshold && abs_val > max_value)
+		{
+			max_value = abs_val;
+			peak_index = i;
+		}
+	}
+	return peak_index; // Returns the index of the artifact if found, else -1
+}
+
+// Function to remove an artifact using cubic spline interpolation
+static void remove_artifact(double *window, int window_len, int x1, int x2)
+{
+	// if (x1 >= x2 || x1 < 1 || x2 >= window_len - 1) /*<--- OLD VER */
+	if (x1 >= x2 || x1 < 0 || x2 >= window_len - 1)
+	{
+		printf("Error: Invalid x1 (%d) or x2 (%d) values\n", x1, x2);
+		return;
+	}
+
+	// Compute start and end slopes
+	double dy1 = window[x1] - window[x1 - 1];
+	double dy2 = window[x2] - window[x2 - 1];
+
+	// Compute spline coefficients
+	double a, b, c, d;
+	compute_single_spline(x1, window[x1], dy1, x2, window[x2], dy2, &a, &b, &c, &d);
+
+	// Replace artifact region with cubic spline interpolation
+	for (int i = x1; i <= x2; i++)
+	{
+		window[i] = evaluate_spline(a, b, c, d, x1, x2, i);
+		// printf("window[%d]: %lf\n", i, window[i]); // Debugging output
+	}
+}
+
+int lowpass_filter(double *lpf_signal, int signal_length, int is_bad_signal, void (*callback_unlock_mutex)(void))
 {
 	const double *lpf_coeff = is_bad_signal ? bad_sig_lpf_coeffs : good_sig_lpf_coeffs;
 	// const double *lpf_coeff = good_sig_lpf_coeffs;
@@ -70,44 +282,6 @@ int new_lowpass_filter(double *lpf_signal, int signal_length, int is_bad_signal,
 	return 0;
 }
 
-int lowpass_fir_filter(const double *coeffs, int coeff_len, const double *in_signal, double *out_signal, int signal_length, int is_bad_signal)
-{
-	int filt_delay = (coeff_len - 1) / 2; // filter order is coeff length -1, and delay is half of the filter order
-	// signal_length here = BUFFER_SIZE + LPF_PADDING_SIZE * 2
-	// filt_delay here = BAD_SIG_LPF_COEFFS_LEN or GOOD_SIG_LPF_COEFFS_LEN - 1 / 2
-	int temp_output_len = (BUFFER_SIZE + (LPF_PADDING_SIZE * 2)) + ((is_bad_signal ? BAD_SIG_LPF_COEFFS_LEN : GOOD_SIG_LPF_COEFFS_LEN) - 1 / 2);
-	double temp_output[(BUFFER_SIZE + (LPF_PADDING_SIZE * 2)) + ((is_bad_signal ? BAD_SIG_LPF_COEFFS_LEN : GOOD_SIG_LPF_COEFFS_LEN) - 1 / 2)];
-
-	// Apply FIR filter
-	for (int n = 0; n < temp_output_len; n++)
-	{
-		double yn = 0.0; // Initialize output sample
-
-		// printf("\nProcessing out_signal[%d]:\n", n); // Debug
-
-		for (int i = 0; i < coeff_len /*<== filter order is coeff length -1 */; i++) // Apply filter
-		{
-			if (n - i >= 0) // Ensure index is within bounds
-			{
-				// if (n > 1059)
-				// printf("  Adding coeffs[%d] * in_signal[%d] = %lf * %lf\n", i, n - i, coeffs[i], in_signal[n - i]);
-				yn += coeffs[i] * in_signal[n - i];
-				// if (n > 1059)
-				// printf("  -> yn = %lf\n", yn); // Debug
-			}
-		}
-		temp_output[n] = yn; // Store filtered output
-	}
-
-	// Remove initial delay compensation (shift output)
-	for (int i = 0; i < signal_length; i++)
-	{
-		out_signal[i] = temp_output[i + filt_delay]; // Compensate for delay
-	}
-
-	return 0;
-}
-
 int highpass_filter(double *in_signal, int in_signal_len, double *out_hpf_signal, int *out_hpf_signal_len)
 {
 	if (hpf_coeffs_len != HPF_FILTER_ORDER + 1)
@@ -156,24 +330,6 @@ int highpass_filter(double *in_signal, int in_signal_len, double *out_hpf_signal
 		printf("\nhpf_signal[%d]: %.15f\n", *out_hpf_signal_len - 1, out_hpf_signal[*out_hpf_signal_len - 1]);
 		printf("hpf_signal_wp[%d]: %.15f\n", HPF_PADDING_SIZE + *out_hpf_signal_len - 1, hpf_conv_sig_buffer[HPF_PADDING_SIZE + *out_hpf_signal_len - 1]);
 		return 1;
-	}
-	return 0;
-}
-
-int highpass_fir_filter(const double *coeffs, int num_coeffs, const double *in_signal, int in_signal_len, double *out_conv_signal, int out_conv_signal_len)
-{
-	// Unlike the lowpass_fir_filter, the highpass_fir_filter doesn't account for filter delay
-	// Perform Convolution
-	for (int i = 0; i < out_conv_signal_len; i++)
-	{
-		out_conv_signal[i] = 0.0; // Initialize
-		for (int j = 0; j < num_coeffs; j++)
-		{
-			if (i - j >= 0 && i - j < in_signal_len)
-			{
-				out_conv_signal[i] += in_signal[i - j] * coeffs[j];
-			}
-		}
 	}
 	return 0;
 }
@@ -235,160 +391,4 @@ int detect_remove_artifacts(double *in_signal, int signal_length)
 		j = i + ARTIFACT_DETECT_WINDOW_WIDTH;
 	}
 	return 0; // Success
-}
-
-// Function to detect artifacts in a signal window
-int detect_artifact(const double *window, int window_size, double threshold)
-{
-	int peak_index = -1;
-	double max_value = 0.0;
-
-	for (int i = 0; i < window_size; i++)
-	{
-		double abs_val = (window[i] < 0) ? -window[i] : window[i]; // Absolute value of signal sample
-		if (abs_val > threshold && abs_val > max_value)
-		{
-			max_value = abs_val;
-			peak_index = i;
-		}
-	}
-	return peak_index; // Returns the index of the artifact if found, else -1
-}
-
-// Function to remove an artifact using cubic spline interpolation
-void remove_artifact(double *window, int window_len, int x1, int x2)
-{
-	// if (x1 >= x2 || x1 < 1 || x2 >= window_len - 1) /*<--- OLD VER */
-	if (x1 >= x2 || x1 < 0 || x2 >= window_len - 1)
-	{
-		printf("Error: Invalid x1 (%d) or x2 (%d) values\n", x1, x2);
-		return;
-	}
-
-	// Compute start and end slopes
-	double dy1 = window[x1] - window[x1 - 1];
-	double dy2 = window[x2] - window[x2 - 1];
-
-	// Compute spline coefficients
-	double a, b, c, d;
-	compute_single_spline(x1, window[x1], dy1, x2, window[x2], dy2, &a, &b, &c, &d);
-
-	// Replace artifact region with cubic spline interpolation
-	for (int i = x1; i <= x2; i++)
-	{
-		window[i] = evaluate_spline(a, b, c, d, x1, x2, i);
-		// printf("window[%d]: %lf\n", i, window[i]); // Debugging output
-	}
-}
-
-/* ---------↓↓↓↓↓↓------- Utility Functions ---------↓↓↓↓↓↓------- */
-
-int apply_padding(double *in_signal, int in_signal_len, double *out_padded_signal, int out_padded_signal_len, int padding_size)
-{
-	// Ensure the hpf_pad_sig_buffer buffer is large enough
-	if (out_padded_signal_len != in_signal_len + (2 * padding_size))
-	{
-		printf("\nError: out_padded_signal_len buffer size in apply_padding is incorrect. out_padded_signal_len is %d\n", out_padded_signal_len);
-		return 1;
-	}
-
-	// Step 1: Apply PADDING_SIZE padding front(left) and back(right) of signal (Replicating MATLAB's Strategy)
-	double start_signal = in_signal[0];
-	double end_signal = in_signal[in_signal_len - 1];
-	for (int i = 0; i < out_padded_signal_len; i++)
-	{
-		if (i < padding_size)
-		{
-			out_padded_signal[i] = start_signal; // First PADDING_SIZE padding to left with start_signal
-		}
-		else if (i >= padding_size && i < padding_size + in_signal_len)
-		{
-			out_padded_signal[i] = in_signal[i - padding_size]; // Copying signal to middle of hpf_pad_sig_buffer
-		}
-		else
-		{
-			out_padded_signal[i] = end_signal; // Last PADDING_SIZE padding to right with end_signal
-		}
-	}
-
-	return 0;
-}
-
-int apply_padding_from_rb(int in_signal_len, double *out_padded_signal, int out_padded_signal_len, int padding_size)
-{
-	// Ensure the hpf_pad_sig_buffer buffer is large enough
-	if (out_padded_signal_len != in_signal_len + (2 * padding_size))
-	{
-		printf("\nError: out_padded_signal_len buffer size in apply_padding is incorrect. out_padded_signal_len is %d\n", out_padded_signal_len);
-		return 1;
-	}
-	// Validate shared data
-	if (shared_data.buffer == NULL)
-	{
-		printf("\nError: shared_data.buffer is NULL\n");
-		return 1;
-	}
-
-	// Step 1: Apply PADDING_SIZE padding front(left) and back(right) of signal (Replicating MATLAB's Strategy)
-
-	double *out_sig_mid_start_ptr = out_padded_signal + padding_size;												// Pointer to the start of the middle part of the padded signal
-	rb_snapshot(shared_data.buffer, out_sig_mid_start_ptr, shared_data.buff_overlap_count); // Copy the ring buffer to the output padded signal
-
-	double *start_signal = out_sig_mid_start_ptr;
-	double *end_signal = out_sig_mid_start_ptr + in_signal_len - 1;
-
-	for (int i = 0; i < padding_size; i++)
-	{
-		out_padded_signal[i] = *start_signal;															// First PADDING_SIZE padding to left
-		out_padded_signal[(out_padded_signal_len - 1) - i] = *end_signal; // Last PADDING_SIZE padding to right
-	}
-
-	return 0;
-}
-
-// Function to compute cubic spline coefficients for a single segment
-void compute_single_spline(double x1, double y1, double dy1,
-													 double x2, double y2, double dy2,
-													 double *a, double *b, double *c, double *d)
-{
-	double h = x2 - x1;
-
-	// Ensure h is not too small to avoid division issues
-	// if (h < 1e-6) /*<--- OLD VER */
-	if (h < PRECISION)
-	{
-		*a = y1;
-		*b = dy1;
-		*c = 0;
-		*d = 0;
-		return;
-	}
-
-	*a = y1;
-	*b = dy1;
-	*c = (3 * (y2 - y1) / (h * h)) - (2 * dy1 / h) - (dy2 / h);
-	*d = (2 * (y1 - y2) / (h * h * h)) + ((dy1 + dy2) / (h * h));
-
-	// // Debugging output to verify coefficients
-	// printf("Spline Coefficients (x1=%.2f, x2=%.2f):\n", x1, x2);
-	// printf("a: %f, b: %f, c: %f, d: %f\n", *a, *b, *c, *d);
-}
-
-// Function to evaluate the cubic spline at a given x_query
-double evaluate_spline(double a, double b, double c, double d, double x1, double x2, double x_query)
-{
-	double dx = x_query - x1;
-	double h = x2 - x1;
-
-	// Ensure dx does not exceed h to avoid instability
-	// if (dx > h)
-	// 	dx = h;
-	// if (dx < 0)
-	// 	dx = 0;
-	if (dx < -PRECISION)
-		dx = 0;
-	if (dx > h + PRECISION)
-		dx = h;
-
-	return a + b * dx + c * dx * dx + d * dx * dx * dx;
 }

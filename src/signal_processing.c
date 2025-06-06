@@ -140,7 +140,7 @@ int processing_pipeline(int *shift, int i, int *num_activations, int *activation
 		is_bad_signal = 1;
 	}
 
-	if (new_lowpass_filter(lpf_sig_buffer, lpf_signal_len, is_bad_signal, callback_unlock_mutex))
+	if (lowpass_filter(lpf_sig_buffer, lpf_signal_len, is_bad_signal, callback_unlock_mutex))
 	{
 		printf("\nError: Low-pass filtering failed in %dth buffer.\n", *shift);
 		return ERROR;

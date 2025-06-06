@@ -5,6 +5,65 @@
 static double maf_buffer[BUFFER_SIZE + HPF_FILTER_ORDER - 1]; // Initialize sum array for moving average
 static double ed_conv_sig_buffer[NEO_MAF_ED_SIGNAL_SIZE];			// Full convolution size
 
+/*------------------------------------------------------------------------*/
+/*                            prev functions                              */
+/*------------------------------------------------------------------------*/
+
+// void conv1d_same(const double *input, int input_size,
+// 								 const double *kernel, int kernel_size,
+// 								 double *output)
+// {
+// 	int pad = kernel_size / 2; // Calculate padding for 'same' output
+
+// 	int output_size = input_size + kernel_size - 1;								// Full convolution size
+// 	double *temp = (double *)calloc(output_size, sizeof(double)); // Temporary buffer for full convolution
+
+// 	// Initialize output array to zero
+// 	for (int i = 0; i < output_size; i++)
+// 	{
+// 		temp[i] = 0.0;
+// 	}
+
+// 	// Perform convolution (as per MATLAB's conv2 definition)
+// 	for (int i = 0; i < input_size; i++)
+// 	{
+// 		for (int j = 0; j < kernel_size; j++)
+// 		{
+// 			temp[i + j] += input[i] * kernel[j]; // No flipping of kernel
+// 		}
+// 	}
+// 	// Extract the "same" part (centered)
+// 	for (int i = 0; i < input_size; i++)
+// 	{
+// 		output[i] = temp[i + pad];
+// 		printf("output[%d]: %f\n", i, output[i]);
+// 	}
+// }
+static void conv_1d_same(const double *input, int input_size, const double *kernel, int kernel_size, double *out_conv_signal)
+{
+	int pad = kernel_size / 2; // Calculate padding for 'same' output
+
+	// Perform convolution directly on the output buffer
+	for (int i = 0; i < input_size; i++)
+	{
+		out_conv_signal[i] = 0.0; // Initialize output at index i
+
+		for (int j = 0; j < kernel_size; j++)
+		{
+			int input_idx = i + j - pad; // Adjust index for centering kernel
+
+			// **Fix: Clamp input index to valid range**
+			if (input_idx < 0)
+				input_idx = 0; // Mirror first element
+			else if (input_idx >= input_size)
+				input_idx = input_size - 1; // Mirror last element
+
+			out_conv_signal[i] += input[input_idx] * kernel[kernel_size - 1 - j]; // Apply convolution with flipped kernel
+		}
+		// printf("output[%d]: %f\n", i, out_conv_signal[i]);
+	}
+}
+
 int neo_transform(double *in_signal, int in_signal_len, double *out_signal, int out_signal_len)
 {
 	if (in_signal_len < 3)
@@ -117,66 +176,6 @@ int edge_detection(const double *in_processed_signal, int in_processed_sig_len, 
 
 	return 0;
 }
-
-void conv_1d_same(const double *input, int input_size, const double *kernel, int kernel_size, double *out_conv_signal)
-{
-	int pad = kernel_size / 2; // Calculate padding for 'same' output
-
-	// Perform convolution directly on the output buffer
-	for (int i = 0; i < input_size; i++)
-	{
-		out_conv_signal[i] = 0.0; // Initialize output at index i
-
-		for (int j = 0; j < kernel_size; j++)
-		{
-			int input_idx = i + j - pad; // Adjust index for centering kernel
-
-			// **Fix: Clamp input index to valid range**
-			if (input_idx < 0)
-				input_idx = 0; // Mirror first element
-			else if (input_idx >= input_size)
-				input_idx = input_size - 1; // Mirror last element
-
-			out_conv_signal[i] += input[input_idx] * kernel[kernel_size - 1 - j]; // Apply convolution with flipped kernel
-		}
-		// printf("output[%d]: %f\n", i, out_conv_signal[i]);
-	}
-}
-
-/*------------------------------------------------------------------------*/
-/*                            prev functions                              */
-/*------------------------------------------------------------------------*/
-
-// void conv1d_same(const double *input, int input_size,
-// 								 const double *kernel, int kernel_size,
-// 								 double *output)
-// {
-// 	int pad = kernel_size / 2; // Calculate padding for 'same' output
-
-// 	int output_size = input_size + kernel_size - 1;								// Full convolution size
-// 	double *temp = (double *)calloc(output_size, sizeof(double)); // Temporary buffer for full convolution
-
-// 	// Initialize output array to zero
-// 	for (int i = 0; i < output_size; i++)
-// 	{
-// 		temp[i] = 0.0;
-// 	}
-
-// 	// Perform convolution (as per MATLAB's conv2 definition)
-// 	for (int i = 0; i < input_size; i++)
-// 	{
-// 		for (int j = 0; j < kernel_size; j++)
-// 		{
-// 			temp[i + j] += input[i] * kernel[j]; // No flipping of kernel
-// 		}
-// 	}
-// 	// Extract the "same" part (centered)
-// 	for (int i = 0; i < input_size; i++)
-// 	{
-// 		output[i] = temp[i + pad];
-// 		printf("output[%d]: %f\n", i, output[i]);
-// 	}
-// }
 
 int detect_activation(double *in_ed_signal, int in_ed_signal_len, int *out_activation_indices, int *out_num_activation, int cur_buffer_start_index)
 {
