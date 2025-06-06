@@ -2,10 +2,16 @@
 *.exe
 *.out
 *.o
+*.su
 *.obj
 *.a
 *.so
 *.dll
+
+# Ignore target directories
+/pc
+/tsan
+/de1soc
 
 # Ignore build artifacts
 /build/

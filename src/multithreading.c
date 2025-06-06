@@ -55,7 +55,7 @@ void *process_thread(void *data)
 
 		// Process the buffer
 		// mutex is unlocked in processing_pipeline via callback function
-		if (processing_pipeline(shared_data.buffer_count, start_idx, &num_activations, activations, unlock_mutex))
+		if (processing_pipeline(&shared_data.buffer_count, start_idx, &num_activations, activations, unlock_mutex))
 		{
 			printf("\n%sError occured while processing buffer %d.\n", PT_TITLE, shared_data.buffer_count + 1);
 			return NULL;

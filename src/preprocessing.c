@@ -7,27 +7,30 @@
 #include "shared_data.h"
 #include "ring_buffer.h" // for RingBuffer functions
 
+static double pre_lpf_pad_buffer[LPF_PADDED_BUFFER_SIZE];
+static double post_lpf_pad_buffer[LPF_PADDED_BUFFER_SIZE];
+static double hpf_pad_sig_buffer[HPF_PADDED_SIGNAL_SIZE];
+static double hpf_conv_sig_buffer[HPF_CONV_PADDED_SIGNAL_SIZE];
+
 int new_lowpass_filter(double *lpf_signal, int signal_length, int is_bad_signal, void (*callback_unlock_mutex)(void))
 {
 	const double *lpf_coeff = is_bad_signal ? bad_sig_lpf_coeffs : good_sig_lpf_coeffs;
 	// const double *lpf_coeff = good_sig_lpf_coeffs;
 
-	int filter_order = is_bad_signal ? bad_sig_lpf_coeffs_len - 1 : good_sig_lpf_coeffs_len - 1;
+	int filter_order = is_bad_signal ? BAD_SIG_LPF_COEFFS_LEN - 1 : GOOD_SIG_LPF_COEFFS_LEN - 1;
 	// int filter_order = good_sig_lpf_coeffs_len - 1;
 
-	double padded_signal[LPF_PADDED_BUFFER_SIZE];
 	for (int i = 0; i < LPF_PADDED_BUFFER_SIZE; i++) // this for loop is to mirror the MATLAB logic, romove if not needed
 	{
-		padded_signal[i] = 0.0;
+		pre_lpf_pad_buffer[i] = 0.0;
 	}
-	double padded_lpf_signal[LPF_PADDED_BUFFER_SIZE];
 	for (int i = 0; i < LPF_PADDED_BUFFER_SIZE; i++) // this for loop is to mirror the MATLAB logic, romove if not needed
 	{
-		padded_lpf_signal[i] = 0.0;
+		post_lpf_pad_buffer[i] = 0.0;
 	}
 
 	// Step 1: Apply PADDING_SIZE padding front(left) and back(right) of signal (Replicating MATLAB's Strategy)
-	if (apply_padding_from_rb(signal_length, padded_signal, LPF_PADDED_BUFFER_SIZE, LPF_PADDING_SIZE))
+	if (apply_padding_from_rb(signal_length, pre_lpf_pad_buffer, LPF_PADDED_BUFFER_SIZE, LPF_PADDING_SIZE))
 	{
 		printf("Error: Padding for low pass filtering failed.\n");
 		return 1;
@@ -39,7 +42,8 @@ int new_lowpass_filter(double *lpf_signal, int signal_length, int is_bad_signal,
 	}
 
 	// Step 2: Apply FIR Filtering
-	if (lowpass_fir_filter(lpf_coeff, filter_order + 1, padded_signal, padded_lpf_signal, signal_length + (LPF_PADDING_SIZE * 2)))
+	// if (lowpass_fir_filter(lpf_coeff, filter_order + 1, hpf_pad_sig_buffer, post_lpf_pad_buffer, signal_length + (LPF_PADDING_SIZE * 2)))
+	if (lowpass_fir_filter(lpf_coeff, filter_order + 1, pre_lpf_pad_buffer, post_lpf_pad_buffer, signal_length + (LPF_PADDING_SIZE * 2), is_bad_signal))
 	{
 		printf("Error: FIR filtering failed.\n");
 		return 1;
@@ -48,54 +52,34 @@ int new_lowpass_filter(double *lpf_signal, int signal_length, int is_bad_signal,
 	// Step 3: Remove padding
 	for (int i = 0; i < signal_length; i++)
 	{
-		lpf_signal[i] = padded_lpf_signal[i + LPF_PADDING_SIZE];
+		lpf_signal[i] = post_lpf_pad_buffer[i + LPF_PADDING_SIZE];
 		// printf("lpf_signal[%d]: %.15f\n", i, lpf_signal[i]);
 	}
 
 	// check the padding removal
-	if (lpf_signal[0] != padded_lpf_signal[LPF_PADDING_SIZE] || lpf_signal[signal_length - 1] != padded_lpf_signal[LPF_PADDING_SIZE + signal_length - 1])
+	if (lpf_signal[0] != post_lpf_pad_buffer[LPF_PADDING_SIZE] || lpf_signal[signal_length - 1] != post_lpf_pad_buffer[LPF_PADDING_SIZE + signal_length - 1])
 	{
 		printf("\nError in lowpass_filter(): Padding removal failed, check the padding logic.\n");
 		printf("lpf_signal[%d]: %.15f\n", 0, lpf_signal[0]);
-		printf("lpf_signal_wp[%d]: %.15f\n", LPF_PADDING_SIZE, padded_lpf_signal[LPF_PADDING_SIZE]);
+		printf("lpf_signal_wp[%d]: %.15f\n", LPF_PADDING_SIZE, post_lpf_pad_buffer[LPF_PADDING_SIZE]);
 		printf("\nlpf_signal[%d]: %.15f\n", signal_length - 1, lpf_signal[signal_length - 1]);
-		printf("lpf_signal_wp[%d]: %.15f\n", LPF_PADDING_SIZE + signal_length - 1, padded_lpf_signal[LPF_PADDING_SIZE + signal_length - 1]);
+		printf("lpf_signal_wp[%d]: %.15f\n", LPF_PADDING_SIZE + signal_length - 1, post_lpf_pad_buffer[LPF_PADDING_SIZE + signal_length - 1]);
 		return 1;
 	}
 
 	return 0;
 }
 
-int lowpass_fir_filter(const double *coeffs, int coeff_len, const double *in_signal, double *out_signal, int signal_length)
+int lowpass_fir_filter(const double *coeffs, int coeff_len, const double *in_signal, double *out_signal, int signal_length, int is_bad_signal)
 {
 	int filt_delay = (coeff_len - 1) / 2; // filter order is coeff length -1, and delay is half of the filter order
-
-	// Allocate memory for padded input signal (x + zeros)
-	int z_padded_signal_length = signal_length + filt_delay;
-	double *z_padded_signal = (double *)calloc(z_padded_signal_length, sizeof(double));
-	if (!z_padded_signal)
-	{
-		printf("Memory allocation failed\n");
-		return 1;
-	}
-
-	// Copy original input to padded input
-	for (int i = 0; i < signal_length; i++)
-	{
-		z_padded_signal[i] = in_signal[i];
-	}
-
-	// Temporary buffer for filtered output
-	double *temp_output = (double *)calloc(z_padded_signal_length, sizeof(double));
-	if (!temp_output)
-	{
-		printf("Memory allocation failed\n");
-		free(z_padded_signal);
-		return 1;
-	}
+	// signal_length here = BUFFER_SIZE + LPF_PADDING_SIZE * 2
+	// filt_delay here = BAD_SIG_LPF_COEFFS_LEN or GOOD_SIG_LPF_COEFFS_LEN - 1 / 2
+	int temp_output_len = (BUFFER_SIZE + (LPF_PADDING_SIZE * 2)) + ((is_bad_signal ? BAD_SIG_LPF_COEFFS_LEN : GOOD_SIG_LPF_COEFFS_LEN) - 1 / 2);
+	double temp_output[(BUFFER_SIZE + (LPF_PADDING_SIZE * 2)) + ((is_bad_signal ? BAD_SIG_LPF_COEFFS_LEN : GOOD_SIG_LPF_COEFFS_LEN) - 1 / 2)];
 
 	// Apply FIR filter
-	for (int n = 0; n < z_padded_signal_length; n++)
+	for (int n = 0; n < temp_output_len; n++)
 	{
 		double yn = 0.0; // Initialize output sample
 
@@ -121,10 +105,6 @@ int lowpass_fir_filter(const double *coeffs, int coeff_len, const double *in_sig
 		out_signal[i] = temp_output[i + filt_delay]; // Compensate for delay
 	}
 
-	// Free allocated memory
-	free(z_padded_signal);
-	free(temp_output);
-
 	return 0;
 }
 
@@ -138,25 +118,23 @@ int highpass_filter(double *in_signal, int in_signal_len, double *out_hpf_signal
 
 	int filter_order = hpf_coeffs_len - 1;
 
-	double padded_signal[HPF_PADDED_SIGNAL_SIZE];
 	for (int i = 0; i < HPF_PADDED_SIGNAL_SIZE; i++) // this for loop is to mirror the MATLAB logic, romove if not needed
 	{
-		padded_signal[i] = 0.0;
+		hpf_pad_sig_buffer[i] = 0.0;
 	}
-	double hpf_conv_signal[HPF_CONV_PADDED_SIGNAL_SIZE];
 	for (int i = 0; i < HPF_CONV_PADDED_SIGNAL_SIZE; i++) // this for loop is to mirror the MATLAB logic, romove if not needed
 	{
-		hpf_conv_signal[i] = 0.0;
+		hpf_conv_sig_buffer[i] = 0.0;
 	}
 	// Step 1: Apply HPF_PADDING_SIZE padding front(left) and back(right) of signal (Replicating MATLAB's Strategy)
-	if (apply_padding(in_signal, in_signal_len, padded_signal, HPF_PADDED_SIGNAL_SIZE, HPF_PADDING_SIZE))
+	if (apply_padding(in_signal, in_signal_len, hpf_pad_sig_buffer, HPF_PADDED_SIGNAL_SIZE, HPF_PADDING_SIZE))
 	{
 		printf("\nError: Padding for high pass filtering in failed.\n");
 		return 1;
 	}
 
 	// Step 2: Apply FIR Filtering
-	if (highpass_fir_filter(hpf_coeffs, filter_order + 1, padded_signal, HPF_PADDED_SIGNAL_SIZE, hpf_conv_signal, HPF_CONV_PADDED_SIGNAL_SIZE))
+	if (highpass_fir_filter(hpf_coeffs, filter_order + 1, hpf_pad_sig_buffer, HPF_PADDED_SIGNAL_SIZE, hpf_conv_sig_buffer, HPF_CONV_PADDED_SIGNAL_SIZE))
 	{
 		printf("\nError: FIR filtering failed.\n");
 		return 1;
@@ -165,18 +143,18 @@ int highpass_filter(double *in_signal, int in_signal_len, double *out_hpf_signal
 	// Step 3: Remove padding
 	for (int i = 0; i < *out_hpf_signal_len; i++)
 	{
-		out_hpf_signal[i] = hpf_conv_signal[i + HPF_PADDING_SIZE];
+		out_hpf_signal[i] = hpf_conv_sig_buffer[i + HPF_PADDING_SIZE];
 		// printf("lpf_signal[%d]: %.15f\n", i, lpf_signal[i]);
 	}
 
 	// check the padding removal
-	if (out_hpf_signal[0] != hpf_conv_signal[HPF_PADDING_SIZE] || out_hpf_signal[*out_hpf_signal_len - 1] != hpf_conv_signal[HPF_PADDING_SIZE + *out_hpf_signal_len - 1])
+	if (out_hpf_signal[0] != hpf_conv_sig_buffer[HPF_PADDING_SIZE] || out_hpf_signal[*out_hpf_signal_len - 1] != hpf_conv_sig_buffer[HPF_PADDING_SIZE + *out_hpf_signal_len - 1])
 	{
 		printf("\nError in highpass_filter(): Padding removal failed, check the padding logic.\n");
 		printf("hpf_signal[%d]: %.15f\n", 0, out_hpf_signal[0]);
-		printf("hpf_signal_wp[%d]: %.15f\n", HPF_PADDING_SIZE, hpf_conv_signal[HPF_PADDING_SIZE]);
+		printf("hpf_signal_wp[%d]: %.15f\n", HPF_PADDING_SIZE, hpf_conv_sig_buffer[HPF_PADDING_SIZE]);
 		printf("\nhpf_signal[%d]: %.15f\n", *out_hpf_signal_len - 1, out_hpf_signal[*out_hpf_signal_len - 1]);
-		printf("hpf_signal_wp[%d]: %.15f\n", HPF_PADDING_SIZE + *out_hpf_signal_len - 1, hpf_conv_signal[HPF_PADDING_SIZE + *out_hpf_signal_len - 1]);
+		printf("hpf_signal_wp[%d]: %.15f\n", HPF_PADDING_SIZE + *out_hpf_signal_len - 1, hpf_conv_sig_buffer[HPF_PADDING_SIZE + *out_hpf_signal_len - 1]);
 		return 1;
 	}
 	return 0;
@@ -256,7 +234,6 @@ int detect_remove_artifacts(double *in_signal, int signal_length)
 		i += ARTIFACT_DETECT_WINDOW_WIDTH / 2;
 		j = i + ARTIFACT_DETECT_WINDOW_WIDTH;
 	}
-
 	return 0; // Success
 }
 
@@ -308,7 +285,7 @@ void remove_artifact(double *window, int window_len, int x1, int x2)
 
 int apply_padding(double *in_signal, int in_signal_len, double *out_padded_signal, int out_padded_signal_len, int padding_size)
 {
-	// Ensure the padded_signal buffer is large enough
+	// Ensure the hpf_pad_sig_buffer buffer is large enough
 	if (out_padded_signal_len != in_signal_len + (2 * padding_size))
 	{
 		printf("\nError: out_padded_signal_len buffer size in apply_padding is incorrect. out_padded_signal_len is %d\n", out_padded_signal_len);
@@ -326,7 +303,7 @@ int apply_padding(double *in_signal, int in_signal_len, double *out_padded_signa
 		}
 		else if (i >= padding_size && i < padding_size + in_signal_len)
 		{
-			out_padded_signal[i] = in_signal[i - padding_size]; // Copying signal to middle of padded_signal
+			out_padded_signal[i] = in_signal[i - padding_size]; // Copying signal to middle of hpf_pad_sig_buffer
 		}
 		else
 		{
@@ -339,7 +316,7 @@ int apply_padding(double *in_signal, int in_signal_len, double *out_padded_signa
 
 int apply_padding_from_rb(int in_signal_len, double *out_padded_signal, int out_padded_signal_len, int padding_size)
 {
-	// Ensure the padded_signal buffer is large enough
+	// Ensure the hpf_pad_sig_buffer buffer is large enough
 	if (out_padded_signal_len != in_signal_len + (2 * padding_size))
 	{
 		printf("\nError: out_padded_signal_len buffer size in apply_padding is incorrect. out_padded_signal_len is %d\n", out_padded_signal_len);

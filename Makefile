@@ -8,9 +8,9 @@ OBJDIR_TSAN = obj/tsan
 OBJDIR_DE1SOC = de1soc/obj
 
 # Build settings
-CFLAGS_PC = -Wall -g -O0 -I$(INCDIR) -pthread
+CFLAGS_PC = -Wall -g -O0 -I$(INCDIR) -pthread -fstack-usage
 CFLAGS_TSAN = -Wall -g -O1 -fsanitize=thread -I$(INCDIR) -pthread
-CFLAGS_DE1SOC = -Wall -O2 -std=gnu99 -I$(INCDIR) -march=armv7-a -mtune=cortex-a9 -mfloat-abi=hard -mfpu=neon
+CFLAGS_DE1SOC = -Wall -O2 -std=gnu99 -I$(INCDIR) -march=armv7-a -mtune=cortex-a9 -mfloat-abi=hard -mfpu=neon -fstack-usage
 
 # Source files
 SRCS = $(wildcard $(SRCDIR)/*.c)

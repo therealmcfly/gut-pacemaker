@@ -15,6 +15,7 @@ char file_name[100]; // Buffer for file name
 int cur_data_freq;	 // Buffer for exp data frequency
 
 SharedData shared_data; // Global shared data for all threads
+static RingBuffer cir_buffer;
 
 RunMode select_mode(void)
 {
@@ -91,6 +92,11 @@ int static_dataset_mode(int argc, char *argv[])
 
 int realtime_dataset_mode(int argc, char *argv[])
 {
+	pthread_attr_t attr;
+	pthread_attr_init(&attr);
+	size_t stacksize;
+	pthread_attr_getstacksize(&attr, &stacksize);
+	printf("\n\tDefault pthread stack size: %zu bytes\n\n", stacksize);
 
 	// Initialize mutex and condition variable
 	pthread_mutex_t buffer_mutex;
@@ -101,7 +107,6 @@ int realtime_dataset_mode(int argc, char *argv[])
 	pthread_cond_init(&ready_to_read_cond, NULL);
 
 	// Initialize ring buffer
-	RingBuffer cir_buffer;
 	rb_init(&cir_buffer);
 
 	// Initialize shared data

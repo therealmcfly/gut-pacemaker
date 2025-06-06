@@ -2,6 +2,9 @@
 
 #include <stdlib.h> // lib for malloc for debugging, remove after use
 
+static double maf_buffer[BUFFER_SIZE + HPF_FILTER_ORDER - 1]; // Initialize sum array for moving average
+static double ed_conv_sig_buffer[NEO_MAF_ED_SIGNAL_SIZE];			// Full convolution size
+
 int neo_transform(double *in_signal, int in_signal_len, double *out_signal, int out_signal_len)
 {
 	if (in_signal_len < 3)
@@ -49,10 +52,9 @@ int moving_average_filtering(double *in_signal, double *out_signal, int out_sign
 		return 1;
 	}
 
-	double sum[BUFFER_SIZE + HPF_FILTER_ORDER - 1]; // Initialize sum array for moving average
 	for (int i = 0; i < out_signal_len; i++)
 	{
-		sum[i] = 0;
+		maf_buffer[i] = 0;
 		// Initialize output signal to avoid undefined behavior
 		out_signal[i] = 0;
 	}
@@ -62,10 +64,10 @@ int moving_average_filtering(double *in_signal, double *out_signal, int out_sign
 	{
 		for (int j = 1; j <= window_size; j++) // I think the j starts from 1 because the first value of input signal, which is signal from neo_transform, which has value of 1 in index 0 due to how neo_transform is implemented. Leaving is as it is now since the goal is to mirror the MATLAB code. This may need to be refactored in the future along with the neo_transform function.
 		{
-			sum[i] += in_signal[i + j];
+			maf_buffer[i] += in_signal[i + j];
 			// printf("sum[%d]%d: %f\n", i, j, sum[i]);
 		}
-		out_signal[i] = sum[i] / window_size;
+		out_signal[i] = maf_buffer[i] / window_size;
 	}
 
 	return 0; // Success
@@ -77,17 +79,15 @@ int edge_detection(const double *in_processed_signal, int in_processed_sig_len, 
 	int kernel_len = sizeof(kernel) / sizeof(kernel[0]);
 	// int half_k = kernel_len / 2; // Kernel midpoint
 
-	double conv_signal[NEO_MAF_ED_SIGNAL_SIZE]; // Full convolution size
-
-	conv_1d_same(in_processed_signal, in_processed_sig_len, kernel, kernel_len, conv_signal);
+	conv_1d_same(in_processed_signal, in_processed_sig_len, kernel, kernel_len, ed_conv_sig_buffer);
 
 	double sum = 0;
 	for (int i = 0; i < out_ed_signal_len; i++)
 	{
 		// Perform element-wise multiplication with correct indexing
 
-		out_ed_signal[i] = conv_signal[i + 1] * in_neo_signal[i]; // Offset neo_filtered by 1
-		// conv_signal is length 1 greater than in_neo_signal, so we offset by 1 to match the matlab code
+		out_ed_signal[i] = ed_conv_sig_buffer[i + 1] * in_neo_signal[i]; // Offset neo_filtered by 1
+		// ed_conv_sig_buffer is length 1 greater than in_neo_signal, so we offset by 1 to match the matlab code
 		// may need to be romoved in the future when neo transform output doesnt contain 1 extra value in the front
 
 		// Apply squaring and summing
