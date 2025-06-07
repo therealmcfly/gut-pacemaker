@@ -418,21 +418,35 @@ int connect_to_server(SharedData *shared_data)
 		// return 0; // Successfully connected
 	}
 
-	sleep(5); // Wait for 5 seconds before starting pacing
+	// // recive signal logic
+	// double gut_signal;
+	// int sock = shared_data->socket_fd; // Use the socket from shared_data
 
-	int count = 1;
-	uint8_t pace = 1;
-	int sock = shared_data->socket_fd; // Use the socket from shared_data
-	while (1)
-	{
-		if (send(sock, &pace, sizeof(uint8_t), 0) != sizeof(uint8_t))
-		{
-			perror("Pacing send failed");
-			break;
-		}
-		printf("Pacing %d\n", count++);
-		sleep(5);
-	}
+	// while (1)
+	// {
+	// 	if (recv(sock, &gut_signal, sizeof(double), MSG_WAITALL) <= 0)
+	// 	{
+	// 		printf("Server disconnected (recv).");
+	// 		break;
+	// 	}
+	// 	printf("Received gut signal: %f\n", gut_signal);
+	// }
+
+	// //send pacing logic
+	// sleep(5); // Wait for 5 seconds before starting pacing
+	// int count = 1;
+	// uint8_t pace = 1;
+	// int sock = shared_data->socket_fd; // Use the socket from shared_data
+	// while (1)
+	// {
+	// 	if (send(sock, &pace, sizeof(uint8_t), 0) != sizeof(uint8_t))
+	// 	{
+	// 		perror("Pacing send failed");
+	// 		break;
+	// 	}
+	// 	printf("Pacing %d\n", count++);
+	// 	sleep(5);
+	// }
 
 	// 	{
 	// 		printf("Connected to gut model server.\n");
@@ -440,29 +454,28 @@ int connect_to_server(SharedData *shared_data)
 	// 	}
 
 	// 3. Connect to the gut model server
-	// Retry loop
-	// int max_attempts = 5;
-	// int attempts = 0;
+	int max_attempts = 5;
+	int attempts = 0;
 
-	// while (attempts < max_attempts)
-	// {
-	// 	if (connect(shared_data->socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == 0)
-	// 	{
-	// 		printf("Connected to gut model server.\n");
-	// 		return 0;
-	// 	}
+	while (attempts < max_attempts)
+	{
+		if (connect(shared_data->socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == 0)
+		{
+			printf("Connected to gut model server.\n");
+			return 0;
+		}
 
-	// 	perror("Connection attempt failed");
-	// 	attempts++;
-	// 	sleep(1); // wait before retrying
-	// }
+		perror("Connection attempt failed");
+		attempts++;
+		sleep(1); // wait before retrying
+	}
 
-	// if (attempts == max_attempts)
-	// {
-	// 	printf("Failed to connect to gut model server after %d attempts.\n", max_attempts);
-	// 	close(shared_data->socket_fd);
-	// 	return -1;
-	// }
+	if (attempts == max_attempts)
+	{
+		printf("Failed to connect to gut model server after %d attempts.\n", max_attempts);
+		close(shared_data->socket_fd);
+		return -1;
+	}
 
 	close(shared_data->socket_fd);
 
