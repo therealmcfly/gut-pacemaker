@@ -1,5 +1,5 @@
-#ifndef TCP_SERVER_H
-#define TCP_SERVER_H
+#ifndef NETWORKING_H
+#define NETWORKING_H
 
 #include "shared_data.h"
 #include "timer_util.h"
@@ -13,5 +13,7 @@ int tcp_server_send(double *data, int size, int *client_fd, int *server_fd);
 int tcp_server_close(int *client_fd, int *server_fd);
 
 int run_tcp_server(SharedData *shared_data);
+
+int connect_to_server(SharedData *shared_data);
 
 #endif

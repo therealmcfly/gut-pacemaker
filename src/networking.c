@@ -1,4 +1,4 @@
-#include "tcp_server.h"
+#include "networking.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,15 +20,18 @@
 #define PORT 8080
 #define SAMPLE_DELAY_US 5000 // 200 Hz = 5000 µs delayactual size
 
+// Gut Model Server Constants
+#define GUT_SERVER_IP "192.168.32.1"
+#define GUT_SERVER_PORT 8082
+
 void handle_sigint(int sig)
 {
 	printf("\nSIGINT received. Forcing shutdown.\n");
 	_exit(0); // Immediately terminate all threads without cleanup
 }
 
-int tcp_server_init(int *server_fd)
+static int create_tcp_socket(int *server_fd)
 {
-
 	// Create socket
 	*server_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (*server_fd < 0)
@@ -54,6 +57,45 @@ int tcp_server_init(int *server_fd)
 		close(*server_fd);
 		return -1;
 	}
+	printf("Socket created successfully.\n");
+	return 0;
+}
+
+int tcp_server_init(int *server_fd)
+{
+
+	// Create socket
+	if (create_tcp_socket(server_fd) < 0)
+	{
+		return -1; // Error already handled in create_tcp_socket
+	}
+
+	// // Alternative socket creation method (commented out for now)
+	// // Uncomment if you want to use this method instead of create_tcp_socket
+	// *server_fd = socket(AF_INET, SOCK_STREAM, 0);
+	// if (*server_fd < 0)
+	// {
+	// 	perror("Socket creation failed");
+	// 	return -1;
+	// }
+
+	// // Allow quick reuse of the port after program exits
+	// int opt = 1;
+	// if (setsockopt(*server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
+	// {
+	// 	perror("setsockopt(SO_REUSEADDR) failed");
+	// 	close(*server_fd);
+	// 	return -1;
+	// }
+
+	// // Ensure socket closes immediately (no TIME_WAIT delay)
+	// struct linger sl = {1, 0}; // l_onoff = 1, l_linger = 0
+	// if (setsockopt(*server_fd, SOL_SOCKET, SO_LINGER, &sl, sizeof(sl)) < 0)
+	// {
+	// 	perror("setsockopt(SO_LINGER) failed");
+	// 	close(*server_fd);
+	// 	return -1;
+	// }
 
 	// Set up server address
 	struct sockaddr_in server_addr;
@@ -343,5 +385,86 @@ int run_tcp_server(SharedData *shared_data)
 	}
 
 	tcp_server_close(&shared_data->client_fd, &shared_data->server_fd); // Only called if outer loop exits (e.g., via SIGINT)
+	return 0;
+}
+
+int connect_to_server(SharedData *shared_data)
+{
+	signal(SIGINT, handle_sigint);
+	struct sockaddr_in server_addr;
+
+	// Create socket
+	if (create_tcp_socket(&shared_data->socket_fd) < 0)
+	{
+		printf("\nError: Failed to create TCP socket.\n");
+		return -1;
+	}
+	// Configure server address
+	memset(&server_addr, 0, sizeof(server_addr));
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_port = htons(GUT_SERVER_PORT);
+	if (inet_pton(AF_INET, GUT_SERVER_IP, &server_addr.sin_addr) <= 0)
+	{
+		perror("Invalid address / Not supported");
+		close(shared_data->socket_fd);
+		return -1;
+	}
+	// check server address, log the address
+	printf("Connecting to gut model server at %s:%d...\n", GUT_SERVER_IP, GUT_SERVER_PORT);
+
+	if (connect(shared_data->socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == 0)
+	{
+		printf("Connected to gut model server.\n");
+		// return 0; // Successfully connected
+	}
+
+	sleep(5); // Wait for 5 seconds before starting pacing
+
+	int count = 1;
+	uint8_t pace = 1;
+	int sock = shared_data->socket_fd; // Use the socket from shared_data
+	while (1)
+	{
+		if (send(sock, &pace, sizeof(uint8_t), 0) != sizeof(uint8_t))
+		{
+			perror("Pacing send failed");
+			break;
+		}
+		printf("Pacing %d\n", count++);
+		sleep(5);
+	}
+
+	// 	{
+	// 		printf("Connected to gut model server.\n");
+	// 		return 0;
+	// 	}
+
+	// 3. Connect to the gut model server
+	// Retry loop
+	// int max_attempts = 5;
+	// int attempts = 0;
+
+	// while (attempts < max_attempts)
+	// {
+	// 	if (connect(shared_data->socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == 0)
+	// 	{
+	// 		printf("Connected to gut model server.\n");
+	// 		return 0;
+	// 	}
+
+	// 	perror("Connection attempt failed");
+	// 	attempts++;
+	// 	sleep(1); // wait before retrying
+	// }
+
+	// if (attempts == max_attempts)
+	// {
+	// 	printf("Failed to connect to gut model server after %d attempts.\n", max_attempts);
+	// 	close(shared_data->socket_fd);
+	// 	return -1;
+	// }
+
+	close(shared_data->socket_fd);
+
 	return 0;
 }

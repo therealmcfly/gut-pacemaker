@@ -92,12 +92,6 @@ int static_dataset_mode(int argc, char *argv[])
 
 int realtime_dataset_mode(int argc, char *argv[])
 {
-	pthread_attr_t attr;
-	pthread_attr_init(&attr);
-	size_t stacksize;
-	pthread_attr_getstacksize(&attr, &stacksize);
-	printf("\n\tDefault pthread stack size: %zu bytes\n\n", stacksize);
-
 	// Initialize mutex and condition variable
 	pthread_mutex_t buffer_mutex;
 	pthread_cond_t client_connct_cond;
@@ -121,7 +115,7 @@ int realtime_dataset_mode(int argc, char *argv[])
 
 	pthread_t recv_thtread, proc_thread;
 
-	if (pthread_create(&recv_thtread, NULL, receive_thread, NULL) != 0)
+	if (pthread_create(&recv_thtread, NULL, rd_mode_receive_thread, NULL) != 0)
 	{
 		printf("\nError creating TCP server thread.\n");
 
@@ -152,6 +146,59 @@ int realtime_dataset_mode(int argc, char *argv[])
 
 int gut_model_mode(int argc, char *argv[])
 {
-	printf("\nGut Model Mode is not implemented yet.\n");
+
+	// Initialize mutex and condition variable
+	pthread_mutex_t buffer_mutex;
+	pthread_cond_t client_connct_cond;
+	pthread_cond_t ready_to_read_cond;
+	pthread_mutex_init(&buffer_mutex, NULL);
+	pthread_cond_init(&client_connct_cond, NULL);
+	pthread_cond_init(&ready_to_read_cond, NULL);
+
+	// Initialize ring buffer
+	rb_init(&cir_buffer);
+
+	// Initialize shared data
+	shared_data.buffer = &cir_buffer; // pointer to ring buffer
+	shared_data.mutex = &buffer_mutex;
+	shared_data.client_connct_cond = &client_connct_cond;
+	shared_data.ready_to_read_cond = &ready_to_read_cond;
+	shared_data.buffer_count = 0;											 // buffer count
+	shared_data.buff_overlap_count = BUFFER_SIZE_HALF; // overlap count
+	shared_data.socket_fd = -1;												 // socket file descriptor for TCP server
+	// shared_data.server_fd = -1;												 // server file descriptor
+	// shared_data.client_fd = -1;												 // client file descriptor
+
+	pthread_t recv_thtread, proc_thread;
+
+	if (pthread_create(&recv_thtread, NULL, gut_model_mode_receive_thread, NULL) != 0)
+	{
+		printf("\nError creating TCP server thread.\n");
+
+		return 1;
+	}
+
+	if (pthread_create(&proc_thread, NULL, process_thread, NULL) != 0)
+	{
+		printf("\nError creating signal buffering thread.\n");
+		return 1;
+	}
+
+	if (pthread_join(recv_thtread, NULL) != 0)
+	{
+		printf("\nError joining TCP server thread.\n");
+		return 1;
+	}
+	if (pthread_join(proc_thread, NULL) != 0)
+	{
+		printf("\nError joining signal buffering thread.\n");
+		return 1;
+	}
+	pthread_mutex_destroy(&buffer_mutex);
+	pthread_cond_destroy(&ready_to_read_cond);
+
+	return 0;
+
+	// Conn
 	return 0;
 }

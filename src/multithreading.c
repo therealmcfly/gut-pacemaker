@@ -6,7 +6,7 @@
 #include "shared_data.h"
 
 #include "signal_processing.h"
-#include "tcp_server.h"
+#include "networking.h"
 #include "ring_buffer.h"
 
 void unlock_mutex()
@@ -15,7 +15,7 @@ void unlock_mutex()
 	pthread_mutex_unlock(shared_data.mutex);
 }
 
-void *receive_thread(void *data)
+void *rd_mode_receive_thread(void *data)
 {
 	printf("%sReception thread started...\n", RT_TITLE);
 
@@ -63,6 +63,15 @@ void *process_thread(void *data)
 		start_idx += shared_data.buff_overlap_count;
 
 		printf("%sFinished activation detection process for buffer %d...\n", PT_TITLE, shared_data.buffer_count + 1);
+	}
+	return NULL;
+}
+
+void *gut_model_mode_receive_thread(void *data)
+{
+	if (connect_to_server(&shared_data) != 0)
+	{
+		printf("\n%sError occured while connecting to server.\n", RT_TITLE);
 	}
 	return NULL;
 }
