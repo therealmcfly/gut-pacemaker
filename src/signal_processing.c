@@ -294,6 +294,18 @@ int processing_pipeline(int *shift, int i, int *num_activations, int *activation
 			activations[k + *num_activations] = buff_activation_indices[k];
 		}
 		*num_activations += buff_num_activations;
+		printf("%d activations detected in buffer %d.\n", buff_num_activations, *shift + 1);
+		// print activations
+		printf("\tActivations: ");
+		for (int k = 0; k < buff_num_activations; k++)
+		{
+			printf("%d ", buff_activation_indices[k]);
+		}
+		printf("\n");
+	}
+	else
+	{
+		printf("No activations detected in buffer %d.\n", *shift + 1);
 	}
 	printf("\tActivation detection successful!\n");
 

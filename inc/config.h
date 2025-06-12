@@ -37,6 +37,8 @@
 
 #define ACTIVATIONS_ARRAY_SIZE 1000
 #define BUFFER_ACTIVATION_ARRAY_SIZE 20
+// #define BUFFER_OVERLAP_COUNT BUFFER_SIZE_HALF // Overlap count for ring buffer
+#define BUFFER_OVERLAP_COUNT 10 // Overlap count for ring buffer
 
 // PREPROCESSING CONSTANTS
 // Low-pass filter

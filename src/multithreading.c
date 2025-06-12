@@ -15,6 +15,17 @@ void unlock_mutex()
 	pthread_mutex_unlock(shared_data.mutex);
 }
 
+void *gut_model_mode_receive_thread(void *data)
+{
+	printf("%sReception thread started...\n", RT_TITLE);
+
+	if (run_tcp_server(&shared_data) != 0)
+	{
+		printf("\n%sError occured while connection to realtime dataset server.\n", RT_TITLE);
+	}
+	return NULL;
+}
+
 void *rd_mode_receive_thread(void *data)
 {
 	printf("%sReception thread started...\n", RT_TITLE);
@@ -32,6 +43,7 @@ void *process_thread(void *data)
 
 	printf("%sProcessing thread started. Waiting for client connection...\n", PT_TITLE);
 	pthread_cond_wait(shared_data.client_connct_cond, shared_data.mutex);
+	printf("%sClient connected. Starting processing...\n", PT_TITLE);
 
 	if (shared_data.socket_fd < 0)
 	{
@@ -47,13 +59,14 @@ void *process_thread(void *data)
 	int activations[ACTIVATIONS_ARRAY_SIZE]; // Buffer for activation indices
 	int num_activations = 0;
 
+	printf("%sSocket fd : %d\n", PT_TITLE, shared_data.socket_fd);
 	while (shared_data.socket_fd > 0)
 	{
 
 		pthread_mutex_lock(shared_data.mutex);
 		while (!shared_data.buffer->rtr_flag)
 		{
-			printf("\n%sWaiting for data to be ready...\n", PT_TITLE);
+			printf("\n%sWaiting for buffer to be ready...\n", PT_TITLE);
 			fflush(stdout);
 			pthread_cond_wait(shared_data.ready_to_read_cond, shared_data.mutex);
 			if (shared_data.socket_fd > 0)
@@ -92,5 +105,6 @@ void *process_thread(void *data)
 			break; // Exit if socket is still valid
 		}
 	}
+	printf("%sExiting process thread...\n", PT_TITLE);
 	return NULL;
 }

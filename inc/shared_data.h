@@ -19,7 +19,7 @@ typedef struct
 	int buff_overlap_count;
 
 	// for Receive Thread
-	int server_fd;
+	// int server_fd;
 	int client_fd;
 	int socket_fd; // for TCP server
 								 // for Process Thread
