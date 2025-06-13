@@ -92,7 +92,7 @@ void *process_thread(void *data)
 				printf("\n%sError occured while processing buffer %d.\n", PT_TITLE, shared_data.buffer_count + 1);
 				return NULL;
 			}
-			start_idx += shared_data.buff_overlap_count;
+			start_idx += shared_data.buff_offset;
 
 			printf("%sFinished activation detection process for buffer %d...\n", PT_TITLE, shared_data.buffer_count + 1);
 			continue; // Continue to next iteration to wait for the next buffer

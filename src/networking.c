@@ -356,8 +356,8 @@ int run_tcp_server(SharedData *shared_data)
 				else // after buffer is initially filled
 				{
 					// check how many signals were writen after last snapshot
-					// if (!shared_data->buffer->rtr_flag && shared_data->buffer->new_signal_count >= shared_data->buff_overlap_count)
-					if (shared_data->buffer->new_signal_count < shared_data->buff_overlap_count)
+					// if (!shared_data->buffer->rtr_flag && shared_data->buffer->new_signal_count >= shared_data->buff_offset)
+					if (shared_data->buffer->new_signal_count < shared_data->buff_offset)
 					{
 						// Print animation
 						printf("\r%s(%d)", RT_TITLE, shared_data->buffer->new_signal_count); // Print count and clear leftovers;
@@ -561,8 +561,8 @@ int connect_to_server(SharedData *shared_data)
 			else // after buffer is initially filled
 			{
 				// check how many signals were writen after last snapshot
-				// if (!shared_data->buffer->rtr_flag && shared_data->buffer->new_signal_count >= shared_data->buff_overlap_count)
-				if (shared_data->buffer->new_signal_count < shared_data->buff_overlap_count)
+				// if (!shared_data->buffer->rtr_flag && shared_data->buffer->new_signal_count >= shared_data->buff_offset)
+				if (shared_data->buffer->new_signal_count < shared_data->buff_offset)
 				{
 					// Print animation
 					printf("\r%s(%d)", RT_TITLE, shared_data->buffer->new_signal_count); // Print count and clear leftovers;

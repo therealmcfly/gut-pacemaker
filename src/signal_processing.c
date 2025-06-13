@@ -83,7 +83,7 @@ int detect_activations(double *in_signal, size_t signal_length, int *channel, ch
 	printf("Pre activation detection verification successful.\n");
 #endif
 
-	cleanup_activation_locs(activations, &num_activations, signal_length, ACTIVATION_REMOVAL_THRESHOLD);
+	cleanup_activation_locs(activations, &num_activations, signal_length, CLOSE_PROX_ACT_REMOVAL_THRESHOLD);
 
 #ifdef ACTIVATION_DETECTION_VERIFICATION
 	// Check Activation Removal Result

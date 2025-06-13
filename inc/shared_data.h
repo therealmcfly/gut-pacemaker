@@ -16,7 +16,7 @@ typedef struct
 	pthread_cond_t *client_connct_cond;
 	pthread_cond_t *ready_to_read_cond;
 	int buffer_count;
-	int buff_overlap_count;
+	int buff_offset;
 
 	// for Receive Thread
 	// int server_fd;

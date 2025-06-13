@@ -108,10 +108,10 @@ int realtime_dataset_mode(int argc, char *argv[])
 	shared_data.mutex = &buffer_mutex;
 	shared_data.client_connct_cond = &client_connct_cond;
 	shared_data.ready_to_read_cond = &ready_to_read_cond;
-	shared_data.buffer_count = 0;													 // buffer count
-	shared_data.buff_overlap_count = BUFFER_OVERLAP_COUNT; // overlap count
-	shared_data.socket_fd = -1;														 // server file descriptor
-	shared_data.client_fd = -1;														 // client file descriptor
+	shared_data.buffer_count = 0;						 // buffer count
+	shared_data.buff_offset = BUFFER_OFFSET; // overlap count
+	shared_data.socket_fd = -1;							 // server file descriptor
+	shared_data.client_fd = -1;							 // client file descriptor
 
 	pthread_t recv_thtread, proc_thread;
 
@@ -163,9 +163,9 @@ int gut_model_mode(int argc, char *argv[])
 	shared_data.mutex = &buffer_mutex;
 	shared_data.client_connct_cond = &client_connct_cond;
 	shared_data.ready_to_read_cond = &ready_to_read_cond;
-	shared_data.buffer_count = 0;													 // buffer count
-	shared_data.buff_overlap_count = BUFFER_OVERLAP_COUNT; // overlap count
-	shared_data.socket_fd = -1;														 // socket file descriptor for TCP server
+	shared_data.buffer_count = 0;						 // buffer count
+	shared_data.buff_offset = BUFFER_OFFSET; // overlap count
+	shared_data.socket_fd = -1;							 // socket file descriptor for TCP server
 	// shared_data.server_fd = -1; // server file descriptor
 	shared_data.client_fd = -1; // client file descriptor
 

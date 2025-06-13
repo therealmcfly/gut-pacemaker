@@ -62,8 +62,8 @@ static int apply_padding_from_rb(int in_signal_len, double *out_padded_signal, i
 
 	// Step 1: Apply PADDING_SIZE padding front(left) and back(right) of signal (Replicating MATLAB's Strategy)
 
-	double *out_sig_mid_start_ptr = out_padded_signal + padding_size;												// Pointer to the start of the middle part of the padded signal
-	rb_snapshot(shared_data.buffer, out_sig_mid_start_ptr, shared_data.buff_overlap_count); // Copy the ring buffer to the output padded signal
+	double *out_sig_mid_start_ptr = out_padded_signal + padding_size;								 // Pointer to the start of the middle part of the padded signal
+	rb_snapshot(shared_data.buffer, out_sig_mid_start_ptr, shared_data.buff_offset); // Copy the ring buffer to the output padded signal
 
 	double *start_signal = out_sig_mid_start_ptr;
 	double *end_signal = out_sig_mid_start_ptr + in_signal_len - 1;
