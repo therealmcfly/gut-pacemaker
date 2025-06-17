@@ -16,12 +16,13 @@ typedef struct
 	pthread_cond_t *client_connct_cond;
 	pthread_cond_t *ready_to_read_cond;
 	int buffer_count;
-	int buff_overlap_count;
+	int buff_offset;
 
 	// for Receive Thread
-	int server_fd;
+	// int server_fd;
 	int client_fd;
-	// for Process Thread
+	int socket_fd; // for TCP server
+								 // for Process Thread
 
 } SharedData;
 

@@ -37,6 +37,8 @@
 
 #define ACTIVATIONS_ARRAY_SIZE 1000
 #define BUFFER_ACTIVATION_ARRAY_SIZE 20
+#define BUFFER_OFFSET BUFFER_SIZE_HALF // Overlap count for ring buffer
+// #define BUFFER_OFFSET 900 // Overlap count for ring buffer
 
 // PREPROCESSING CONSTANTS
 // Low-pass filter
@@ -57,7 +59,7 @@
 // Edge detection
 #define ED_SCALAR_VALUE 59
 // Activation detection
-#define ACTIVATION_REMOVAL_THRESHOLD 500
+#define CLOSE_PROX_ACT_REMOVAL_THRESHOLD 500
 
 // Thread logs
 #define PT_TITLE "[Process Thread] "

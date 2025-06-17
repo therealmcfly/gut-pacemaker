@@ -83,7 +83,7 @@ int detect_activations(double *in_signal, size_t signal_length, int *channel, ch
 	printf("Pre activation detection verification successful.\n");
 #endif
 
-	cleanup_activation_locs(activations, &num_activations, signal_length, ACTIVATION_REMOVAL_THRESHOLD);
+	cleanup_activation_locs(activations, &num_activations, signal_length, CLOSE_PROX_ACT_REMOVAL_THRESHOLD);
 
 #ifdef ACTIVATION_DETECTION_VERIFICATION
 	// Check Activation Removal Result
@@ -294,6 +294,18 @@ int processing_pipeline(int *shift, int i, int *num_activations, int *activation
 			activations[k + *num_activations] = buff_activation_indices[k];
 		}
 		*num_activations += buff_num_activations;
+		printf("%d activations detected in buffer %d.\n", buff_num_activations, *shift + 1);
+		// print activations
+		printf("\tActivations: ");
+		for (int k = 0; k < buff_num_activations; k++)
+		{
+			printf("%d ", buff_activation_indices[k]);
+		}
+		printf("\n");
+	}
+	else
+	{
+		printf("No activations detected in buffer %d.\n", *shift + 1);
 	}
 	printf("\tActivation detection successful!\n");
 
