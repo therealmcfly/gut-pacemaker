@@ -29,6 +29,9 @@
 #define DEFAULT_FILE "exp_16_output_512.csv"
 // #define DEFAULT_FILE "pig41exp2_30.csv"
 
+// CHANNEL CONSTANTS
+#define NUM_CHANNELS 1 // Number of channels to process
+
 // BUFFER CONSTANTS
 #define SIGNAL_PROCESSING_BUFFER_SIZE 1001											// Buffer size for signal processing
 #define SP_BUFFER_SIZE_HALF (SIGNAL_PROCESSING_BUFFER_SIZE / 2) // Half of the buffer size

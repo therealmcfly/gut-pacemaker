@@ -3,6 +3,6 @@
 
 #include "shared_data.h"
 
-int run_pacemaker(SharedData *shared_data, void (*callback_unlock_mutex)(void));
+int run_pacemaker(PacemakerData *p_data, ChannelData *ch_data, int *timer, void (*callback_unlock_mutex)(void));
 
 #endif

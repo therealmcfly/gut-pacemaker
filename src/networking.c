@@ -10,9 +10,11 @@
 #include <pthread.h>
 
 #include "config.h"
+#include "global.h"
 #include "signal_processing.h"
 #include "ring_buffer.h"
 #include "file_io.h"
+// #include "shared_data.h"
 
 // SharedData *g_shared_data = NULL; // Global shared data pointer for SIGINT
 
@@ -240,7 +242,7 @@ int tcp_server_send(double *data, int size, int *client_fd)
 
 	return bytes_sent;
 }
-int run_tcp_server(SharedData *shared_data)
+int run_pacemaker_server(SharedData *shared_data, ChannelData *ch_data)
 {
 	// Initialize server
 	printf("\n%sRunning TCP server...\n", RT_TITLE);
@@ -318,26 +320,26 @@ int run_tcp_server(SharedData *shared_data)
 			// push received sample to ring buffer
 			pthread_mutex_lock(shared_data->mutex);
 			// ↓↓↓ this function must only be made when the mutex is locked
-			rb_push_sample(shared_data->buffer, sample);
+			rb_push_sample(shared_data->datas[0]->rb, sample);
 			// increment timer_ms (by sampling interval)
-			*(shared_data->timer_ms) += shared_data->samp_interval_ms;
+			*(shared_data->timer_ms) += g_samp_interval_ms;
 
 			if (!buffer_initial_fill) // before ring buffer is initially filled
 			{
 				// check if buffer is full
-				if (!shared_data->buffer->is_full)
+				if (!ch_data->rb->is_full)
 				{
 					// For printing signal accumulating animation
-					print_initial_recieved_data(shared_data, shared_data->buffer->is_full); // print initial buffer fill
+					print_initial_recieved_data(shared_data, ch_data->rb->is_full); // print initial buffer fill
 				}
 				else
 				{
 					buffer_initial_fill = true;
 					// For printing signal accumulating animation
-					print_initial_recieved_data(shared_data, shared_data->buffer->is_full); // print initial buffer fill
+					print_initial_recieved_data(shared_data, ch_data->rb->is_full); // print initial buffer fill
 					//
-					shared_data->buffer->rtr_flag = true;
-					shared_data->buffer->new_signal_count = 0; // reset new_signal_count
+					ch_data->rb->rtr_flag = true;
+					ch_data->rb->new_signal_count = 0; // reset new_signal_count
 					pthread_cond_signal(shared_data->ready_to_read_cond);
 					ready_buffer_count++;
 				}
@@ -347,7 +349,7 @@ int run_tcp_server(SharedData *shared_data)
 			}
 			else // after buffer is initially filled
 			{
-				if (shared_data->buffer->new_signal_count < shared_data->buff_offset)
+				if (ch_data->rb->new_signal_count < g_buffer_offset)
 				{
 					print_recieved_data(shared_data, ready_buffer_count);
 				}
@@ -355,12 +357,12 @@ int run_tcp_server(SharedData *shared_data)
 				{
 					(shared_data->buffer_count)++;
 					print_recieved_data(shared_data, ready_buffer_count);
-					if (!shared_data->buffer->rtr_flag)
+					if (!ch_data->rb->rtr_flag)
 					{
 						ready_buffer_count = 0; // rtr_flag being false indicates that the buffer snapshot occured so reset ready_buffer_count
-						shared_data->buffer->rtr_flag = true;
+						ch_data->rb->rtr_flag = true;
 					}
-					shared_data->buffer->new_signal_count = 0; // reset new_signal_count
+					ch_data->rb->new_signal_count = 0; // reset new_signal_count
 					pthread_cond_signal(shared_data->ready_to_read_cond);
 					ready_buffer_count++;
 				}
@@ -528,7 +530,7 @@ int connect_to_server(SharedData *shared_data)
 			{
 				// check how many signals were writen after last snapshot
 				// if (!shared_data->buffer->rtr_flag && shared_data->buffer->new_signal_count >= shared_data->buff_offset)
-				if (shared_data->buffer->new_signal_count < shared_data->buff_offset)
+				if (shared_data->buffer->new_signal_count < g_buffer_offset)
 				{
 					// Print animation
 					print_recieved_data(shared_data, ready_buffer_count);
@@ -618,7 +620,7 @@ int connect_to_server(SharedData *shared_data)
 	return 0;
 }
 
-int run_pacemaker_server(SharedData *shared_data)
+int run_tcp_server(SharedData *shared_data)
 {
 
 	signal(SIGINT, handle_sigint);

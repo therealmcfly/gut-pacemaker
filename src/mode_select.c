@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include <pthread.h>
 #include "config.h"
+#include "global.h"
 #include "data_init.h"
-#include "shared_data.h"
 #include "multithreading.h"
 // #include "signal_buffering.h"
 #include "signal_processing.h"
@@ -11,12 +11,20 @@
 // Initialize global variables
 size_t signal_length;
 int channel_num;
-char file_name[100]; // Buffer for file name
-int cur_data_freq;	 // Buffer for exp data frequency
+char file_name[100];													 // Buffer for file name
+int cur_data_freq;														 // Buffer for exp data frequency
+int g_samp_interval_ms = SAMPLING_INTERVAL_MS; // Sampling interval in milliseconds
+int g_buffer_offset = BUFFER_OFFSET;					 // Overlap count for ring buffer
 
-SharedData shared_data;															// Global shared data for all threads
-double sp_buffer[SIGNAL_PROCESSING_BUFFER_SIZE];		// Buffer for signal processing
-double ad_buffer[ACTIVATION_DETECTION_BUFFER_SIZE]; // Buffer for artifact detection
+SharedData g_shared_data; // Global shared data for all threads
+
+// Declare shared data components(Declare here so memory is not allocated in stack)
+PacemakerData pacemaker_data; // Pacemaker data structure
+ChannelData ch_datas[NUM_CHANNELS];
+RingBuffer ad_rbs[NUM_CHANNELS]; // Ring buffer for artifact detection
+
+double sp_buffer[SIGNAL_PROCESSING_BUFFER_SIZE];									// Buffer for signal processing
+double ad_buffer[NUM_CHANNELS][ACTIVATION_DETECTION_BUFFER_SIZE]; // Buffer for artifact detection
 
 RunMode select_mode(void)
 {
@@ -69,7 +77,7 @@ int static_dataset_mode(int argc, char *argv[])
 	RingBuffer rb;
 	int buffer_size = sizeof(sp_buffer) / sizeof(sp_buffer[0]);
 	rb_init(&rb, sp_buffer, buffer_size);
-	shared_data.buffer = &rb; // pointer to ring buffer
+	g_shared_data.buffer = &rb; // pointer to ring buffer
 
 	/*----------------------------------------------------------------------------------*/
 	/*----------------------------- SIGNAL BUFFERING -----------------------------------*/
@@ -109,14 +117,14 @@ int realtime_dataset_mode(int argc, char *argv[])
 	rb_init(&rb, sp_buffer, buffer_size);
 
 	// Initialize shared data
-	shared_data.buffer = &rb; // pointer to ring buffer
-	shared_data.mutex = &buffer_mutex;
-	shared_data.client_connct_cond = &client_connct_cond;
-	shared_data.ready_to_read_cond = &ready_to_read_cond;
-	shared_data.buffer_count = 0;						 // buffer count
-	shared_data.buff_offset = BUFFER_OFFSET; // overlap count
-	shared_data.socket_fd = -1;							 // server file descriptor
-	shared_data.client_fd = -1;							 // client file descriptor
+	g_shared_data.buffer = &rb; // pointer to ring buffer
+	g_shared_data.mutex = &buffer_mutex;
+	g_shared_data.client_connct_cond = &client_connct_cond;
+	g_shared_data.ready_to_read_cond = &ready_to_read_cond;
+	g_shared_data.buffer_count = 0; // buffer count
+	// shared_data.buff_offset = BUFFER_OFFSET; // overlap count
+	g_shared_data.socket_fd = -1; // server file descriptor
+	g_shared_data.client_fd = -1; // client file descriptor
 
 	pthread_t recv_thtread, proc_thread;
 
@@ -159,46 +167,64 @@ int gut_model_mode(int argc, char *argv[])
 	pthread_cond_init(&client_connct_cond, NULL);
 	pthread_cond_init(&ready_to_read_cond, NULL);
 
-	// Initialize ring buffer
-	RingBuffer ad_rb; // activation detection ring buffer
-	int ad_buffer_size = sizeof(ad_buffer) / sizeof(ad_buffer[0]);
-	rb_init(&ad_rb, ad_buffer, ad_buffer_size);
-
 	// Initialize shared data
-	shared_data.buffer = &ad_rb; // pointer to ring buffer
-	shared_data.mutex = &buffer_mutex;
-	shared_data.client_connct_cond = &client_connct_cond;
-	shared_data.ready_to_read_cond = &ready_to_read_cond;
-	shared_data.buffer_count = 0;						 // buffer count
-	shared_data.buff_offset = BUFFER_OFFSET; // overlap count
-	shared_data.socket_fd = -1;							 // socket file descriptor for TCP server
-	// shared_data.server_fd = -1; // server file descriptor
-	shared_data.client_fd = -1; // client file descriptor
-
-	// initialize pacemaker thread data
-	shared_data.learn_time_ms = LEARN_TIME_MS;
-	shared_data.samp_interval_ms = SAMPLING_INTERVAL_MS;
-	shared_data.gri_thresh_ms = GRI_THRESHOLD_MS;
-	shared_data.lri_thresh_ms = LRI_THRESHOLD_MS;
-
 	int timer_ms = 0;
-	shared_data.timer_ms = &timer_ms;
-	shared_data.activation_flag = 0;
-	shared_data.gri_ms = 0;
-	shared_data.lsv_sum = 0.0; // Initialize lowest slope value
-	shared_data.lsv_count = 0; // Initialize lowest slope value count
-	shared_data.threshold = 0.0;
+	g_shared_data.timer_ms = &timer_ms;
+	// shared_data.buffer = &ad_rb;						 // pointer to ring buffer
+	g_shared_data.mutex = &buffer_mutex;
+	g_shared_data.client_connct_cond = &client_connct_cond;
+	g_shared_data.ready_to_read_cond = &ready_to_read_cond;
+	g_shared_data.buffer_count = 0; // buffer count
+	// shared_data.buff_offset = BUFFER_OFFSET; // overlap count
+	g_shared_data.socket_fd = -1; // socket file descriptor for TCP server
+	// shared_data.server_fd = -1; // server file descriptor
+	g_shared_data.client_fd = -1; // client file descriptor
+
+	// initialize pacemaker data
+	g_shared_data.p = &pacemaker_data; // pointer to pacemaker data
+	g_shared_data.p->learn_time_ms = LEARN_TIME_MS;
+	g_shared_data.p->gri_thresh_ms = GRI_THRESHOLD_MS;
+	g_shared_data.p->lri_thresh_ms = LRI_THRESHOLD_MS;
+
+	// Initialize channel data
+	int ad_buffer_size = sizeof(ad_buffer[0]) / sizeof(ad_buffer[0][0]);
+	for (int i = 0; i < sizeof(ch_datas) / sizeof(ch_datas[0]); i++)
+	{
+		g_shared_data.datas[i] = &ch_datas[i]; // Initialize each element of pacemaker data array
+
+		g_shared_data.datas[i]->rb = &ad_rbs[i]; // pointer to ring buffer
+		rb_init(g_shared_data.datas[i]->rb, ad_buffer[0], ad_buffer_size);
+		g_shared_data.datas[i]->activation_flag = 0; // Initialize activation flag
+		g_shared_data.datas[i]->gri_ms = 0;					 // Initialize GRI
+		g_shared_data.datas[i]->lsv_sum = 0.0;
+		g_shared_data.datas[i]->lsv_count = 0;
+		g_shared_data.datas[i]->threshold = 0;
+	}
+
+	// g_shared_data.p[0]->activation_flag = 0; // Initialize activation flag
+	// g_shared_data.p[0]->gri_ms = 0;					 // Initialize GRI
+	// g_shared_data.p[0]->lsv_sum = 0.0;			 // Initialize lowest slope value sum
+	// g_shared_data.p[0]->lsv_count = 0;			 // Initialize lowest slope value count
+	// g_shared_data.p[0]->threshold = 0.0;
+
+	// g_shared_data.activation_flag = 0;
+	// g_shared_data.gri_ms = 0;
+	// g_shared_data.lsv_sum = 0.0; // Initialize lowest slope value
+	// g_shared_data.lsv_count = 0; // Initialize lowest slope value count
+	// g_shared_data.threshold = 0.0;
 
 	pthread_t recv_thtread, proc_thread;
 
-	if (pthread_create(&recv_thtread, NULL, gut_model_mode_receive_thread, NULL) != 0)
+	int gut_ch_num = 0; // temp channel number for single channel implementation
+
+	if (pthread_create(&recv_thtread, NULL, gut_model_mode_receive_thread, &gut_ch_num) != 0)
 	{
 		printf("\nError creating TCP server thread.\n");
 
 		return 1;
 	}
 
-	if (pthread_create(&proc_thread, NULL, pacemaker_thread, NULL) != 0)
+	if (pthread_create(&proc_thread, NULL, pacemaker_thread, &gut_ch_num) != 0)
 	// if (pthread_create(&proc_thread, NULL, process_thread, NULL) != 0)
 	{
 		printf("\nError creating signal buffering thread.\n");
@@ -220,59 +246,6 @@ int gut_model_mode(int argc, char *argv[])
 
 	// Conn
 	return 0;
-	// // Initialize mutex and condition variable
-	// pthread_mutex_t buffer_mutex;
-	// pthread_cond_t client_connct_cond;
-	// pthread_cond_t ready_to_read_cond;
-	// pthread_mutex_init(&buffer_mutex, NULL);
-	// pthread_cond_init(&client_connct_cond, NULL);
-	// pthread_cond_init(&ready_to_read_cond, NULL);
-
-	// // Initialize ring buffer
-	// rb_init(&cir_buffer, SIGNAL_PROCESSING_BUFFER_SIZE);
-
-	// // Initialize shared data
-	// shared_data.buffer = &cir_buffer; // pointer to ring buffer
-	// shared_data.mutex = &buffer_mutex;
-	// shared_data.client_connct_cond = &client_connct_cond;
-	// shared_data.ready_to_read_cond = &ready_to_read_cond;
-	// shared_data.buffer_count = 0;						 // buffer count
-	// shared_data.buff_offset = BUFFER_OFFSET; // overlap count
-	// shared_data.socket_fd = -1;							 // socket file descriptor for TCP server
-	// // shared_data.server_fd = -1; // server file descriptor
-	// shared_data.client_fd = -1; // client file descriptor
-
-	// pthread_t recv_thtread, proc_thread;
-
-	// if (pthread_create(&recv_thtread, NULL, gut_model_mode_receive_thread, NULL) != 0)
-	// {
-	// 	printf("\nError creating TCP server thread.\n");
-
-	// 	return 1;
-	// }
-
-	// if (pthread_create(&proc_thread, NULL, process_thread, NULL) != 0)
-	// // if (pthread_create(&proc_thread, NULL, process_thread, NULL) != 0)
-	// {
-	// 	printf("\nError creating signal buffering thread.\n");
-	// 	return 1;
-	// }
-
-	// if (pthread_join(recv_thtread, NULL) != 0)
-	// {
-	// 	printf("\nError joining TCP server thread.\n");
-	// 	return 1;
-	// }
-	// if (pthread_join(proc_thread, NULL) != 0)
-	// {
-	// 	printf("\nError joining signal buffering thread.\n");
-	// 	return 1;
-	// }
-	// pthread_mutex_destroy(&buffer_mutex);
-	// pthread_cond_destroy(&ready_to_read_cond);
-
-	// // Conn
-	// return 0;
 }
 
 int test_mode(int argc, char *argv[])

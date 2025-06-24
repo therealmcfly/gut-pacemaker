@@ -13,6 +13,6 @@ int tcp_server_close(int *client_fd, int *server_fd);
 int connect_to_server(SharedData *shared_data);
 
 // int run_tcp_server(SharedData *shared_data);
-int run_pacemaker_server(SharedData *shared_data);
+int run_pacemaker_server(SharedData *shared_data, ChannelData *ch_data);
 
 #endif

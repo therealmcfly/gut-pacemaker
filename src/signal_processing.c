@@ -4,7 +4,7 @@
 #include "preprocessing.h"
 #include "detection.h"
 #include "result_check.h"
-#include "shared_data.h"
+#include "global.h"
 
 #include <stdio.h>
 
@@ -52,7 +52,7 @@ int detect_activations(double *in_signal, size_t signal_length, int *channel, ch
 		// Copy Original Signal into Buffer
 		for (int k = 0; k < SIGNAL_PROCESSING_BUFFER_SIZE; k++)
 		{
-			if (!rb_push_sample(shared_data.buffer, in_signal[i + k])) // Push sample to ring buffer
+			if (!rb_push_sample(g_shared_data.buffer, in_signal[i + k])) // Push sample to ring buffer
 			{
 				printf("\nError: Failed to push sample to ring buffer at index %d.\n", i + k);
 				return ERROR;
