@@ -14,8 +14,9 @@ int channel_num;
 char file_name[100]; // Buffer for file name
 int cur_data_freq;	 // Buffer for exp data frequency
 
-SharedData shared_data; // Global shared data for all threads
-RingBuffer cir_buffer;
+SharedData shared_data;															// Global shared data for all threads
+double sp_buffer[SIGNAL_PROCESSING_BUFFER_SIZE];		// Buffer for signal processing
+double ad_buffer[ACTIVATION_DETECTION_BUFFER_SIZE]; // Buffer for artifact detection
 
 RunMode select_mode(void)
 {
@@ -27,7 +28,8 @@ RunMode select_mode(void)
 		printf("\n1. Dataset Mode\n");
 		printf("2. Real-time Mode\n");
 		printf("3. Gut Model Mode\n");
-		printf("\nEnter choice (1-3): ");
+		printf("4. Test Mode\n");
+		printf("\nEnter choice (1-4): ");
 		if (scanf("%d", &choice) != 1)
 		{
 			while (getchar() != '\n')
@@ -35,7 +37,7 @@ RunMode select_mode(void)
 			printf("Invalid input. Please enter a number.\n");
 			continue;
 		}
-		if (choice >= 1 && choice <= 3)
+		if (choice >= 1 && choice <= 4)
 		{
 			while (getchar() != '\n')
 			{
@@ -64,9 +66,10 @@ int static_dataset_mode(int argc, char *argv[])
 	}
 
 	// Initialize ring buffer
-	RingBuffer cir_buffer;
-	rb_init(&cir_buffer);
-	shared_data.buffer = &cir_buffer; // pointer to ring buffer
+	RingBuffer rb;
+	int buffer_size = sizeof(sp_buffer) / sizeof(sp_buffer[0]);
+	rb_init(&rb, sp_buffer, buffer_size);
+	shared_data.buffer = &rb; // pointer to ring buffer
 
 	/*----------------------------------------------------------------------------------*/
 	/*----------------------------- SIGNAL BUFFERING -----------------------------------*/
@@ -101,10 +104,12 @@ int realtime_dataset_mode(int argc, char *argv[])
 	pthread_cond_init(&ready_to_read_cond, NULL);
 
 	// Initialize ring buffer
-	rb_init(&cir_buffer);
+	RingBuffer rb;
+	int buffer_size = sizeof(sp_buffer) / sizeof(sp_buffer[0]);
+	rb_init(&rb, sp_buffer, buffer_size);
 
 	// Initialize shared data
-	shared_data.buffer = &cir_buffer; // pointer to ring buffer
+	shared_data.buffer = &rb; // pointer to ring buffer
 	shared_data.mutex = &buffer_mutex;
 	shared_data.client_connct_cond = &client_connct_cond;
 	shared_data.ready_to_read_cond = &ready_to_read_cond;
@@ -146,7 +151,6 @@ int realtime_dataset_mode(int argc, char *argv[])
 
 int gut_model_mode(int argc, char *argv[])
 {
-
 	// Initialize mutex and condition variable
 	pthread_mutex_t buffer_mutex;
 	pthread_cond_t client_connct_cond;
@@ -156,10 +160,12 @@ int gut_model_mode(int argc, char *argv[])
 	pthread_cond_init(&ready_to_read_cond, NULL);
 
 	// Initialize ring buffer
-	rb_init(&cir_buffer);
+	RingBuffer ad_rb; // activation detection ring buffer
+	int ad_buffer_size = sizeof(ad_buffer) / sizeof(ad_buffer[0]);
+	rb_init(&ad_rb, ad_buffer, ad_buffer_size);
 
 	// Initialize shared data
-	shared_data.buffer = &cir_buffer; // pointer to ring buffer
+	shared_data.buffer = &ad_rb; // pointer to ring buffer
 	shared_data.mutex = &buffer_mutex;
 	shared_data.client_connct_cond = &client_connct_cond;
 	shared_data.ready_to_read_cond = &ready_to_read_cond;
@@ -169,7 +175,21 @@ int gut_model_mode(int argc, char *argv[])
 	// shared_data.server_fd = -1; // server file descriptor
 	shared_data.client_fd = -1; // client file descriptor
 
-	pthread_t recv_thtread, proc_thread, pace_thread;
+	// initialize pacemaker thread data
+	shared_data.learn_time_ms = LEARN_TIME_MS;
+	shared_data.samp_interval_ms = SAMPLING_INTERVAL_MS;
+	shared_data.gri_thresh_ms = GRI_THRESHOLD_MS;
+	shared_data.lri_thresh_ms = LRI_THRESHOLD_MS;
+
+	int timer_ms = 0;
+	shared_data.timer_ms = &timer_ms;
+	shared_data.activation_flag = 0;
+	shared_data.gri_ms = 0;
+	shared_data.lsv_sum = 0.0; // Initialize lowest slope value
+	shared_data.lsv_count = 0; // Initialize lowest slope value count
+	shared_data.threshold = 0.0;
+
+	pthread_t recv_thtread, proc_thread;
 
 	if (pthread_create(&recv_thtread, NULL, gut_model_mode_receive_thread, NULL) != 0)
 	{
@@ -178,7 +198,8 @@ int gut_model_mode(int argc, char *argv[])
 		return 1;
 	}
 
-	if (pthread_create(&proc_thread, NULL, process_thread, NULL) != 0)
+	if (pthread_create(&proc_thread, NULL, pacemaker_thread, NULL) != 0)
+	// if (pthread_create(&proc_thread, NULL, process_thread, NULL) != 0)
 	{
 		printf("\nError creating signal buffering thread.\n");
 		return 1;
@@ -199,4 +220,62 @@ int gut_model_mode(int argc, char *argv[])
 
 	// Conn
 	return 0;
+	// // Initialize mutex and condition variable
+	// pthread_mutex_t buffer_mutex;
+	// pthread_cond_t client_connct_cond;
+	// pthread_cond_t ready_to_read_cond;
+	// pthread_mutex_init(&buffer_mutex, NULL);
+	// pthread_cond_init(&client_connct_cond, NULL);
+	// pthread_cond_init(&ready_to_read_cond, NULL);
+
+	// // Initialize ring buffer
+	// rb_init(&cir_buffer, SIGNAL_PROCESSING_BUFFER_SIZE);
+
+	// // Initialize shared data
+	// shared_data.buffer = &cir_buffer; // pointer to ring buffer
+	// shared_data.mutex = &buffer_mutex;
+	// shared_data.client_connct_cond = &client_connct_cond;
+	// shared_data.ready_to_read_cond = &ready_to_read_cond;
+	// shared_data.buffer_count = 0;						 // buffer count
+	// shared_data.buff_offset = BUFFER_OFFSET; // overlap count
+	// shared_data.socket_fd = -1;							 // socket file descriptor for TCP server
+	// // shared_data.server_fd = -1; // server file descriptor
+	// shared_data.client_fd = -1; // client file descriptor
+
+	// pthread_t recv_thtread, proc_thread;
+
+	// if (pthread_create(&recv_thtread, NULL, gut_model_mode_receive_thread, NULL) != 0)
+	// {
+	// 	printf("\nError creating TCP server thread.\n");
+
+	// 	return 1;
+	// }
+
+	// if (pthread_create(&proc_thread, NULL, process_thread, NULL) != 0)
+	// // if (pthread_create(&proc_thread, NULL, process_thread, NULL) != 0)
+	// {
+	// 	printf("\nError creating signal buffering thread.\n");
+	// 	return 1;
+	// }
+
+	// if (pthread_join(recv_thtread, NULL) != 0)
+	// {
+	// 	printf("\nError joining TCP server thread.\n");
+	// 	return 1;
+	// }
+	// if (pthread_join(proc_thread, NULL) != 0)
+	// {
+	// 	printf("\nError joining signal buffering thread.\n");
+	// 	return 1;
+	// }
+	// pthread_mutex_destroy(&buffer_mutex);
+	// pthread_cond_destroy(&ready_to_read_cond);
+
+	// // Conn
+	// return 0;
+}
+
+int test_mode(int argc, char *argv[])
+{
+	return 1;
 }

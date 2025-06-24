@@ -8,10 +8,11 @@
 #include "signal_processing.h"
 #include "networking.h"
 #include "ring_buffer.h"
+#include "pacemaker.h"
 
 void unlock_mutex()
 {
-	printf("%sUnlocking mutex...\n", PT_TITLE);
+	// printf("%sUnlocking mutex...\n", PT_TITLE);
 	pthread_mutex_unlock(shared_data.mutex);
 }
 
@@ -19,7 +20,7 @@ void *gut_model_mode_receive_thread(void *data)
 {
 	printf("%sReception thread started...\n", RT_TITLE);
 
-	if (run_tcp_server(&shared_data) != 0)
+	if (run_pacemaker_server(&shared_data) != 0)
 	{
 		printf("\n%sError occured while connection to realtime dataset server.\n", RT_TITLE);
 	}
@@ -54,7 +55,7 @@ void *process_thread(void *data)
 
 	pthread_mutex_unlock(shared_data.mutex);
 
-	// double curr_buff_copy[BUFFER_SIZE];
+	// double curr_buff_copy[SIGNAL_PROCESSING_BUFFER_SIZE];
 	int start_idx = 0;
 	int activations[ACTIVATIONS_ARRAY_SIZE]; // Buffer for activation indices
 	int num_activations = 0;
@@ -103,6 +104,83 @@ void *process_thread(void *data)
 			printf("%sSocket connection lost. Exiting process thread...\n", PT_TITLE);
 			pthread_mutex_unlock(shared_data.mutex);
 			break; // Exit if socket is still valid
+		}
+	}
+	printf("%sExiting process thread...\n", PT_TITLE);
+	return NULL;
+}
+
+void *pacemaker_thread(void *data)
+{
+	// Wait until the socket is valid
+	while (shared_data.socket_fd < 1)
+	{
+		continue; // Wait until the socket is valid
+	}
+
+	printf("%sStart process thread.\n", PT_TITLE);
+
+	// --- Outer Loop : Client connection loop ---
+	while (shared_data.socket_fd > 0)
+	{
+		if (shared_data.socket_fd < 1)
+		{
+			printf("%sSocket connection lost. Exiting pacemaker thread...\n", PT_TITLE);
+			if (pthread_mutex_trylock(shared_data.mutex) == 0)
+			{
+				pthread_mutex_unlock(shared_data.mutex);
+			}
+			return NULL; // Exit if socket is invalid
+		}
+
+		pthread_mutex_lock(shared_data.mutex);
+		// reset timer_ms and buffer count
+		*shared_data.timer_ms = 0.0;	// Reset timer_ms
+		shared_data.buffer_count = 0; // Reset buffer count
+		// Wait for a new client connection
+		printf("%sWaiting for new client connection...\n", PT_TITLE);
+		pthread_cond_wait(shared_data.client_connct_cond, shared_data.mutex);
+		printf("%sClient connected. Starting processing...\n", PT_TITLE);
+		pthread_mutex_unlock(shared_data.mutex);
+
+		// double curr_buff_copy[SIGNAL_PROCESSING_BUFFER_SIZE];
+		int start_idx = 0;
+		int activations[ACTIVATIONS_ARRAY_SIZE]; // Buffer for activation indices
+		int num_activations = 0;
+		// Inner Loop : Data Reception Loop ---
+		while (shared_data.client_fd > 0)
+		{
+			pthread_mutex_lock(shared_data.mutex);
+			// printf("%sWaiting for buffer to be ready...\n", PT_TITLE);
+			pthread_cond_wait(shared_data.ready_to_read_cond, shared_data.mutex);
+
+			// Check if the socket is still valid
+			if (shared_data.socket_fd < 1)
+			{
+				printf("%sSocket connection lost while waiting for buffer to be ready. Exiting pacemaker thread...\n", PT_TITLE);
+				pthread_mutex_unlock(shared_data.mutex);
+				return NULL; // Exit if socket is invalid
+			}
+			// Check if the client is still connected
+			if (shared_data.client_fd < 1)
+			{
+				printf("%sConnection lost while waiting for buffer to be ready. Returning waiting for client connection.\n", PT_TITLE);
+				pthread_mutex_unlock(shared_data.mutex);
+				break; // Exit loop if socket for client is invalid
+			}
+
+			// printf("%sBuffer ready. Starting activation detection process for buffer %d...\n", PT_TITLE, shared_data.buffer_count + 1);
+
+			// Process the buffer
+			// mutex is unlocked in processing_pipeline via callback function
+			if (run_pacemaker(&shared_data, unlock_mutex))
+			{
+				printf("\n%sError occured while processing buffer %d.\n", PT_TITLE, shared_data.buffer_count + 1);
+				return NULL;
+			}
+			start_idx += shared_data.buff_offset;
+
+			// printf("%sFinished activation detection process for buffer %d...\n\n", PT_TITLE, shared_data.buffer_count + 1);
 		}
 	}
 	printf("%sExiting process thread...\n", PT_TITLE);

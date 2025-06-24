@@ -22,9 +22,28 @@ typedef struct
 	// int server_fd;
 	int client_fd;
 	int socket_fd; // for TCP server
-								 // for Process Thread
 
+	// pacemaker thread
+	int *timer_ms;
+	int learn_time_ms;	// Learning time in milliseconds
+	int threshold_flag; // Flag to indicate if threshold is calculated
+	int activation_flag;
+	int pace_flag;
+	int lri_ms;
+	int gri_ms;
+	double lsv_sum; // Sum of lowest slope values
+	double threshold;
+	int samp_interval_ms;
+	int lsv_count;
+	int gri_thresh_ms;
+	int lri_thresh_ms;
+	int print_interval; // for animation
 } SharedData;
+
+typedef struct
+{
+	// Threshold for pacing
+} PacemakerData;
 
 // Global vars (for static dataset mode, can remove for embedded implimentaion)
 extern size_t signal_length;

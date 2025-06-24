@@ -2,8 +2,8 @@
 
 #include <stdlib.h> // lib for malloc for debugging, remove after use
 
-static double maf_buffer[BUFFER_SIZE + HPF_FILTER_ORDER - 1]; // Initialize sum array for moving average
-static double ed_conv_sig_buffer[NEO_MAF_ED_SIGNAL_SIZE];			// Full convolution size
+static double maf_buffer[SIGNAL_PROCESSING_BUFFER_SIZE + HPF_FILTER_ORDER - 1]; // Initialize sum array for moving average
+static double ed_conv_sig_buffer[NEO_MAF_ED_SIGNAL_SIZE];												// Full convolution size
 
 /*------------------------------------------------------------------------*/
 /*                            prev functions                              */
@@ -189,7 +189,7 @@ int detect_activation(double *in_ed_signal, int in_ed_signal_len, int *out_activ
 		sum += in_ed_signal[i];
 		// printf("sum after adding in_ed_signal[%d]: %f\n", i, sum);
 	}
-	mad = (sum / in_ed_signal_len) * ED_SCALAR_VALUE;
+	mad = (sum / in_ed_signal_len) * AD_SCALAR_VALUE;
 
 	// % finding where detection signal > threshold
 

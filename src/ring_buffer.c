@@ -8,27 +8,30 @@
 #define IS_FULL_INIT_VAL 0
 
 // Initialize buffer
-void rb_init(RingBuffer *rb)
+void rb_init(RingBuffer *rb, double *buffer, int buffer_size)
 {
-	rb->size = BUFFER_SIZE;
-
+	if (rb == NULL)
+	{
+		perror("\nError: NULL pointer passed to rb_init\n");
+	}
+	rb->buffer = buffer; // Assign the provided buffer to the ring buffer
+	rb->size = buffer_size;
 	rb->head = rb->buffer;
 	rb->tail = rb->buffer;
 	rb->end = rb->buffer + rb->size;
 	rb->is_full = IS_FULL_INIT_VAL;
 	rb->rtr_flag = READY_TO_READ_INIT_VAL;
 	rb->new_signal_count = WRITE_COUNT_INIT_VAL;
-	printf("Ring buffer initialized.\n");
+	// printf("Ring buffer initialized.\n");
 }
 
 bool rb_push_sample(RingBuffer *rb, double data)
 {
 	if (rb == NULL)
 	{
-		fprintf(stderr, "Error: NULL pointer passed to rb_push_sample\n");
+		perror("Error: NULL pointer passed to rb_push_sample\n");
 		return false;
 	}
-
 	// add data to head
 	*(rb->head) = data;
 
@@ -47,9 +50,14 @@ bool rb_push_sample(RingBuffer *rb, double data)
 
 void rb_reset(RingBuffer *rb)
 {
+	if (rb == NULL)
+	{
+		perror("Error: NULL pointer passed to rb_reset\n");
+		return;
+	}
 	rb->head = rb->buffer;
 	rb->tail = rb->buffer;
-	rb->end = rb->buffer + BUFFER_SIZE;
+	rb->end = rb->buffer + rb->size;
 	rb->is_full = IS_FULL_INIT_VAL;
 	rb->rtr_flag = READY_TO_READ_INIT_VAL;
 	rb->new_signal_count = WRITE_COUNT_INIT_VAL;
@@ -59,18 +67,18 @@ bool rb_snapshot(RingBuffer *rb, double *buff_copy, int next_overlap_count)
 {
 	if (rb == NULL || buff_copy == NULL)
 	{
-		fprintf(stderr, "Error: NULL pointer passed to rb_snapshot\n");
+		perror("Error: NULL pointer passed to rb_snapshot\n");
 		return false;
 	}
 
 	if (next_overlap_count < 0 || next_overlap_count > rb->size)
 	{
-		fprintf(stderr, "Error: Invalid overlap count in rb_snapshot\n");
+		perror("Error: Invalid overlap count in rb_snapshot\n");
 		return false;
 	}
 	rb->rtr_flag = false; // reset rtr_flag flag
 
-	printf("Taking snapshot of ring buffer!\n");
+	// printf("Taking snapshot of ring buffer!\n");
 	// rtr_flag is reset outside this function after
 	double *curr = rb->tail;
 	for (int i = 0; i < rb->size; i++)

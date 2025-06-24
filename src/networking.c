@@ -24,21 +24,71 @@
 #define GUT_SERVER_IP "192.168.32.1"
 #define GUT_SERVER_PORT 8082
 
+// Print functions
+static void print_recieved_data(SharedData *shared_data, int ready_buffer_count)
+{
+	// printf("\r%s(%d)", RT_TITLE, shared_data->buffer->new_signal_count); // Print count and clear leftovers;
+	// fflush(stdout);
+	// if (!(shared_data->buffer->new_signal_count < shared_data->buff_offset))
+	// {
+	// 	printf(" new samples recieved. Ready to process buffer %d. ", shared_data->buffer_count + 1);
+	// 	if (!shared_data->buffer->rtr_flag)
+	// 	{
+	// 		printf("\n");
+	// 	}
+	// 	else
+	// 	{
+	// 		printf("(%d buffer skipped)\n", ready_buffer_count);
+	// 	}
+	// }
+}
+static void print_initial_recieved_data(SharedData *shared_data, int is_full)
+{
+	// if (!is_full)
+	// {
+	// 	printf("\r%s(%d)", RT_TITLE, shared_data->buffer->new_signal_count); // Print count and clear leftovers;
+	// 	fflush(stdout);
+	// }
+	// else
+	// {
+	// 	printf("\r%s(%d)", RT_TITLE, shared_data->buffer->new_signal_count); // Print count and clear leftovers;
+	// 	fflush(stdout);
+	// 	printf(" new samples recieved. Ready to process buffer %d. (Buffer filled)\n", shared_data->buffer_count + 1);
+	// }
+}
+// Internal utility functions
+static void close_client(int *client_fd)
+{
+	if (*client_fd > 0)
+	{
+		close(*client_fd);
+		*client_fd = -1; // Reset client fd to indicate disconnection
+		printf("Client connection closed.\n");
+	}
+	else
+	{
+		printf("Unexpected Behaviour: No client connection to close.\n");
+	}
+}
 static void handle_invalid_action(SharedData *shared_data)
 {
 	close(shared_data->socket_fd);
 	shared_data->socket_fd = -1; // Reset socket fd to indicate disconnection
+
+	// incase the process thread is in waiting state for flags
 	pthread_cond_broadcast(shared_data->client_connct_cond);
 	pthread_cond_broadcast(shared_data->ready_to_read_cond);
-	pthread_mutex_unlock(shared_data->mutex);
+	// If mutex is locked, unlock it
+	if (pthread_mutex_trylock(shared_data->mutex) == 0)
+	{
+		pthread_mutex_unlock(shared_data->mutex);
+	}
 }
-
 static void handle_sigint(int sig)
 {
 	printf("\nSIGINT received. Forcing shutdown.\n");
 	_exit(0); // Immediately terminate all threads without cleanup
 }
-
 static int create_tcp_socket(int *server_fd)
 {
 	// Create socket
@@ -69,42 +119,13 @@ static int create_tcp_socket(int *server_fd)
 	printf("Socket created successfully.\n");
 	return 0;
 }
-
 int tcp_server_init(int *socket_fd)
 {
-
 	// Create socket
 	if (create_tcp_socket(socket_fd) < 0)
 	{
 		return -1; // Error already handled in create_tcp_socket
 	}
-
-	// // Alternative socket creation method (commented out for now)
-	// // Uncomment if you want to use this method instead of create_tcp_socket
-	// *server_fd = socket(AF_INET, SOCK_STREAM, 0);
-	// if (*server_fd < 0)
-	// {
-	// 	perror("Socket creation failed");
-	// 	return -1;
-	// }
-
-	// // Allow quick reuse of the port after program exits
-	// int opt = 1;
-	// if (setsockopt(*server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
-	// {
-	// 	perror("setsockopt(SO_REUSEADDR) failed");
-	// 	close(*server_fd);
-	// 	return -1;
-	// }
-
-	// // Ensure socket closes immediately (no TIME_WAIT delay)
-	// struct linger sl = {1, 0}; // l_onoff = 1, l_linger = 0
-	// if (setsockopt(*server_fd, SOL_SOCKET, SO_LINGER, &sl, sizeof(sl)) < 0)
-	// {
-	// 	perror("setsockopt(SO_LINGER) failed");
-	// 	close(*server_fd);
-	// 	return -1;
-	// }
 
 	// Set up server address
 	struct sockaddr_in server_addr;
@@ -151,7 +172,12 @@ int tcp_server_close(int *client_fd, int *socket_fd)
 }
 int tcp_server_accept(int *client_fd, int *socket_fd)
 {
-	printf("Waiting for client connection...\n");
+	if (*socket_fd < 0)
+	{
+		fprintf(stderr, "\nError: Server socket is not initialized. Cannot accept client.\n");
+		return -1;
+	}
+
 	struct sockaddr_in client_addr;
 	socklen_t addr_len = sizeof(client_addr);
 
@@ -159,63 +185,30 @@ int tcp_server_accept(int *client_fd, int *socket_fd)
 	*client_fd = accept(*socket_fd, (struct sockaddr *)&client_addr, &addr_len);
 	if (*client_fd < 0)
 	{
-		perror("\nError: Accept failed");
+		perror("\nError: Client acception failed");
 
 		return -1;
 	}
 
-	printf("Client connected: %s:%d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+	printf("Client connect accepted: %s:%d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 	return *client_fd;
 }
-int tcp_server_send(double *data, int size, int *client_fd)
+int tcp_receive(void *data, int data_size, int *fd)
 {
-	// Send data to client
-	int bytes_sent = send(*client_fd, data, size * sizeof(double), 0);
-	if (bytes_sent < 0)
-	{
-		perror("\nError: Send failed");
-		return -1;
-	}
-
-	return bytes_sent;
-}
-int tcp_server_receive(double *data, Timer *interval_timer, int *first_sample, int *client_fd)
-{
-	// Receive data from client
+	// Receive data from server or client
 	int total_read = 0;
-	while (total_read < sizeof(double))
+	uint8_t *p = (uint8_t *)data;
+	while (total_read < data_size)
 	{
-		int r = recv(*client_fd, ((char *)data) + total_read, sizeof(double) - total_read, 0);
+		int r = recv(*fd, p + total_read, data_size - total_read, 0);
 		if (r <= 0)
 			return r; // error or closed
 		total_read += r;
 	}
 
-	// // Timing logic here
-	// if (*first_sample)
-	// {
-	// 	timer_start(interval_timer);
-	// 	*first_sample = 0;
-	// }
-	// else
-	// {
-	// 	timer_stop(interval_timer);
-	// 	double interval_ms = timer_elapsed_ms(interval_timer);
-	// 	double freq_hz = interval_ms > 0 ? 1000.0 / interval_ms : 0;
-	// 	if (interval_ms > 0)
-	// 	{
-	// 		printf("Sample interval: %.3f ms (%.2f Hz)\n", interval_ms, freq_hz);
-	// 	}
-	// 	else
-	// 	{
-	// 		printf("Sample interval: %.3f ms (infinity Hz)\n", interval_ms);
-	// 	}
-	// 	timer_start(interval_timer);
-	// }
-
 	if (total_read == 0)
 	{
-		printf("\nConnection closed by Simulink.\n");
+		printf("\nConnection closed by client.\n");
 
 		return 0;
 	}
@@ -229,12 +222,27 @@ int tcp_server_receive(double *data, Timer *interval_timer, int *first_sample, i
 		fprintf(stderr, "\nError: recv returned %d bytes, expected %zu bytes\n", total_read, sizeof(double));
 		return -1;
 	}
-
-	return total_read;
+	else
+	{
+		// printf("\nReceived %d bytes from client.\n", total_read);
+		return total_read;
+	}
 }
+int tcp_server_send(double *data, int size, int *client_fd)
+{
+	// Send data to client
+	int bytes_sent = send(*client_fd, data, size * sizeof(double), 0);
+	if (bytes_sent < 0)
+	{
+		perror("\nError: Send failed");
+		return -1;
+	}
 
+	return bytes_sent;
+}
 int run_tcp_server(SharedData *shared_data)
 {
+	// Initialize server
 	printf("\n%sRunning TCP server...\n", RT_TITLE);
 	signal(SIGINT, handle_sigint);
 	if (tcp_server_init(&shared_data->socket_fd) < 0)
@@ -243,163 +251,121 @@ int run_tcp_server(SharedData *shared_data)
 		return -1;
 	}
 
-	while (1) // === Outer loop: wait for new client ===
+	// Start client connect and data reception loop
+	while (1)
+	// === Outer loop: wait for new client ===
 	{
+		// Client connection
 		if (tcp_server_accept(&shared_data->client_fd, &shared_data->socket_fd) < 0)
 		{
-			printf("\nError: Failed to accept client.\n");
+			printf("\nError: Failed while accepting client connection.\n");
 			continue;
 		}
-
+		// Client connected, notify other threads
 		pthread_mutex_lock(shared_data->mutex);
-		printf("Simulink connected.\n");
-
-		uint8_t mode;
-
-		int mode_bytes = recv(shared_data->client_fd, &mode, sizeof(mode), 0);
-
-		if (mode_bytes <= 0)
-		{
-			printf("Failed to receive mode. Closing connection.\n");
-			close(shared_data->client_fd);
-			shared_data->client_fd = -1;
-			continue; // go back to accept new client
-		}
-
-		// printf("Received mode: %d\n", mode);
-
-		// // Receive filename first
-
-		// int filename_bytes = recv(shared_data->client_fd, file_name, sizeof(file_name) - 1, 0);
-
-		// if (filename_bytes <= 0)
-		// {
-		// 	printf("Failed to receive filename. Closing connection.\n");
-		// 	close(shared_data->client_fd);
-		// 	shared_data->client_fd = -1;
-		// 	continue; // go back to accept new client
-		// }
-
-		// printf("Received filename: %s\n", file_name);
-
-		// int freq_bytes = recv(shared_data->client_fd, &cur_data_freq, sizeof(cur_data_freq), 0);
-		// if (freq_bytes != sizeof(cur_data_freq))
-		// {
-		// 	printf("Failed to receive full int frequency.\n");
-		// 	close(shared_data->client_fd);
-		// 	shared_data->client_fd = -1;
-		// 	continue;
-		// }
-		// printf("Received frequency information: %d hz\n", cur_data_freq);
-
-		// int channel_bytes = recv(shared_data->client_fd, &channel_num, sizeof(channel_num), 0);
-
-		// if (channel_bytes != sizeof(channel_num))
-		// {
-		// 	printf("Failed to receive full int channel number.\n");
-		// 	close(shared_data->client_fd);
-		// 	shared_data->client_fd = -1;
-		// 	continue;
-		// }
-
-		// printf("Received channel number: %d\n", channel_num);
-
+		printf("Gut model connect accepted.\n");
 		pthread_cond_signal(shared_data->client_connct_cond);
 		pthread_mutex_unlock(shared_data->mutex);
+
+		// for some reason, ther is a single double sent from the gut model that offsets the buffer. Below code is to receive that double and discard it.
+		double initial_sample = 0.0; // Initialize sample variable
+		int bytes = tcp_receive(&initial_sample, sizeof(double), &shared_data->client_fd);
+
 		printf("Starting data reception...\n");
 
+		// Initialize variables for receiving data
 		double sample;
 		int buffer_initial_fill = false;
-
 		// Timer variables
-		Timer interval_timer;
-		int first_sample = 1;
+		// Timer interval_timer;
+		// int first_sample = 1;
+		// ↓↓↓ var is to show skipped buffers
+		int ready_buffer_count = 0;
 
-		int rtr_signal_count = 0;
-		while (1) // === Inner loop: receive data from current client ===
+		while (1)
+		// === Inner loop: receive data from current client ===
 		{
-
-			int bytes_read = tcp_server_receive(&sample, &interval_timer, &first_sample, &shared_data->client_fd);
-
-			if (bytes_read == sizeof(double))
+			// receive data from client
+			int bytes_read = tcp_receive(&sample, sizeof(double), &shared_data->client_fd);
+			if (bytes_read != sizeof(double))
 			{
-				pthread_mutex_lock(shared_data->mutex);
-
-				rb_push_sample(shared_data->buffer, sample); // this function must only be made when the mutex is locked
-
-				// printf("Sample[%d]: %f\n", shared_data->buffer->new_signal_count, sample);
-
-				if (!buffer_initial_fill) // before ring buffer is initially filled
+				if (bytes_read == 0)
 				{
-					// check if buffer is full
-					if (!shared_data->buffer->is_full)
-					{
-						// Print animation
-						printf("\r%s(%d)", RT_TITLE, shared_data->buffer->new_signal_count); // Print count and clear leftovers;
-						fflush(stdout);
-					}
-					else
-					{
-						buffer_initial_fill = true;
-						printf("\r%s(%d)", RT_TITLE, shared_data->buffer->new_signal_count); // Print count and clear leftovers;
-						fflush(stdout);
-						printf(" new samples recieved. Ready to process buffer %d. (Buffer filled)\n", shared_data->buffer_count + 1);
-						shared_data->buffer->rtr_flag = true;
-						shared_data->buffer->new_signal_count = 0; // reset new_signal_count
-						pthread_cond_signal(shared_data->ready_to_read_cond);
-						rtr_signal_count++;
-					}
-
+					printf("Client disconnected.\n");
+					pthread_mutex_lock(shared_data->mutex);
+					close_client(&shared_data->client_fd);									 // Close client connection
+					rb_reset(shared_data->buffer);													 // Reset the ring buffer
+					buffer_initial_fill = false;														 // Reset initial fill flag
+					ready_buffer_count = 0;																	 // Reset ready buffer count
+					pthread_cond_broadcast(shared_data->ready_to_read_cond); // Notify waiting threads
 					pthread_mutex_unlock(shared_data->mutex);
-					continue; // skip to next iteration
+
+					break; // exit inner loop, go back to accept()
 				}
-				else // after buffer is initially filled
+				else if (bytes_read < 0)
 				{
-					// check how many signals were writen after last snapshot
-					// if (!shared_data->buffer->rtr_flag && shared_data->buffer->new_signal_count >= shared_data->buff_offset)
-					if (shared_data->buffer->new_signal_count < shared_data->buff_offset)
-					{
-						// Print animation
-						printf("\r%s(%d)", RT_TITLE, shared_data->buffer->new_signal_count); // Print count and clear leftovers;
-						fflush(stdout);
-					}
-					else
-					{
-						(shared_data->buffer_count)++;
-						printf("\r%s(%d)", RT_TITLE, shared_data->buffer->new_signal_count); // Print count and clear leftovers;
-						fflush(stdout);
-						printf(" new samples recieved. Ready to process buffer %d. ", shared_data->buffer_count + 1);
-						shared_data->buffer->new_signal_count = 0; // reset new_signal_count
-						if (!shared_data->buffer->rtr_flag)
-						{
-							printf("\n");
-							rtr_signal_count = 0; // reset rtr signal count
-							shared_data->buffer->rtr_flag = true;
-						}
-						else
-						{
-							printf("(%d buffer skipped)\n", rtr_signal_count);
-						}
-						pthread_cond_signal(shared_data->ready_to_read_cond);
-						rtr_signal_count++;
-					}
+					printf("Receive error. Closing client.\n");
+					break;
 				}
+				else
+				{
+					fprintf(stderr, "Unexpected byte count: %d\n", bytes_read);
+				}
+			}
+
+			// printf("Received sample: %.10f\n", sample); // Debugging line
+
+			// push received sample to ring buffer
+			pthread_mutex_lock(shared_data->mutex);
+			// ↓↓↓ this function must only be made when the mutex is locked
+			rb_push_sample(shared_data->buffer, sample);
+			// increment timer_ms (by sampling interval)
+			*(shared_data->timer_ms) += shared_data->samp_interval_ms;
+
+			if (!buffer_initial_fill) // before ring buffer is initially filled
+			{
+				// check if buffer is full
+				if (!shared_data->buffer->is_full)
+				{
+					// For printing signal accumulating animation
+					print_initial_recieved_data(shared_data, shared_data->buffer->is_full); // print initial buffer fill
+				}
+				else
+				{
+					buffer_initial_fill = true;
+					// For printing signal accumulating animation
+					print_initial_recieved_data(shared_data, shared_data->buffer->is_full); // print initial buffer fill
+					//
+					shared_data->buffer->rtr_flag = true;
+					shared_data->buffer->new_signal_count = 0; // reset new_signal_count
+					pthread_cond_signal(shared_data->ready_to_read_cond);
+					ready_buffer_count++;
+				}
+
 				pthread_mutex_unlock(shared_data->mutex);
+				continue; // skip to next iteration
 			}
-			else if (bytes_read == 0)
+			else // after buffer is initially filled
 			{
-				printf("Client disconnected.\n");
-				break; // exit inner loop, go back to accept()
+				if (shared_data->buffer->new_signal_count < shared_data->buff_offset)
+				{
+					print_recieved_data(shared_data, ready_buffer_count);
+				}
+				else
+				{
+					(shared_data->buffer_count)++;
+					print_recieved_data(shared_data, ready_buffer_count);
+					if (!shared_data->buffer->rtr_flag)
+					{
+						ready_buffer_count = 0; // rtr_flag being false indicates that the buffer snapshot occured so reset ready_buffer_count
+						shared_data->buffer->rtr_flag = true;
+					}
+					shared_data->buffer->new_signal_count = 0; // reset new_signal_count
+					pthread_cond_signal(shared_data->ready_to_read_cond);
+					ready_buffer_count++;
+				}
 			}
-			else if (bytes_read < 0)
-			{
-				printf("Receive error. Closing client.\n");
-				break;
-			}
-			else
-			{
-				fprintf(stderr, "Unexpected byte count: %d\n", bytes_read);
-			}
+			pthread_mutex_unlock(shared_data->mutex);
 		}
 
 		// Clean up after client disconnects
@@ -513,7 +479,7 @@ int connect_to_server(SharedData *shared_data)
 	// Timer interval_timer;
 	// int first_sample = 1;
 
-	int rtr_signal_count = 0;
+	int ready_buffer_count = 0;
 
 	// recive signal logic
 	double gut_signal;
@@ -552,7 +518,7 @@ int connect_to_server(SharedData *shared_data)
 					shared_data->buffer->rtr_flag = true;
 					shared_data->buffer->new_signal_count = 0; // reset new_signal_count
 					pthread_cond_signal(shared_data->ready_to_read_cond);
-					rtr_signal_count++;
+					ready_buffer_count++;
 				}
 
 				pthread_mutex_unlock(shared_data->mutex);
@@ -565,28 +531,28 @@ int connect_to_server(SharedData *shared_data)
 				if (shared_data->buffer->new_signal_count < shared_data->buff_offset)
 				{
 					// Print animation
-					printf("\r%s(%d)", RT_TITLE, shared_data->buffer->new_signal_count); // Print count and clear leftovers;
-					fflush(stdout);
+					print_recieved_data(shared_data, ready_buffer_count);
 				}
 				else
 				{
 					(shared_data->buffer_count)++;
-					printf("\r%s(%d)", RT_TITLE, shared_data->buffer->new_signal_count); // Print count and clear leftovers;
-					fflush(stdout);
-					printf(" new samples recieved. Ready to process buffer %d. ", shared_data->buffer_count + 1);
-					shared_data->buffer->new_signal_count = 0; // reset new_signal_count
+					// printf("\r%s(%d)", RT_TITLE, shared_data->buffer->new_signal_count); // Print count and clear leftovers;
+					// fflush(stdout);
+					// printf(" new samples recieved. Ready to process buffer %d. ", shared_data->buffer_count + 1);
+					print_recieved_data(shared_data, ready_buffer_count);
 					if (!shared_data->buffer->rtr_flag)
 					{
-						printf("\n");
-						rtr_signal_count = 0; // reset rtr signal count
+						// printf("\n");
+						ready_buffer_count = 0; // reset rtr signal count
 						shared_data->buffer->rtr_flag = true;
 					}
-					else
-					{
-						printf("(%d buffer skipped)\n", rtr_signal_count);
-					}
+					// else
+					// {
+					// 	// printf("(%d buffer skipped)\n", ready_buffer_count);
+					// }
+					shared_data->buffer->new_signal_count = 0; // reset new_signal_count
 					pthread_cond_signal(shared_data->ready_to_read_cond);
-					rtr_signal_count++;
+					ready_buffer_count++;
 				}
 			}
 			pthread_mutex_unlock(shared_data->mutex);
@@ -648,6 +614,82 @@ int connect_to_server(SharedData *shared_data)
 	pthread_cond_broadcast(shared_data->ready_to_read_cond); // signal ready to read condition variable
 
 	pthread_mutex_unlock(shared_data->mutex);
+
+	return 0;
+}
+
+int run_pacemaker_server(SharedData *shared_data)
+{
+
+	signal(SIGINT, handle_sigint);
+	struct sockaddr_in server_addr, client_addr;
+	socklen_t addr_len = sizeof(client_addr);
+
+	// Create socket
+	if ((shared_data->socket_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+	{
+		perror("socket failed");
+		return 1;
+	}
+
+	// Bind
+	memset(&server_addr, 0, sizeof(server_addr));
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_addr.s_addr = INADDR_ANY; // 0.0.0.0
+	server_addr.sin_port = htons(PORT);
+
+	if (bind(shared_data->socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+	{
+		perror("bind failed");
+		return 1;
+	}
+
+	// Listen
+	if (listen(shared_data->socket_fd, 1) < 0)
+	{
+		perror("listen failed");
+		return 1;
+	}
+
+	printf("🟢 Waiting for connection on port %d...\n", PORT);
+
+	// Accept client
+	if ((shared_data->client_fd = accept(shared_data->socket_fd, (struct sockaddr *)&client_addr, &addr_len)) < 0)
+	{
+		perror("accept failed");
+		return 1;
+	}
+
+	pthread_mutex_lock(shared_data->mutex);
+	printf("✅ Client connected.\n");
+
+	// Receive loop
+	while (1)
+	{
+		double val;
+		int total = 0;
+		uint8_t *p = (uint8_t *)&val;
+
+		// Receive 8 bytes (one double)
+		while (total < sizeof(double))
+		{
+			int r = recv(shared_data->client_fd, p + total, sizeof(double) - total, 0);
+			if (r <= 0)
+			{
+				printf("🔴 Connection closed or error.\n");
+				close(shared_data->client_fd);
+				close(shared_data->socket_fd);
+				return 0;
+			}
+			total += r;
+		}
+
+		// Print raw bytes
+		printf("Bytes: ");
+		for (int i = 0; i < 8; ++i)
+			printf("%02x ", p[i]);
+		printf("=> Value: %.15f\n", val);
+	}
 
 	return 0;
 }

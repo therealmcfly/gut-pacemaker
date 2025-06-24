@@ -13,7 +13,7 @@
 #define ERROR_BUFFER_SIZE 2
 
 // top of file
-static double lpf_sig_buffer[BUFFER_SIZE];
+static double lpf_sig_buffer[SIGNAL_PROCESSING_BUFFER_SIZE];
 static double hpf_sig_buffer[HPF_AD_SIGNAL_LEN];
 static double neo_sig_buffer[NEO_MAF_ED_SIGNAL_SIZE];
 static double maf_signal[NEO_MAF_ED_SIGNAL_SIZE];
@@ -23,19 +23,19 @@ int detect_activations(double *in_signal, size_t signal_length, int *channel, ch
 {
 	int activations[ACTIVATIONS_ARRAY_SIZE]; // Buffer for activation indices
 	int num_activations = 0;								 // Number of activations
-	// if (BUFFER_SIZE % 2 != 0)
+	// if (SIGNAL_PROCESSING_BUFFER_SIZE % 2 != 0)
 	// {
-	// 	printf("\nError: BUFFER_SIZE must be an even number.\n");
+	// 	printf("\nError: SIGNAL_PROCESSING_BUFFER_SIZE must be an even number.\n");
 	// 	return ERROR_BUFFER_SIZE;
 	// }
 
 	// Variables for buffering
-	int i = 0, j = BUFFER_SIZE, shift = 0;
-	// double buffer[MIRROR_MATLAB_LOGIC ? BUFFER_SIZE + 1 /*+1 is to mirror the MATLAB logic*/ : BUFFER_SIZE];
-	// double lpf_sig_buffer[MIRROR_MATLAB_LOGIC ? BUFFER_SIZE + 1 /*+1 is to mirror the MATLAB logic*/ : BUFFER_SIZE];
-	// double hpf_signal[MIRROR_MATLAB_LOGIC ? (BUFFER_SIZE + 1 /*+1 is to mirror the MATLAB logic*/) + HPF_FILTER_ORDER : BUFFER_SIZE + HPF_FILTER_ORDER];
-	// double artifact_signal[MIRROR_MATLAB_LOGIC ? BUFFER_SIZE + 1 /*+1 is to mirror the MATLAB logic*/ + HPF_FILTER_ORDER : BUFFER_SIZE + HPF_FILTER_ORDER];
-	// int cur_buffer_size = BUFFER_SIZE; // mirroring of the MATLAB logic, romove if not needed and replace all cur_buffer_size with BUFFER_SIZE
+	int i = 0, j = SIGNAL_PROCESSING_BUFFER_SIZE, shift = 0;
+	// double buffer[MIRROR_MATLAB_LOGIC ? SIGNAL_PROCESSING_BUFFER_SIZE + 1 /*+1 is to mirror the MATLAB logic*/ : SIGNAL_PROCESSING_BUFFER_SIZE];
+	// double lpf_sig_buffer[MIRROR_MATLAB_LOGIC ? SIGNAL_PROCESSING_BUFFER_SIZE + 1 /*+1 is to mirror the MATLAB logic*/ : SIGNAL_PROCESSING_BUFFER_SIZE];
+	// double hpf_signal[MIRROR_MATLAB_LOGIC ? (SIGNAL_PROCESSING_BUFFER_SIZE + 1 /*+1 is to mirror the MATLAB logic*/) + HPF_FILTER_ORDER : SIGNAL_PROCESSING_BUFFER_SIZE + HPF_FILTER_ORDER];
+	// double artifact_signal[MIRROR_MATLAB_LOGIC ? SIGNAL_PROCESSING_BUFFER_SIZE + 1 /*+1 is to mirror the MATLAB logic*/ + HPF_FILTER_ORDER : SIGNAL_PROCESSING_BUFFER_SIZE + HPF_FILTER_ORDER];
+	// int cur_buffer_size = SIGNAL_PROCESSING_BUFFER_SIZE; // mirroring of the MATLAB logic, romove if not needed and replace all cur_buffer_size with SIGNAL_PROCESSING_BUFFER_SIZE
 
 	printf("\nStarting signal buffering...\n");
 	printf("Signal length: %zu\n", signal_length);
@@ -45,12 +45,12 @@ int detect_activations(double *in_signal, size_t signal_length, int *channel, ch
 	{
 
 		// this is a modification to mirror the logic happening in the MATLAB project. 1st buffer size is 1000 in the first buffer and 1001 in all the rest of the buffers. remove if not needed
-		// cur_buffer_size = MIRROR_MATLAB_LOGIC && (shift == 0) ? BUFFER_SIZE : BUFFER_SIZE + 1;
+		// cur_buffer_size = MIRROR_MATLAB_LOGIC && (shift == 0) ? SIGNAL_PROCESSING_BUFFER_SIZE : SIGNAL_PROCESSING_BUFFER_SIZE + 1;
 		last_sample_index = j - 1;
 		printf("\nProcessing buffer %d, signal %d to %d ...\n", shift + 1, i, last_sample_index);
 
 		// Copy Original Signal into Buffer
-		for (int k = 0; k < BUFFER_SIZE; k++)
+		for (int k = 0; k < SIGNAL_PROCESSING_BUFFER_SIZE; k++)
 		{
 			if (!rb_push_sample(shared_data.buffer, in_signal[i + k])) // Push sample to ring buffer
 			{
@@ -67,8 +67,8 @@ int detect_activations(double *in_signal, size_t signal_length, int *channel, ch
 		}
 		// Buffer Shift
 		shift++;
-		i += BUFFER_SIZE / 2;
-		j = i + BUFFER_SIZE;
+		i += SIGNAL_PROCESSING_BUFFER_SIZE / 2;
+		j = i + SIGNAL_PROCESSING_BUFFER_SIZE;
 	}
 
 	// Check Pre Activation Detection Result
@@ -120,12 +120,12 @@ int processing_pipeline(int *shift, int i, int *num_activations, int *activation
 	char *filename = file_name;
 	int channel = channel_num;
 	int freq = cur_data_freq;
-	// start the timer for the current buffer
+	// start the timer_ms for the current buffer
 	Timer buffer_timer;
 	timer_start(&buffer_timer);
 
 	// this is a modification to mirror the logic happening in the MATLAB project. 1st buffer size is 1000 in the first buffer and 1001 in all the rest of the buffers. remove if not needed
-	// cur_buffer_size = MIRROR_MATLAB_LOGIC && (*shift == 0) ? BUFFER_SIZE : BUFFER_SIZE + 1;
+	// cur_buffer_size = MIRROR_MATLAB_LOGIC && (*shift == 0) ? SIGNAL_PROCESSING_BUFFER_SIZE : SIGNAL_PROCESSING_BUFFER_SIZE + 1;
 
 	/* -----------------------------------------------------------------------------*/
 	/*                                 PREPROCESSING                                */

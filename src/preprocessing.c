@@ -127,10 +127,10 @@ static double evaluate_spline(double a, double b, double c, double d, double x1,
 static int lowpass_fir_filter(const double *coeffs, int coeff_len, const double *in_signal, double *out_signal, int signal_length, int is_bad_signal)
 {
 	int filt_delay = (coeff_len - 1) / 2; // filter order is coeff length -1, and delay is half of the filter order
-	// signal_length here = BUFFER_SIZE + LPF_PADDING_SIZE * 2
+	// signal_length here = SIGNAL_PROCESSING_BUFFER_SIZE + LPF_PADDING_SIZE * 2
 	// filt_delay here = BAD_SIG_LPF_COEFFS_LEN or GOOD_SIG_LPF_COEFFS_LEN - 1 / 2
-	int temp_output_len = (BUFFER_SIZE + (LPF_PADDING_SIZE * 2)) + ((is_bad_signal ? BAD_SIG_LPF_COEFFS_LEN : GOOD_SIG_LPF_COEFFS_LEN) - 1 / 2);
-	double temp_output[(BUFFER_SIZE + (LPF_PADDING_SIZE * 2)) + ((is_bad_signal ? BAD_SIG_LPF_COEFFS_LEN : GOOD_SIG_LPF_COEFFS_LEN) - 1 / 2)];
+	int temp_output_len = (SIGNAL_PROCESSING_BUFFER_SIZE + (LPF_PADDING_SIZE * 2)) + ((is_bad_signal ? BAD_SIG_LPF_COEFFS_LEN : GOOD_SIG_LPF_COEFFS_LEN) - 1 / 2);
+	double temp_output[(SIGNAL_PROCESSING_BUFFER_SIZE + (LPF_PADDING_SIZE * 2)) + ((is_bad_signal ? BAD_SIG_LPF_COEFFS_LEN : GOOD_SIG_LPF_COEFFS_LEN) - 1 / 2)];
 
 	// Apply FIR filter
 	for (int n = 0; n < temp_output_len; n++)

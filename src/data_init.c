@@ -125,12 +125,12 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 	// DOWNSAMPLING
 	// Downsample the channel data if the initial data frequency is higher than the desired frequency
 	double *downsampled_data = NULL;
-	if (*out_cur_data_freq >= TARGET_FREQUENCY * 2)
+	if (*out_cur_data_freq >= TARGET_SAMPLING_FREQUENCY * 2)
 	{
 		printf("\nCurrent data frequency: %d Hz\n", *out_cur_data_freq);
-		printf("Desired frequency: %d Hz\n", TARGET_FREQUENCY);
+		printf("Desired frequency: %d Hz\n", TARGET_SAMPLING_FREQUENCY);
 		printf("Current data frequency is higher than the desired frequency.\n");
-		int factor = *out_cur_data_freq / TARGET_FREQUENCY;
+		int factor = *out_cur_data_freq / TARGET_SAMPLING_FREQUENCY;
 		printf("Downsampling channel data by a factor of %d...\n", factor);
 		downsampled_data = downsample(channel_data, &num_rows, factor);
 		if (!downsampled_data)
@@ -139,7 +139,7 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 			free(channel_data);
 			return NULL;
 		}
-		*out_cur_data_freq = TARGET_FREQUENCY; // Update the data frequency
+		*out_cur_data_freq = TARGET_SAMPLING_FREQUENCY; // Update the data frequency
 		printf("Successfully downsampled to %d Hz\n", *out_cur_data_freq);
 
 /* ---------------- Downsampling Verification ----------------- */
@@ -187,7 +187,7 @@ double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_lengt
 	else
 	{
 		printf("Current data frequency: %d Hz\n", *out_cur_data_freq);
-		printf("Desired frequency: %d Hz\n", TARGET_FREQUENCY);
+		printf("Desired frequency: %d Hz\n", TARGET_SAMPLING_FREQUENCY);
 		printf("\nCurrent data frequency is lower than the desired frequency.\n");
 		printf("No downsampling required. Current frequecy is still at %d Hz\n", *out_cur_data_freq);
 		*out_data_length = num_rows;
