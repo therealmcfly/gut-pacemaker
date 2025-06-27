@@ -296,8 +296,8 @@ int run_pacemaker_server(SharedData *shared_data, ChannelData *ch_data)
 		// === Inner loop: receive data from current client ===
 		{
 			pthread_mutex_lock(shared_data->mutex);
-			float timer = (float)(*(shared_data->timer_ms)) / 1000.0; // Convert milliseconds to seconds
-			double pace_state = (double)ch_data->pace_state;					// Get current pace state
+			float timer = (float)(*(shared_data->timer_ms_ptr)) / 1000.0; // Convert milliseconds to seconds
+			double pace_state = (double)ch_data->pace_state;							// Get current pace state
 			pthread_mutex_unlock(shared_data->mutex);
 			if (pace_state > 0)
 			{
@@ -318,7 +318,7 @@ int run_pacemaker_server(SharedData *shared_data, ChannelData *ch_data)
 					printf("🔴 Client disconnected.\n");
 					pthread_mutex_lock(shared_data->mutex);
 					close_client(&shared_data->client_fd);									 // Close client connection
-					rb_reset(ch_data->rb);																	 // Reset the ring buffer
+					rb_reset(ch_data->ch_rb_ptr);														 // Reset the ring buffer
 					buffer_initial_fill = false;														 // Reset initial fill flag
 					ready_buffer_count = 0;																	 // Reset ready buffer count
 					pthread_cond_broadcast(shared_data->ready_to_read_cond); // Notify waiting threads
@@ -340,27 +340,28 @@ int run_pacemaker_server(SharedData *shared_data, ChannelData *ch_data)
 
 			// push received sample to ring buffer
 			pthread_mutex_lock(shared_data->mutex);
+
 			// ↓↓↓ this function must only be made when the mutex is locked
-			rb_push_sample(shared_data->ch_datas[0]->rb, sample);
+			rb_push_sample(shared_data->ch_datas_prt[0]->ch_rb_ptr, sample);
 			// increment timer_ms (by sampling interval)
-			*(shared_data->timer_ms) += g_samp_interval_ms;
+			*(shared_data->timer_ms_ptr) += g_samp_interval_ms;
 
 			if (!buffer_initial_fill) // before ring buffer is initially filled
 			{
 				// check if buffer is full
-				if (!ch_data->rb->is_full)
+				if (!ch_data->ch_rb_ptr->is_full)
 				{
 					// For printing signal accumulating animation
-					print_initial_recieved_data(ch_data->rb, ch_data->rb->is_full); // print initial buffer fill
+					print_initial_recieved_data(ch_data->ch_rb_ptr, ch_data->ch_rb_ptr->is_full); // print initial buffer fill
 				}
 				else
 				{
 					buffer_initial_fill = true;
 					// For printing signal accumulating animation
-					print_initial_recieved_data(ch_data->rb, ch_data->rb->is_full); // print initial buffer fill
+					print_initial_recieved_data(ch_data->ch_rb_ptr, ch_data->ch_rb_ptr->is_full); // print initial buffer fill
 					//
-					ch_data->rb->rtr_flag = true;
-					ch_data->rb->new_signal_count = 0; // reset new_signal_count
+					ch_data->ch_rb_ptr->rtr_flag = true;
+					ch_data->ch_rb_ptr->new_signal_count = 0; // reset new_signal_count
 					pthread_cond_signal(shared_data->ready_to_read_cond);
 					ready_buffer_count++;
 				}
@@ -370,20 +371,20 @@ int run_pacemaker_server(SharedData *shared_data, ChannelData *ch_data)
 			}
 			else // after buffer is initially filled
 			{
-				if (ch_data->rb->new_signal_count < g_buffer_offset)
+				if (ch_data->ch_rb_ptr->new_signal_count < g_buffer_offset)
 				{
-					print_recieved_data(ch_data->rb, ready_buffer_count);
+					print_recieved_data(ch_data->ch_rb_ptr, ready_buffer_count);
 				}
 				else
 				{
 					(shared_data->buffer_count)++;
-					print_recieved_data(ch_data->rb, ready_buffer_count);
-					if (!ch_data->rb->rtr_flag)
+					print_recieved_data(ch_data->ch_rb_ptr, ready_buffer_count);
+					if (!ch_data->ch_rb_ptr->rtr_flag)
 					{
 						ready_buffer_count = 0; // rtr_flag being false indicates that the buffer snapshot occured so reset ready_buffer_count
-						ch_data->rb->rtr_flag = true;
+						ch_data->ch_rb_ptr->rtr_flag = true;
 					}
-					ch_data->rb->new_signal_count = 0; // reset new_signal_count
+					ch_data->ch_rb_ptr->new_signal_count = 0; // reset new_signal_count
 					pthread_cond_signal(shared_data->ready_to_read_cond);
 					ready_buffer_count++;
 				}

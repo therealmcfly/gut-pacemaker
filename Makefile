@@ -39,7 +39,7 @@ tsan: $(TARGET_TSAN)
 # DE1-SoC build
 de1soc: CC = $(HOME)/toolchains/gcc-linaro-4.9-2016.02-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc
 de1soc: CFLAGS = $(CFLAGS_DE1SOC)
-SYSROOT = $(HOME)/toolchains/sysroot-linaro-eglibc-gcc4.9-2016.02-arm-linux-gnueabihf
+SYSROOT = $(HOME)/toolchains/de1soc_rootfs
 de1soc: $(TARGET_DE1SOC)
 
 # Compile source to object files per target

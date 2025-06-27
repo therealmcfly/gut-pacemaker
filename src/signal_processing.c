@@ -1,6 +1,4 @@
 #include "signal_processing.h"
-#include "config.h"
-#include "timer_util.h"
 #include "preprocessing.h"
 #include "detection.h"
 #include "result_check.h"

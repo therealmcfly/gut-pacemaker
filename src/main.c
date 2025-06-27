@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h> // for close(), usleep()
-#include "config.h"
+#include "global.h"
 #include "mode_select.h"
 
 int main(int argc, char *argv[])

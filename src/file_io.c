@@ -3,7 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "file_io.h"
-#include "config.h"
+#include "global.h"
 
 const char *FILE_EXTENSIONS[] = {".csv", ".bin"};
 #define NUM_EXTENSIONS (sizeof(FILE_EXTENSIONS) / sizeof(FILE_EXTENSIONS[0]))

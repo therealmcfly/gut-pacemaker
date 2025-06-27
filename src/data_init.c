@@ -3,7 +3,7 @@
 #include <stdlib.h> // for malloc/free (if allowed in your environment)
 #include <string.h> // for strtok, strncpy, etc.
 #include "file_io.h"
-#include "config.h"
+#include "global.h"
 
 double *get_sample_data(int user_argc, char *user_argv[], size_t *out_data_length, int *out_channel_num, char *out_file_name, int *out_cur_data_freq)
 { // Buffer for channel number

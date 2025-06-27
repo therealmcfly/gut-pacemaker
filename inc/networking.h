@@ -2,7 +2,6 @@
 #define NETWORKING_H
 
 #include "shared_data.h"
-#include "timer_util.h"
 
 int tcp_server_init(int *server_fd);
 int tcp_server_accept(int *client_fd, int *server_fd);

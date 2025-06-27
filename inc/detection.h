@@ -2,7 +2,6 @@
 #define DETECTION_H
 
 #include <stdio.h> // for printf (if desired)
-#include "config.h"
 
 /**
  * @brief Apply Nonlinear Energy Operator (NEO) transform to a signal

@@ -19,8 +19,8 @@ static void print_waiting(ChannelData *ch_data, int timer, int waiting, int dete
 	{
 		str = "Waiting...";
 	}
-	printf("\r%s[%.2fsecs] %-*s ACT %d / LRI %d / GRI %d / PACE %d",
-				 RT_TITLE, (float)timer / 1000.0f, STR_WIDTH, str,
+	printf("\r\t\t[%.2fsecs] %-*s ACT %d / LRI %d / GRI %d / PACE %d",
+				 (float)timer / 1000.0f, STR_WIDTH, str,
 				 ch_data->activation_flag, ch_data->lri_ms,
 				 ch_data->gri_ms, ch_data->pace_state);
 	// printf("\r%s[%.2fsecs] %s ACT %d / LRI %d / GRI %d / PACE %d", RT_TITLE, (float)timer / (float)1000, str, ch_data->activation_flag, ch_data->lri_ms, ch_data->gri_ms, ch_data->pace_state);
@@ -56,8 +56,8 @@ static void print_detection(ChannelData *ch_data, int timer, int detection, int 
 		str = "PACING!";
 	}
 
-	printf("\r%s[%.2fsecs] %-*s ACT %d / LRI %d / GRI %d / PACE %d",
-				 RT_TITLE, (float)timer / 1000.0f, STR_WIDTH, str,
+	printf("\r\t\t[%.2fsecs] %-*s ACT %d / LRI %d / GRI %d / PACE %d",
+				 (float)timer / 1000.0f, STR_WIDTH, str,
 				 ch_data->activation_flag, ch_data->lri_ms,
 				 ch_data->gri_ms, ch_data->pace_state);
 	fflush(stdout); // Print count and clear leftovers
@@ -68,8 +68,8 @@ static void print_pacing(ChannelData *ch_data, int timer)
 {
 	char *str = "PACING!";
 
-	printf("\n%s[%.2fsecs] %-*s ACT %d / LRI %d / GRI %d / PACE %d\n",
-				 RT_TITLE, (float)timer / 1000.0f, STR_WIDTH, str,
+	printf("\n\t\t[%.2fsecs] %-*s ACT %d / LRI %d / GRI %d / PACE %d\n",
+				 (float)timer / 1000.0f, STR_WIDTH, str,
 				 ch_data->activation_flag, ch_data->lri_ms,
 				 ch_data->gri_ms, ch_data->pace_state);
 
@@ -79,7 +79,7 @@ static void print_pacing(ChannelData *ch_data, int timer)
 static double get_lowest_scope(ChannelData *ch_data, double *buffer)
 {
 	double lowest_slope = (buffer[1] - buffer[0]) / ((double)g_samp_interval_ms / 1000); // initial slope set
-	for (int i = 2; i < ch_data->rb->size; i++)
+	for (int i = 2; i < ch_data->ch_rb_ptr->size; i++)
 	{
 		// slope = (y2 - y1) / (x2 - x1) = (current sample - prev sample) / g_samp_interval_ms
 		double slope = (buffer[i] - buffer[i - 1]) / ((double)g_samp_interval_ms / 1000);
@@ -131,7 +131,7 @@ int run_pacemaker(PacemakerData *p_data, ChannelData *ch_data, int *timer, void 
 	int pace_state_snapshot = ch_data->pace_state; // Get snapshot of the current pace state
 	// Take a snapshot of the ring buffer and timer_ms
 
-	if (!rb_snapshot(ch_data->rb, snapshot_buffer, g_buffer_offset))
+	if (!rb_snapshot(ch_data->ch_rb_ptr, snapshot_buffer, g_buffer_offset))
 	{
 		printf("\nError taking snapshot of ring buffer.\n");
 		callback_unlock_mutex();
@@ -144,7 +144,7 @@ int run_pacemaker(PacemakerData *p_data, ChannelData *ch_data, int *timer, void 
 	{
 		fflush(stdout); // Print count and clear leftovers
 		double lowest_slope = get_lowest_scope(ch_data, snapshot_buffer);
-		printf("\r%s[%.2fsecs] Learning slope values...", PT_TITLE, (float)timer_ms / (float)1000);
+		printf("\r\t\t[%.2fsecs] Learning slope values...", (float)timer_ms / (float)1000);
 		fflush(stdout); // Print count and clear leftovers
 		// printf("\t[Buff-%.15f] Lowest s//lope : %f\n", (float)timer_ms / (float)1000, lowest_slope);
 		// printf("%f\n", lowest_slope);
@@ -159,7 +159,7 @@ int run_pacemaker(PacemakerData *p_data, ChannelData *ch_data, int *timer, void 
 		{
 			// Phase 2 : Calculating the threshold value from the lowest slope values
 			calculate_threshold(ch_data);
-			printf("\n%sActivation detection threshold is: %f\n\n", PT_TITLE, ch_data->threshold); // %%%%%% why 4.5?
+			printf("\n\t\tActivation detection threshold is: %f\n\n", ch_data->threshold); // %%%%%% why 4.5?
 		}
 		else
 		{
@@ -173,8 +173,8 @@ int run_pacemaker(PacemakerData *p_data, ChannelData *ch_data, int *timer, void 
 				if (lowest_slope < ch_data->threshold)
 				{
 					print_detection(ch_data, timer_ms, 1, pace_state_snapshot); // Print activation detection
-					printf("\n\t\tResetting timers and pace flag.\n");
-					printf("\t\tActivation flag ENABLED!\n");
+					printf("\n\t\t\t\tResetting timers and pace flag.\n");
+					printf("\t\t\t\tActivation flag ENABLED!\n");
 
 					reset_timers(ch_data, p_data); // Reset the LRI and GRI timers
 					reset_pace_state(ch_data);		 // Reset the pace state
@@ -198,8 +198,8 @@ int run_pacemaker(PacemakerData *p_data, ChannelData *ch_data, int *timer, void 
 				if (lowest_slope < ch_data->threshold && ch_data->gri_ms <= 0)
 				{
 					print_detection(ch_data, timer_ms, 1, pace_state_snapshot); // Print activation detection
-					printf("\n\t\tlowest_slope: %f / threshold: %f\n", lowest_slope, ch_data->threshold);
-					printf("\t\tResetting timers and pace flag.\n");
+					printf("\n\t\t\t\tlowest_slope: %f / threshold: %f\n", lowest_slope, ch_data->threshold);
+					printf("\t\t\t\tResetting timers and pace flag.\n");
 
 					reset_timers(ch_data, p_data); // Reset the LRI and GRI timers
 					reset_pace_state(ch_data);		 // Reset the pace state

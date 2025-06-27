@@ -1,4 +1,5 @@
 #include "detection.h"
+#include "global.h"
 
 #include <stdlib.h> // lib for malloc for debugging, remove after use
 

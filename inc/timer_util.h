@@ -14,4 +14,6 @@ void timer_stop(Timer *t);
 double timer_elapsed_ms(const Timer *t);
 double timer_elapsed_us(const Timer *t); // Optional: microsecond precision
 
+void initialize_timer_ptr(Timer *t, double *exec_time_ptr, double *wcet_ptr);
+
 #endif

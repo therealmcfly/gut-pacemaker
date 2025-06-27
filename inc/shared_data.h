@@ -2,6 +2,7 @@
 #define SHARED_DATA_H
 
 #include "config.h"
+#include "timer_util.h" // for Timer
 #include <pthread.h>
 
 #include "ring_buffer.h" // If you use RingBufferDouble
@@ -19,9 +20,9 @@ typedef struct
 
 typedef struct
 {
-	RingBuffer *rb;			// pointer to ring buffer
-	int ch_num;					// Channel number
-	int threshold_flag; // Flag to indicate if threshold is calculated
+	RingBuffer *ch_rb_ptr; // pointer to ring buffer
+	int ch_num;						 // Channel number
+	int threshold_flag;		 // Flag to indicate if threshold is calculated
 	int activation_flag;
 	int pace_state;
 	int lri_ms;
@@ -41,7 +42,11 @@ typedef struct
 	pthread_cond_t *ready_to_read_cond;
 	int buffer_count;
 	// int buff_offset;
-	int *timer_ms;
+	int *timer_ms_ptr;
+
+	Timer *timer_ptr;					// Timer for interval processing
+	double *exec_time_ptr; // Execution time in milliseconds
+	double *wcet_ptr;					// Worst-case execution time in milliseconds
 	// int g_samp_interval_ms;
 
 	// for Receive Thread
@@ -50,8 +55,8 @@ typedef struct
 	int socket_fd; // for TCP server
 
 	// // pacemaker thread
-	PacemakerData *pacemaker_data; // Pacemaker data structure
-	ChannelData *ch_datas[NUM_CHANNELS];
+	PacemakerData *pacemaker_data_ptr; // Pacemaker data structure
+	ChannelData *ch_datas_prt[NUM_CHANNELS];
 
 } SharedData;
 

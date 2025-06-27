@@ -1,8 +1,7 @@
 #include "preprocessing.h"
 #include <stdlib.h> // for malloc/free (if allowed in your environment)
 
-#include <stdio.h> // for printf (if desired)
-#include "config.h"
+#include <stdio.h>				 // for printf (if desired)
 #include "filter_coeffs.h" // for filter coefficients
 #include "global.h"
 #include "ring_buffer.h" // for RingBuffer functions

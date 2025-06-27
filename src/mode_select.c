@@ -1,7 +1,6 @@
 #include "mode_select.h"
 #include <stdio.h>
 #include <pthread.h>
-#include "config.h"
 #include "global.h"
 #include "data_init.h"
 #include "multithreading.h"
@@ -173,7 +172,13 @@ int gut_model_mode(int argc, char *argv[])
 
 	// Initialize shared data
 	int timer_ms = 0;
-	g_shared_data.timer_ms = &timer_ms;
+	g_shared_data.timer_ms_ptr = &timer_ms;
+
+	Timer timer;
+	double exec_time_ms = 0.0;
+	double wcet = 0.0;
+	initialize_timer_ptr(&timer, &exec_time_ms, &wcet); // Initialize timer
+
 	// shared_data.buffer = &ad_rb;						 // pointer to ring buffer
 	g_shared_data.mutex = &buffer_mutex;
 	g_shared_data.client_connct_cond = &client_connct_cond;
@@ -184,26 +189,26 @@ int gut_model_mode(int argc, char *argv[])
 	g_shared_data.client_fd = -1; // client file descriptor
 
 	// initialize pacemaker data
-	g_shared_data.pacemaker_data = &pacemaker_data; // pointer to pacemaker data
-	g_shared_data.pacemaker_data->learn_time_ms = LEARN_TIME_MS;
-	g_shared_data.pacemaker_data->gri_thresh_ms = GRI_THRESHOLD_MS;
-	g_shared_data.pacemaker_data->lri_thresh_ms = LRI_THRESHOLD_MS;
+	g_shared_data.pacemaker_data_ptr = &pacemaker_data; // pointer to pacemaker data
+	g_shared_data.pacemaker_data_ptr->learn_time_ms = LEARN_TIME_MS;
+	g_shared_data.pacemaker_data_ptr->gri_thresh_ms = GRI_THRESHOLD_MS;
+	g_shared_data.pacemaker_data_ptr->lri_thresh_ms = LRI_THRESHOLD_MS;
 
 	// Initialize channel data
 	int ad_buffer_size = sizeof(ad_buffer[0]) / sizeof(ad_buffer[0][0]);
 	for (int i = 0; i < sizeof(ch_datas) / sizeof(ch_datas[0]); i++)
 	{
-		g_shared_data.ch_datas[i] = &ch_datas[i]; // Initialize each element of pacemaker data array
+		g_shared_data.ch_datas_prt[i] = &ch_datas[i]; // Initialize each element of pacemaker data array
 
-		g_shared_data.ch_datas[i]->rb = &ad_rbs[i]; // pointer to ring buffer
-		rb_init(g_shared_data.ch_datas[i]->rb, ad_buffer[0], ad_buffer_size);
-		g_shared_data.ch_datas[i]->activation_flag = 0; // Initialize activation flag
-		g_shared_data.ch_datas[i]->gri_ms = 0;					// Initialize GRI
-		g_shared_data.ch_datas[i]->lsv_sum = 0.0;
-		g_shared_data.ch_datas[i]->lsv_count = 0;
-		g_shared_data.ch_datas[i]->threshold = 0;
-		g_shared_data.ch_datas[i]->pace_state = 0;
-		g_shared_data.ch_datas[i]->threshold_flag = 0; // Initialize threshold flag
+		g_shared_data.ch_datas_prt[i]->ch_rb_ptr = &ad_rbs[i]; // pointer to ring buffer
+		rb_init(g_shared_data.ch_datas_prt[i]->ch_rb_ptr, ad_buffer[0], ad_buffer_size);
+		g_shared_data.ch_datas_prt[i]->activation_flag = 0; // Initialize activation flag
+		g_shared_data.ch_datas_prt[i]->gri_ms = 0;					// Initialize GRI
+		g_shared_data.ch_datas_prt[i]->lsv_sum = 0.0;
+		g_shared_data.ch_datas_prt[i]->lsv_count = 0;
+		g_shared_data.ch_datas_prt[i]->threshold = 0;
+		g_shared_data.ch_datas_prt[i]->pace_state = 0;
+		g_shared_data.ch_datas_prt[i]->threshold_flag = 0; // Initialize threshold flag
 	}
 
 	// g_shared_data.p[0]->activation_flag = 0; // Initialize activation flag
