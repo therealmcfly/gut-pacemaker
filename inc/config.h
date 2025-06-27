@@ -36,8 +36,8 @@
 #define SIGNAL_PROCESSING_BUFFER_SIZE 1001											// Buffer size for signal processing
 #define SP_BUFFER_SIZE_HALF (SIGNAL_PROCESSING_BUFFER_SIZE / 2) // Half of the buffer size
 #define ACTIVATION_DETECTION_BUFFER_SIZE 50											// Buffer size for activation detection
-#define BUFFER_OFFSET 1																					// Overlap count for ring buffer
-// #define BUFFER_OFFSET SP_BUFFER_SIZE_HALF // Overlap count for ring buffer
+#define AD_BUFFER_OFFSET 1																			// Overlap count for ring buffer
+// #define AD_BUFFER_OFFSET SP_BUFFER_SIZE_HALF // Overlap count for ring buffer
 
 // Precision constants
 #define PRECISION 1e-6 // Precision for floating point comparisons

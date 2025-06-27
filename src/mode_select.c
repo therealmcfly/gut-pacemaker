@@ -14,7 +14,7 @@ int channel_num;
 char file_name[100];													 // Buffer for file name
 int cur_data_freq;														 // Buffer for exp data frequency
 int g_samp_interval_ms = SAMPLING_INTERVAL_MS; // Sampling interval in milliseconds
-int g_buffer_offset = BUFFER_OFFSET;					 // Overlap count for ring buffer
+int g_buffer_offset;													 // Overlap count for ring buffer
 
 SharedData g_shared_data; // Global shared data for all threads
 
@@ -61,6 +61,8 @@ RunMode select_mode(void)
 
 int static_dataset_mode(int argc, char *argv[])
 {
+	g_buffer_offset = SP_BUFFER_SIZE_HALF; // Overlap count for ring buffer
+
 	// INITIALIZE SAMPLE DATA
 	// Sample data loading, channel selection, and downsampling is all handled within the get_sample_data function
 	// The function will return a pointer to sample data on success, NULL on error
@@ -103,6 +105,7 @@ int static_dataset_mode(int argc, char *argv[])
 
 int realtime_dataset_mode(int argc, char *argv[])
 {
+	g_buffer_offset = SP_BUFFER_SIZE_HALF; // Overlap count for ring buffer
 	// Initialize mutex and condition variable
 	pthread_mutex_t buffer_mutex;
 	pthread_cond_t client_connct_cond;
@@ -122,9 +125,8 @@ int realtime_dataset_mode(int argc, char *argv[])
 	g_shared_data.client_connct_cond = &client_connct_cond;
 	g_shared_data.ready_to_read_cond = &ready_to_read_cond;
 	g_shared_data.buffer_count = 0; // buffer count
-	// shared_data.buff_offset = BUFFER_OFFSET; // overlap count
-	g_shared_data.socket_fd = -1; // server file descriptor
-	g_shared_data.client_fd = -1; // client file descriptor
+	g_shared_data.socket_fd = -1;		// server file descriptor
+	g_shared_data.client_fd = -1;		// client file descriptor
 
 	pthread_t recv_thtread, proc_thread;
 
@@ -159,6 +161,8 @@ int realtime_dataset_mode(int argc, char *argv[])
 
 int gut_model_mode(int argc, char *argv[])
 {
+	g_buffer_offset = AD_BUFFER_OFFSET; // Overlap count for ring buffer
+
 	// Initialize mutex and condition variable
 	pthread_mutex_t buffer_mutex;
 	pthread_cond_t client_connct_cond;
@@ -175,32 +179,31 @@ int gut_model_mode(int argc, char *argv[])
 	g_shared_data.client_connct_cond = &client_connct_cond;
 	g_shared_data.ready_to_read_cond = &ready_to_read_cond;
 	g_shared_data.buffer_count = 0; // buffer count
-	// shared_data.buff_offset = BUFFER_OFFSET; // overlap count
-	g_shared_data.socket_fd = -1; // socket file descriptor for TCP server
+	g_shared_data.socket_fd = -1;		// socket file descriptor for TCP server
 	// shared_data.server_fd = -1; // server file descriptor
 	g_shared_data.client_fd = -1; // client file descriptor
 
 	// initialize pacemaker data
-	g_shared_data.p = &pacemaker_data; // pointer to pacemaker data
-	g_shared_data.p->learn_time_ms = LEARN_TIME_MS;
-	g_shared_data.p->gri_thresh_ms = GRI_THRESHOLD_MS;
-	g_shared_data.p->lri_thresh_ms = LRI_THRESHOLD_MS;
+	g_shared_data.pacemaker_data = &pacemaker_data; // pointer to pacemaker data
+	g_shared_data.pacemaker_data->learn_time_ms = LEARN_TIME_MS;
+	g_shared_data.pacemaker_data->gri_thresh_ms = GRI_THRESHOLD_MS;
+	g_shared_data.pacemaker_data->lri_thresh_ms = LRI_THRESHOLD_MS;
 
 	// Initialize channel data
 	int ad_buffer_size = sizeof(ad_buffer[0]) / sizeof(ad_buffer[0][0]);
 	for (int i = 0; i < sizeof(ch_datas) / sizeof(ch_datas[0]); i++)
 	{
-		g_shared_data.datas[i] = &ch_datas[i]; // Initialize each element of pacemaker data array
+		g_shared_data.ch_datas[i] = &ch_datas[i]; // Initialize each element of pacemaker data array
 
-		g_shared_data.datas[i]->rb = &ad_rbs[i]; // pointer to ring buffer
-		rb_init(g_shared_data.datas[i]->rb, ad_buffer[0], ad_buffer_size);
-		g_shared_data.datas[i]->activation_flag = 0; // Initialize activation flag
-		g_shared_data.datas[i]->gri_ms = 0;					 // Initialize GRI
-		g_shared_data.datas[i]->lsv_sum = 0.0;
-		g_shared_data.datas[i]->lsv_count = 0;
-		g_shared_data.datas[i]->threshold = 0;
-		g_shared_data.datas[i]->pace_state = 0;
-		g_shared_data.datas[i]->threshold_flag = 0; // Initialize threshold flag
+		g_shared_data.ch_datas[i]->rb = &ad_rbs[i]; // pointer to ring buffer
+		rb_init(g_shared_data.ch_datas[i]->rb, ad_buffer[0], ad_buffer_size);
+		g_shared_data.ch_datas[i]->activation_flag = 0; // Initialize activation flag
+		g_shared_data.ch_datas[i]->gri_ms = 0;					// Initialize GRI
+		g_shared_data.ch_datas[i]->lsv_sum = 0.0;
+		g_shared_data.ch_datas[i]->lsv_count = 0;
+		g_shared_data.ch_datas[i]->threshold = 0;
+		g_shared_data.ch_datas[i]->pace_state = 0;
+		g_shared_data.ch_datas[i]->threshold_flag = 0; // Initialize threshold flag
 	}
 
 	// g_shared_data.p[0]->activation_flag = 0; // Initialize activation flag

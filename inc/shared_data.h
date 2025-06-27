@@ -50,35 +50,9 @@ typedef struct
 	int socket_fd; // for TCP server
 
 	// // pacemaker thread
-	PacemakerData *p; // Pacemaker data structure
+	PacemakerData *pacemaker_data; // Pacemaker data structure
+	ChannelData *ch_datas[NUM_CHANNELS];
 
-	ChannelData *datas[NUM_CHANNELS];
-
-	// int *timer_ms;
-	// int learn_time_ms; // Learning time in milliseconds
-	// int gri_thresh_ms;
-	// int lri_thresh_ms;
-	// int g_samp_interval_ms;
-
-	// int threshold_flag; // Flag to indicate if threshold is calculated
-	// int activation_flag;
-	// int pace_state;
-	// int lri_ms;
-	// int gri_ms;
-	// double lsv_sum; // Sum of lowest slope values
-	// double threshold;
-	// int lsv_count;
-	// int print_interval; // for animation
 } SharedData;
-
-// // Global vars (for static dataset mode, can remove for embedded implimentaion)
-// extern size_t signal_length;
-// extern int channel_num;
-// extern char file_name[100];
-// extern int cur_data_freq;
-// extern int g_samp_interval_ms; // Sampling interval in milliseconds
-// extern int g_buffer_offset;		 // Overlap count for ring buffer
-
-// extern SharedData shared_data; // Global shared data for all threads
 
 #endif

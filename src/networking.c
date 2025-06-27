@@ -23,21 +23,21 @@
 #define SAMPLE_DELAY_US 5000 // 200 Hz = 5000 µs delayactual size
 
 // Gut Model Server Constants
-#define GUT_SERVER_IP "192.168.32.1"
-#define GUT_SERVER_PORT 8082
+#define RD_SERVER_IP "172.23.240.1"
+#define RD_SERVER_PORT 8082
 
 // #define RECIEVE_THREAD_PRINT 1 // nucomment to show receive thread print log animation
 
 // Print functions
-static void print_recieved_data(ChannelData *ch_data, int ready_buffer_count)
+static void print_recieved_data(RingBuffer *rb, int ready_buffer_count)
 {
 #ifdef RECIEVE_THREAD_PRINT
-	printf("\r%s(%d)", RT_TITLE, ch_data->rb->new_signal_count); // Print count and clear leftovers;
+	printf("\r%s(%d)", RT_TITLE, rb->new_signal_count); // Print count and clear leftovers;
 	fflush(stdout);
-	if (!(ch_data->rb->new_signal_count < g_buffer_offset))
+	if (!(rb->new_signal_count < g_buffer_offset))
 	{
 		printf(" new samples recieved. Ready to process buffer %d. ", g_shared_data.buffer_count + 1);
-		if (!ch_data->rb->rtr_flag)
+		if (!rb->rtr_flag)
 		{
 			printf("\n");
 		}
@@ -48,18 +48,18 @@ static void print_recieved_data(ChannelData *ch_data, int ready_buffer_count)
 	}
 #endif
 }
-static void print_initial_recieved_data(ChannelData *ch_data, int is_full)
+static void print_initial_recieved_data(RingBuffer *rb, int is_full)
 {
 #ifdef RECIEVE_THREAD_PRINT
 
 	if (!is_full)
 	{
-		printf("\r%s(%d)", RT_TITLE, ch_data->rb->new_signal_count); // Print count and clear leftovers;
+		printf("\r%s(%d)", RT_TITLE, rb->new_signal_count); // Print count and clear leftovers;
 		fflush(stdout);
 	}
 	else
 	{
-		printf("\r%s(%d)", RT_TITLE, ch_data->rb->new_signal_count); // Print count and clear leftovers;
+		printf("\r%s(%d)", RT_TITLE, rb->new_signal_count); // Print count and clear leftovers;
 		fflush(stdout);
 		printf(" new samples recieved. Ready to process buffer %d. (Buffer filled)\n", g_shared_data.buffer_count + 1);
 	}
@@ -341,7 +341,7 @@ int run_pacemaker_server(SharedData *shared_data, ChannelData *ch_data)
 			// push received sample to ring buffer
 			pthread_mutex_lock(shared_data->mutex);
 			// ↓↓↓ this function must only be made when the mutex is locked
-			rb_push_sample(shared_data->datas[0]->rb, sample);
+			rb_push_sample(shared_data->ch_datas[0]->rb, sample);
 			// increment timer_ms (by sampling interval)
 			*(shared_data->timer_ms) += g_samp_interval_ms;
 
@@ -351,13 +351,13 @@ int run_pacemaker_server(SharedData *shared_data, ChannelData *ch_data)
 				if (!ch_data->rb->is_full)
 				{
 					// For printing signal accumulating animation
-					print_initial_recieved_data(ch_data, ch_data->rb->is_full); // print initial buffer fill
+					print_initial_recieved_data(ch_data->rb, ch_data->rb->is_full); // print initial buffer fill
 				}
 				else
 				{
 					buffer_initial_fill = true;
 					// For printing signal accumulating animation
-					print_initial_recieved_data(ch_data, ch_data->rb->is_full); // print initial buffer fill
+					print_initial_recieved_data(ch_data->rb, ch_data->rb->is_full); // print initial buffer fill
 					//
 					ch_data->rb->rtr_flag = true;
 					ch_data->rb->new_signal_count = 0; // reset new_signal_count
@@ -372,12 +372,12 @@ int run_pacemaker_server(SharedData *shared_data, ChannelData *ch_data)
 			{
 				if (ch_data->rb->new_signal_count < g_buffer_offset)
 				{
-					print_recieved_data(ch_data, ready_buffer_count);
+					print_recieved_data(ch_data->rb, ready_buffer_count);
 				}
 				else
 				{
 					(shared_data->buffer_count)++;
-					print_recieved_data(ch_data, ready_buffer_count);
+					print_recieved_data(ch_data->rb, ready_buffer_count);
 					if (!ch_data->rb->rtr_flag)
 					{
 						ready_buffer_count = 0; // rtr_flag being false indicates that the buffer snapshot occured so reset ready_buffer_count
@@ -417,8 +417,8 @@ int connect_to_server(SharedData *shared_data)
 	// Configure server address
 	memset(&server_addr, 0, sizeof(server_addr));
 	server_addr.sin_family = AF_INET;
-	server_addr.sin_port = htons(GUT_SERVER_PORT);
-	if (inet_pton(AF_INET, GUT_SERVER_IP, &server_addr.sin_addr) <= 0)
+	server_addr.sin_port = htons(RD_SERVER_PORT);
+	if (inet_pton(AF_INET, RD_SERVER_IP, &server_addr.sin_addr) <= 0)
 	{
 		perror("Invalid address / Not supported");
 		close(shared_data->socket_fd);
@@ -426,12 +426,18 @@ int connect_to_server(SharedData *shared_data)
 		return -1;
 	}
 	// check server address, log the address
-	printf("Connecting to gut model server at %s:%d...\n", GUT_SERVER_IP, GUT_SERVER_PORT);
+	printf("Connecting to gut model server at %s:%d...\n", RD_SERVER_IP, RD_SERVER_PORT);
 
 	if (connect(shared_data->socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == 0)
 	{
 		printf("Connected to gut model server.\n");
-		// return 0; // Successfully connected
+	}
+	else
+	{
+		perror("Connection failed"); // 👈 add this
+		close(shared_data->socket_fd);
+		handle_invalid_action(shared_data);
+		return -1; // 👈 critical!
 	}
 
 	pthread_mutex_lock(shared_data->mutex);
@@ -554,7 +560,7 @@ int connect_to_server(SharedData *shared_data)
 				if (shared_data->buffer->new_signal_count < g_buffer_offset)
 				{
 					// Print animation
-					print_recieved_data(shared_data, ready_buffer_count);
+					print_recieved_data(shared_data->buffer, ready_buffer_count);
 				}
 				else
 				{
@@ -562,7 +568,7 @@ int connect_to_server(SharedData *shared_data)
 					// printf("\r%s(%d)", RT_TITLE, shared_data->buffer->new_signal_count); // Print count and clear leftovers;
 					// fflush(stdout);
 					// printf(" new samples recieved. Ready to process buffer %d. ", shared_data->buffer_count + 1);
-					print_recieved_data(shared_data, ready_buffer_count);
+					print_recieved_data(shared_data->buffer, ready_buffer_count);
 					if (!shared_data->buffer->rtr_flag)
 					{
 						// printf("\n");

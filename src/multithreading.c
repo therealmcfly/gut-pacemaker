@@ -20,7 +20,7 @@ void *gut_model_mode_receive_thread(void *ch_ptr)
 	int ch = *(int *)ch_ptr; // Get the channel number from the argument
 	printf("%sReception thread started...\n", RT_TITLE);
 
-	if (run_pacemaker_server(&g_shared_data, g_shared_data.datas[ch]) != 0)
+	if (run_pacemaker_server(&g_shared_data, g_shared_data.ch_datas[ch]) != 0)
 	{
 		printf("\n%sError occured while connection to realtime dataset server.\n", RT_TITLE);
 	}
@@ -176,7 +176,7 @@ void *pacemaker_thread(void *ch_ptr)
 
 			// Process the buffer
 			// mutex is unlocked in processing_pipeline via callback function
-			if (run_pacemaker(g_shared_data.p, g_shared_data.datas[0], g_shared_data.timer_ms, unlock_mutex))
+			if (run_pacemaker(g_shared_data.pacemaker_data, g_shared_data.ch_datas[0], g_shared_data.timer_ms, unlock_mutex))
 			{
 				printf("\n%sError occured while processing buffer %d.\n", PT_TITLE, g_shared_data.buffer_count + 1);
 				return NULL;
