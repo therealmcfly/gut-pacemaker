@@ -23,7 +23,7 @@ typedef struct
 	int ch_num;					// Channel number
 	int threshold_flag; // Flag to indicate if threshold is calculated
 	int activation_flag;
-	int pace_flag;
+	int pace_state;
 	int lri_ms;
 	int gri_ms;
 	double lsv_sum; // Sum of lowest slope values
@@ -62,7 +62,7 @@ typedef struct
 
 	// int threshold_flag; // Flag to indicate if threshold is calculated
 	// int activation_flag;
-	// int pace_flag;
+	// int pace_state;
 	// int lri_ms;
 	// int gri_ms;
 	// double lsv_sum; // Sum of lowest slope values

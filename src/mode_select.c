@@ -199,6 +199,8 @@ int gut_model_mode(int argc, char *argv[])
 		g_shared_data.datas[i]->lsv_sum = 0.0;
 		g_shared_data.datas[i]->lsv_count = 0;
 		g_shared_data.datas[i]->threshold = 0;
+		g_shared_data.datas[i]->pace_state = 0;
+		g_shared_data.datas[i]->threshold_flag = 0; // Initialize threshold flag
 	}
 
 	// g_shared_data.p[0]->activation_flag = 0; // Initialize activation flag

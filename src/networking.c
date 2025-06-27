@@ -26,37 +26,44 @@
 #define GUT_SERVER_IP "192.168.32.1"
 #define GUT_SERVER_PORT 8082
 
+// #define RECIEVE_THREAD_PRINT 1 // nucomment to show receive thread print log animation
+
 // Print functions
-static void print_recieved_data(SharedData *shared_data, int ready_buffer_count)
+static void print_recieved_data(ChannelData *ch_data, int ready_buffer_count)
 {
-	// printf("\r%s(%d)", RT_TITLE, shared_data->buffer->new_signal_count); // Print count and clear leftovers;
-	// fflush(stdout);
-	// if (!(shared_data->buffer->new_signal_count < shared_data->buff_offset))
-	// {
-	// 	printf(" new samples recieved. Ready to process buffer %d. ", shared_data->buffer_count + 1);
-	// 	if (!shared_data->buffer->rtr_flag)
-	// 	{
-	// 		printf("\n");
-	// 	}
-	// 	else
-	// 	{
-	// 		printf("(%d buffer skipped)\n", ready_buffer_count);
-	// 	}
-	// }
+#ifdef RECIEVE_THREAD_PRINT
+	printf("\r%s(%d)", RT_TITLE, ch_data->rb->new_signal_count); // Print count and clear leftovers;
+	fflush(stdout);
+	if (!(ch_data->rb->new_signal_count < g_buffer_offset))
+	{
+		printf(" new samples recieved. Ready to process buffer %d. ", g_shared_data.buffer_count + 1);
+		if (!ch_data->rb->rtr_flag)
+		{
+			printf("\n");
+		}
+		else
+		{
+			printf("(%d buffer skipped)\n", ready_buffer_count);
+		}
+	}
+#endif
 }
-static void print_initial_recieved_data(SharedData *shared_data, int is_full)
+static void print_initial_recieved_data(ChannelData *ch_data, int is_full)
 {
-	// if (!is_full)
-	// {
-	// 	printf("\r%s(%d)", RT_TITLE, shared_data->buffer->new_signal_count); // Print count and clear leftovers;
-	// 	fflush(stdout);
-	// }
-	// else
-	// {
-	// 	printf("\r%s(%d)", RT_TITLE, shared_data->buffer->new_signal_count); // Print count and clear leftovers;
-	// 	fflush(stdout);
-	// 	printf(" new samples recieved. Ready to process buffer %d. (Buffer filled)\n", shared_data->buffer_count + 1);
-	// }
+#ifdef RECIEVE_THREAD_PRINT
+
+	if (!is_full)
+	{
+		printf("\r%s(%d)", RT_TITLE, ch_data->rb->new_signal_count); // Print count and clear leftovers;
+		fflush(stdout);
+	}
+	else
+	{
+		printf("\r%s(%d)", RT_TITLE, ch_data->rb->new_signal_count); // Print count and clear leftovers;
+		fflush(stdout);
+		printf(" new samples recieved. Ready to process buffer %d. (Buffer filled)\n", g_shared_data.buffer_count + 1);
+	}
+#endif
 }
 // Internal utility functions
 static void close_client(int *client_fd)
@@ -152,7 +159,7 @@ int tcp_server_init(int *socket_fd)
 		return -1;
 	}
 
-	printf("Server listening on port %d...\n", PORT);
+	printf("🟢 Server listening on port %d...\n", PORT);
 	return *socket_fd;
 }
 int tcp_server_close(int *client_fd, int *socket_fd)
@@ -168,7 +175,7 @@ int tcp_server_close(int *client_fd, int *socket_fd)
 		close(*socket_fd);
 		*socket_fd = -1;
 	}
-	printf("\nServer closed.\n");
+	printf("\n🔴 Server closed.\n");
 
 	return 0;
 }
@@ -192,7 +199,7 @@ int tcp_server_accept(int *client_fd, int *socket_fd)
 		return -1;
 	}
 
-	printf("Client connect accepted: %s:%d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+	printf("✅ Client connect accepted: %s:%d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 	return *client_fd;
 }
 int tcp_receive(void *data, int data_size, int *fd)
@@ -233,7 +240,7 @@ int tcp_receive(void *data, int data_size, int *fd)
 int tcp_server_send(double *data, int size, int *client_fd)
 {
 	// Send data to client
-	int bytes_sent = send(*client_fd, data, size * sizeof(double), 0);
+	int bytes_sent = send(*client_fd, data, size, 0);
 	if (bytes_sent < 0)
 	{
 		perror("\nError: Send failed");
@@ -245,7 +252,7 @@ int tcp_server_send(double *data, int size, int *client_fd)
 int run_pacemaker_server(SharedData *shared_data, ChannelData *ch_data)
 {
 	// Initialize server
-	printf("\n%sRunning TCP server...\n", RT_TITLE);
+	printf("%sRunning TCP server...\n", RT_TITLE);
 	signal(SIGINT, handle_sigint);
 	if (tcp_server_init(&shared_data->socket_fd) < 0)
 	{
@@ -270,8 +277,9 @@ int run_pacemaker_server(SharedData *shared_data, ChannelData *ch_data)
 		pthread_mutex_unlock(shared_data->mutex);
 
 		// for some reason, ther is a single double sent from the gut model that offsets the buffer. Below code is to receive that double and discard it.
-		double initial_sample = 0.0; // Initialize sample variable
-		int bytes = tcp_receive(&initial_sample, sizeof(double), &shared_data->client_fd);
+
+		double initial_recieve = 0.0; // Initialize sample variable
+		int bytes = tcp_receive(&initial_recieve, sizeof(double), &shared_data->client_fd);
 
 		printf("Starting data reception...\n");
 
@@ -287,16 +295,30 @@ int run_pacemaker_server(SharedData *shared_data, ChannelData *ch_data)
 		while (1)
 		// === Inner loop: receive data from current client ===
 		{
+			pthread_mutex_lock(shared_data->mutex);
+			float timer = (float)(*(shared_data->timer_ms)) / 1000.0; // Convert milliseconds to seconds
+			double pace_state = (double)ch_data->pace_state;					// Get current pace state
+			pthread_mutex_unlock(shared_data->mutex);
+			if (pace_state > 0)
+			{
+				if (!tcp_server_send(&pace_state, sizeof(double), &shared_data->client_fd))
+				{
+					printf("Error: Failed to send data to client.\n");
+				}
+				// printf("[%.2f]Pace state sent: %.2f\n", timer, pace_state);
+			}
+
 			// receive data from client
 			int bytes_read = tcp_receive(&sample, sizeof(double), &shared_data->client_fd);
+
 			if (bytes_read != sizeof(double))
 			{
 				if (bytes_read == 0)
 				{
-					printf("Client disconnected.\n");
+					printf("🔴 Client disconnected.\n");
 					pthread_mutex_lock(shared_data->mutex);
 					close_client(&shared_data->client_fd);									 // Close client connection
-					rb_reset(shared_data->buffer);													 // Reset the ring buffer
+					rb_reset(ch_data->rb);																	 // Reset the ring buffer
 					buffer_initial_fill = false;														 // Reset initial fill flag
 					ready_buffer_count = 0;																	 // Reset ready buffer count
 					pthread_cond_broadcast(shared_data->ready_to_read_cond); // Notify waiting threads
@@ -314,8 +336,7 @@ int run_pacemaker_server(SharedData *shared_data, ChannelData *ch_data)
 					fprintf(stderr, "Unexpected byte count: %d\n", bytes_read);
 				}
 			}
-
-			// printf("Received sample: %.10f\n", sample); // Debugging line
+			// printf("[%.2f]Received sample: %.10f\n", timer, sample); // Debugging line
 
 			// push received sample to ring buffer
 			pthread_mutex_lock(shared_data->mutex);
@@ -330,13 +351,13 @@ int run_pacemaker_server(SharedData *shared_data, ChannelData *ch_data)
 				if (!ch_data->rb->is_full)
 				{
 					// For printing signal accumulating animation
-					print_initial_recieved_data(shared_data, ch_data->rb->is_full); // print initial buffer fill
+					print_initial_recieved_data(ch_data, ch_data->rb->is_full); // print initial buffer fill
 				}
 				else
 				{
 					buffer_initial_fill = true;
 					// For printing signal accumulating animation
-					print_initial_recieved_data(shared_data, ch_data->rb->is_full); // print initial buffer fill
+					print_initial_recieved_data(ch_data, ch_data->rb->is_full); // print initial buffer fill
 					//
 					ch_data->rb->rtr_flag = true;
 					ch_data->rb->new_signal_count = 0; // reset new_signal_count
@@ -351,12 +372,12 @@ int run_pacemaker_server(SharedData *shared_data, ChannelData *ch_data)
 			{
 				if (ch_data->rb->new_signal_count < g_buffer_offset)
 				{
-					print_recieved_data(shared_data, ready_buffer_count);
+					print_recieved_data(ch_data, ready_buffer_count);
 				}
 				else
 				{
 					(shared_data->buffer_count)++;
-					print_recieved_data(shared_data, ready_buffer_count);
+					print_recieved_data(ch_data, ready_buffer_count);
 					if (!ch_data->rb->rtr_flag)
 					{
 						ready_buffer_count = 0; // rtr_flag being false indicates that the buffer snapshot occured so reset ready_buffer_count

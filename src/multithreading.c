@@ -155,6 +155,7 @@ void *pacemaker_thread(void *ch_ptr)
 			pthread_mutex_lock(g_shared_data.mutex);
 			// printf("%sWaiting for buffer to be ready...\n", PT_TITLE);
 			pthread_cond_wait(g_shared_data.ready_to_read_cond, g_shared_data.mutex);
+			// printf("%sBuffer is ready. Processing...\n", PT_TITLE);
 
 			// Check if the socket is still valid
 			if (g_shared_data.socket_fd < 1)
@@ -171,7 +172,7 @@ void *pacemaker_thread(void *ch_ptr)
 				break; // Exit loop if socket for client is invalid
 			}
 
-			// printf("%sBuffer ready. Starting activation detection process for buffer %d...\n", PT_TITLE, g_shared_data.buffer_count + 1);
+			// printf("%sBuffer ready. Starting process for buffer %d...\n", PT_TITLE, g_shared_data.buffer_count + 1);
 
 			// Process the buffer
 			// mutex is unlocked in processing_pipeline via callback function
@@ -182,7 +183,7 @@ void *pacemaker_thread(void *ch_ptr)
 			}
 			start_idx += g_buffer_offset;
 
-			// printf("%sFinished activation detection process for buffer %d...\n\n", PT_TITLE, g_shared_data.buffer_count + 1);
+			// printf("%sFinished process for buffer %d...\n\n", PT_TITLE, g_shared_data.buffer_count + 1);
 		}
 	}
 	printf("%sExiting process thread...\n", PT_TITLE);
