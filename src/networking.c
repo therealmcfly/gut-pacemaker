@@ -285,7 +285,7 @@ int run_pacemaker_server(SharedData *shared_data, ChannelData *ch_data)
 
 		// Initialize variables for receiving data
 		double sample;
-		int buffer_initial_fill = false;
+		int init_full_flg = 0;
 		// Timer variables
 		// Timer interval_timer;
 		// int first_sample = 1;
@@ -319,7 +319,7 @@ int run_pacemaker_server(SharedData *shared_data, ChannelData *ch_data)
 					pthread_mutex_lock(shared_data->mutex);
 					close_client(&shared_data->client_fd);									 // Close client connection
 					rb_reset(ch_data->ch_rb_ptr);														 // Reset the ring buffer
-					buffer_initial_fill = false;														 // Reset initial fill flag
+					init_full_flg = 0;																			 // Reset initial fill flag
 					ready_buffer_count = 0;																	 // Reset ready buffer count
 					pthread_cond_broadcast(shared_data->ready_to_read_cond); // Notify waiting threads
 					pthread_mutex_unlock(shared_data->mutex);
@@ -346,7 +346,7 @@ int run_pacemaker_server(SharedData *shared_data, ChannelData *ch_data)
 			// increment timer_ms (by sampling interval)
 			*(shared_data->timer_ms_ptr) += g_samp_interval_ms;
 
-			if (!buffer_initial_fill) // before ring buffer is initially filled
+			if (!init_full_flg) // before ring buffer is initially filled
 			{
 				// check if buffer is full
 				if (!ch_data->ch_rb_ptr->is_full)
@@ -356,11 +356,11 @@ int run_pacemaker_server(SharedData *shared_data, ChannelData *ch_data)
 				}
 				else
 				{
-					buffer_initial_fill = true;
+					init_full_flg = 1;
 					// For printing signal accumulating animation
 					print_initial_recieved_data(ch_data->ch_rb_ptr, ch_data->ch_rb_ptr->is_full); // print initial buffer fill
 					//
-					ch_data->ch_rb_ptr->rtr_flag = true;
+					ch_data->ch_rb_ptr->rtr_flag = 1;
 					ch_data->ch_rb_ptr->new_signal_count = 0; // reset new_signal_count
 					pthread_cond_signal(shared_data->ready_to_read_cond);
 					ready_buffer_count++;
@@ -382,7 +382,7 @@ int run_pacemaker_server(SharedData *shared_data, ChannelData *ch_data)
 					if (!ch_data->ch_rb_ptr->rtr_flag)
 					{
 						ready_buffer_count = 0; // rtr_flag being false indicates that the buffer snapshot occured so reset ready_buffer_count
-						ch_data->ch_rb_ptr->rtr_flag = true;
+						ch_data->ch_rb_ptr->rtr_flag = 1;
 					}
 					ch_data->ch_rb_ptr->new_signal_count = 0; // reset new_signal_count
 					pthread_cond_signal(shared_data->ready_to_read_cond);
@@ -503,7 +503,7 @@ int connect_to_server(SharedData *shared_data)
 	printf("Recieving gut signal...\n");
 
 	// double sample;
-	int buffer_initial_fill = false;
+	int init_full_flg = 0;
 
 	// Timer variables
 	// Timer interval_timer;
@@ -530,7 +530,7 @@ int connect_to_server(SharedData *shared_data)
 
 			// printf("Sample[%d]: %f\n", shared_data->buffer->new_signal_count, sample);
 
-			if (!buffer_initial_fill) // before ring buffer is initially filled
+			if (!init_full_flg) // before ring buffer is initially filled
 			{
 				// check if buffer is full
 				if (!shared_data->buffer->is_full)
@@ -541,11 +541,11 @@ int connect_to_server(SharedData *shared_data)
 				}
 				else
 				{
-					buffer_initial_fill = true;
+					init_full_flg = 1;
 					printf("\r%s(%d)", RT_TITLE, shared_data->buffer->new_signal_count); // Print count and clear leftovers;
 					fflush(stdout);
 					printf(" new samples recieved. Ready to process buffer %d. (Buffer filled)\n", shared_data->buffer_count + 1);
-					shared_data->buffer->rtr_flag = true;
+					shared_data->buffer->rtr_flag = 1;
 					shared_data->buffer->new_signal_count = 0; // reset new_signal_count
 					pthread_cond_signal(shared_data->ready_to_read_cond);
 					ready_buffer_count++;
@@ -574,7 +574,7 @@ int connect_to_server(SharedData *shared_data)
 					{
 						// printf("\n");
 						ready_buffer_count = 0; // reset rtr signal count
-						shared_data->buffer->rtr_flag = true;
+						shared_data->buffer->rtr_flag = 1;
 					}
 					// else
 					// {

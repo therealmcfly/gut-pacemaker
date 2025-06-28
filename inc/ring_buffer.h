@@ -1,20 +1,18 @@
 #ifndef RING_BUFFER_H
 #define RING_BUFFER_H
 
-#include <stdbool.h>
-
 // Circular buffer size
 
 typedef struct
 {
 	// double buffer[SIGNAL_PROCESSING_BUFFER_SIZE]; // Fixed-size buffer
-	double *buffer; // Fixed-size buffer
-	int size;
+	double *buffer;				// Pointer to the buffer array
+	int size;							// Size of the buffer array
 	double *head;					// Write pointer
 	double *tail;					// Read pointer
-	double *end;					// Pointer to buffer + SIGNAL_PROCESSING_BUFFER_SIZE
-	bool is_full;					// Flag to indicate if the buffer is full
-	bool rtr_flag;				// Flag to indicate if the buffer is ready
+	double *end;					// Pointer to end of the buffer(next address after the last element))
+	int is_full;					// Flag to indicate if the buffer is full
+	int rtr_flag;					// Flag to indicate if the buffer is ready
 	int new_signal_count; // count of write after last read
 } RingBuffer;
 
@@ -33,7 +31,7 @@ void rb_init(RingBuffer *rb, double *buffer, int buffer_size);
  * @param data The sample data to push
  * @return true if the sample was successfully pushed, false otherwise
  */
-bool rb_push_sample(RingBuffer *rb, double data);
+int rb_push_sample(RingBuffer *rb, double data);
 
 /**
  * Takes a snapshot of the ring buffer
@@ -44,7 +42,7 @@ bool rb_push_sample(RingBuffer *rb, double data);
  * @param reset_flag Function pointer to reset the flag
  * @return true if the snapshot was successful, false otherwise
  */
-bool rb_snapshot(RingBuffer *rb, double *buff_copy, int next_overlap_count);
+int rb_snapshot(RingBuffer *rb, double *buff_copy, int next_overlap_count);
 
 /**
  * Resets the ring buffer

@@ -211,18 +211,6 @@ int gut_model_mode(int argc, char *argv[])
 		g_shared_data.ch_datas_prt[i]->threshold_flag = 0; // Initialize threshold flag
 	}
 
-	// g_shared_data.p[0]->activation_flag = 0; // Initialize activation flag
-	// g_shared_data.p[0]->gri_ms = 0;					 // Initialize GRI
-	// g_shared_data.p[0]->lsv_sum = 0.0;			 // Initialize lowest slope value sum
-	// g_shared_data.p[0]->lsv_count = 0;			 // Initialize lowest slope value count
-	// g_shared_data.p[0]->threshold = 0.0;
-
-	// g_shared_data.activation_flag = 0;
-	// g_shared_data.gri_ms = 0;
-	// g_shared_data.lsv_sum = 0.0; // Initialize lowest slope value
-	// g_shared_data.lsv_count = 0; // Initialize lowest slope value count
-	// g_shared_data.threshold = 0.0;
-
 	pthread_t recv_thtread, proc_thread;
 
 	int gut_ch_num = 0; // temp channel number for single channel implementation
@@ -260,5 +248,6 @@ int gut_model_mode(int argc, char *argv[])
 
 int test_mode(int argc, char *argv[])
 {
+	printf("\nNothing implemented on Test mode.\n");
 	return 1;
 }

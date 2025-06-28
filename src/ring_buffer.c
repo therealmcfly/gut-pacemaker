@@ -25,12 +25,12 @@ void rb_init(RingBuffer *rb, double *buffer, int buffer_size)
 	// printf("Ring buffer initialized.\n");
 }
 
-bool rb_push_sample(RingBuffer *rb, double data)
+int rb_push_sample(RingBuffer *rb, double data)
 {
 	if (rb == NULL)
 	{
 		perror("Error: NULL pointer passed to rb_push_sample\n");
-		return false;
+		return 0;
 	}
 	// add data to head
 	*(rb->head) = data;
@@ -40,12 +40,12 @@ bool rb_push_sample(RingBuffer *rb, double data)
 	if (rb->head == rb->end) // if head points over the last index
 	{
 		rb->head = rb->buffer; // set head to 0th index
-		if (rb->is_full == false)
-			rb->is_full = true;
+		if (rb->is_full == 0)
+			rb->is_full = 1;
 	}
 
 	rb->new_signal_count++;
-	return true;
+	return 1;
 }
 
 void rb_reset(RingBuffer *rb)
@@ -63,20 +63,20 @@ void rb_reset(RingBuffer *rb)
 	rb->new_signal_count = WRITE_COUNT_INIT_VAL;
 }
 
-bool rb_snapshot(RingBuffer *rb, double *buff_copy, int next_overlap_count)
+int rb_snapshot(RingBuffer *rb, double *buff_copy, int next_overlap_count)
 {
 	if (rb == NULL || buff_copy == NULL)
 	{
 		perror("Error: NULL pointer passed to rb_snapshot\n");
-		return false;
+		return 0;
 	}
 
 	if (next_overlap_count < 0 || next_overlap_count > rb->size)
 	{
 		perror("Error: Invalid overlap count in rb_snapshot\n");
-		return false;
+		return 0;
 	}
-	rb->rtr_flag = false; // reset rtr_flag flag
+	rb->rtr_flag = 0; // reset rtr_flag flag
 
 	// printf("Taking snapshot of ring buffer!\n");
 	// rtr_flag is reset outside this function after
@@ -95,5 +95,5 @@ bool rb_snapshot(RingBuffer *rb, double *buff_copy, int next_overlap_count)
 	{
 		rb->tail = rb->buffer + ((rb->tail - rb->end) % rb->size);
 	}
-	return true;
+	return 1;
 }

@@ -20,7 +20,7 @@ void *gut_model_mode_receive_thread(void *ch_ptr)
 
 	if (run_pacemaker_server(&g_shared_data, g_shared_data.ch_datas_prt[ch]) != 0)
 	{
-		printf("\n%sError occured while connection to realtime dataset server.\n", RT_TITLE);
+		printf("\n%sError occured while running pacemaker server.\n", RT_TITLE);
 	}
 	return NULL;
 }
