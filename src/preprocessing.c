@@ -1,10 +1,9 @@
 #include "preprocessing.h"
 #include <stdlib.h> // for malloc/free (if allowed in your environment)
 
-#include <stdio.h> // for printf (if desired)
-#include "config.h"
+#include <stdio.h>				 // for printf (if desired)
 #include "filter_coeffs.h" // for filter coefficients
-#include "shared_data.h"
+#include "global.h"
 #include "ring_buffer.h" // for RingBuffer functions
 
 static double pre_lpf_pad_buffer[LPF_PADDED_BUFFER_SIZE];
@@ -54,7 +53,7 @@ static int apply_padding_from_rb(int in_signal_len, double *out_padded_signal, i
 		return 1;
 	}
 	// Validate shared data
-	if (shared_data.buffer == NULL)
+	if (g_shared_data.buffer == NULL)
 	{
 		printf("\nError: shared_data.buffer is NULL\n");
 		return 1;
@@ -62,8 +61,8 @@ static int apply_padding_from_rb(int in_signal_len, double *out_padded_signal, i
 
 	// Step 1: Apply PADDING_SIZE padding front(left) and back(right) of signal (Replicating MATLAB's Strategy)
 
-	double *out_sig_mid_start_ptr = out_padded_signal + padding_size;												// Pointer to the start of the middle part of the padded signal
-	rb_snapshot(shared_data.buffer, out_sig_mid_start_ptr, shared_data.buff_overlap_count); // Copy the ring buffer to the output padded signal
+	double *out_sig_mid_start_ptr = out_padded_signal + padding_size;					 // Pointer to the start of the middle part of the padded signal
+	rb_snapshot(g_shared_data.buffer, out_sig_mid_start_ptr, g_buffer_offset); // Copy the ring buffer to the output padded signal
 
 	double *start_signal = out_sig_mid_start_ptr;
 	double *end_signal = out_sig_mid_start_ptr + in_signal_len - 1;
@@ -127,10 +126,10 @@ static double evaluate_spline(double a, double b, double c, double d, double x1,
 static int lowpass_fir_filter(const double *coeffs, int coeff_len, const double *in_signal, double *out_signal, int signal_length, int is_bad_signal)
 {
 	int filt_delay = (coeff_len - 1) / 2; // filter order is coeff length -1, and delay is half of the filter order
-	// signal_length here = BUFFER_SIZE + LPF_PADDING_SIZE * 2
+	// signal_length here = SIGNAL_PROCESSING_BUFFER_SIZE + LPF_PADDING_SIZE * 2
 	// filt_delay here = BAD_SIG_LPF_COEFFS_LEN or GOOD_SIG_LPF_COEFFS_LEN - 1 / 2
-	int temp_output_len = (BUFFER_SIZE + (LPF_PADDING_SIZE * 2)) + ((is_bad_signal ? BAD_SIG_LPF_COEFFS_LEN : GOOD_SIG_LPF_COEFFS_LEN) - 1 / 2);
-	double temp_output[(BUFFER_SIZE + (LPF_PADDING_SIZE * 2)) + ((is_bad_signal ? BAD_SIG_LPF_COEFFS_LEN : GOOD_SIG_LPF_COEFFS_LEN) - 1 / 2)];
+	int temp_output_len = (SIGNAL_PROCESSING_BUFFER_SIZE + (LPF_PADDING_SIZE * 2)) + ((is_bad_signal ? BAD_SIG_LPF_COEFFS_LEN : GOOD_SIG_LPF_COEFFS_LEN) - 1 / 2);
+	double temp_output[(SIGNAL_PROCESSING_BUFFER_SIZE + (LPF_PADDING_SIZE * 2)) + ((is_bad_signal ? BAD_SIG_LPF_COEFFS_LEN : GOOD_SIG_LPF_COEFFS_LEN) - 1 / 2)];
 
 	// Apply FIR filter
 	for (int n = 0; n < temp_output_len; n++)

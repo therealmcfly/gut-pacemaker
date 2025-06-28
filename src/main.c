@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h> // for close(), usleep()
-#include "config.h"
+#include "global.h"
 #include "mode_select.h"
 
 int main(int argc, char *argv[])
@@ -33,6 +33,24 @@ int main(int argc, char *argv[])
 		break;
 	case MODE_GUT_MODEL:
 		printf("\nRunning in Gut Model Mode...\n");
+
+		if (gut_model_mode(argc, argv) != 0)
+		{
+			printf("\nError occured while running Gut Model Mode.\n");
+		}
+
+		printf("\nExiting Gut Model Mode...\n");
+
+		break;
+	case MODE_TEST:
+		printf("\nRunning in Gut Model Mode...\n");
+
+		if (test_mode(argc, argv) != 0)
+		{
+			printf("\nError occured while running Gut Model Mode.\n");
+		}
+
+		printf("\nExiting Gut Model Mode...\n");
 
 		break;
 	default:

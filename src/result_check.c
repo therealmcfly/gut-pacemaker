@@ -5,7 +5,7 @@
 #include <string.h>
 #include <math.h> // Ensure this is included
 
-#include "config.h"
+#include "global.h"
 #include "file_io.h"
 
 int check_processing_result(double *signal, size_t signal_length, int channel_num, char *file_name, char *ver_code, int shift, double ver_percision)
