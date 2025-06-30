@@ -1,0 +1,86 @@
+# Makefile.linux - Build rules for Linux PC target (with TSAN support)
+
+CC = gcc
+
+# Directories
+INCDIR = inc
+SRCDIR = src
+OBJDIR_BASE = build/linux
+BINDIR = .
+
+# Variants
+VARIANT ?= default
+OBJDIR = $(OBJDIR_BASE)/$(VARIANT)
+BASE_NAME := pm_linux
+TARGET := $(BASE_NAME).o
+
+ifeq ($(VARIANT),tsan)
+  TARGET := $(BASE_NAME)_tsan.o
+endif
+
+# Source Files
+SRC_FILES = \
+  $(wildcard $(SRCDIR)/*.c) \
+  $(wildcard $(SRCDIR)/utils/*.c) \
+  $(wildcard $(SRCDIR)/api/linux/*.c) \
+  $(wildcard $(SRCDIR)/platform/linux/*.c) \
+  $(wildcard platforms/linux/*.c) \
+  $(wildcard drivers/linux/*.c)
+
+
+# Object Files
+# OBJ_FILES = $(patsubst %.c,$(OBJDIR)/%.o,$(SRC_FILES))
+OBJ_FILES = $(SRC_FILES:%.c=$(OBJDIR)/%.o)
+
+# Include Paths
+INCLUDES = \
+	-I$(INCDIR) \
+	-I$(INCDIR)/api/linux \
+	-I$(INCDIR)/utils \
+	-I$(INCDIR)/platform/linux
+
+# Flags per variant
+CFLAGS_default = -Wall -g -O0 -pthread -fstack-usage
+CFLAGS_tsan = -Wall -g -O1 -fsanitize=thread -pthread
+
+CFLAGS = $(CFLAGS_$(VARIANT)) $(INCLUDES)
+LDFLAGS = -pthread
+
+# Default build
+all: $(TARGET)
+
+# Build executable
+$(TARGET): $(OBJ_FILES)
+	@mkdir -p $(BINDIR)
+	@echo "🔧 Linking executable: $@"
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+# Compile rules
+$(OBJDIR)/%.o: %.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Targets
+.PHONY: default tsan clean
+
+default: VARIANT := default
+default: all
+
+tsan: VARIANT := tsan
+tsan: all
+
+# Clean targets
+clean:
+	@echo "🧹 Cleaning Linux build artifacts..."
+	rm -rf $(OBJDIR_BASE) pm_linux.o pm_linux_tsan.o
+	@echo "✅ Clean complete."
+
+# Run commands
+run:
+	@echo "Running Linux build..."
+	@./$(TARGET)
+
+run_tsan:
+	@echo "Running TSAN build..."
+	@./$(TARGET)_tsan
+
