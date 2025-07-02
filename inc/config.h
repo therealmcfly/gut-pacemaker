@@ -74,7 +74,7 @@
 #define LRI_THRESHOLD_MS 20500	// Default LRI value in milliseconds
 
 // Thread Constants
-#define PT_TITLE "[Process Thread] "
-#define RT_TITLE "[Receive Thread] "
+#define PT_TITLE "[Pacemaker Thread] "
+#define RT_TITLE "[Signal Thread] "
 
 #endif // CONFIG_H

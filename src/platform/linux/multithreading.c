@@ -110,15 +110,20 @@ void *process_thread(void *data)
 
 void *pacemaker_thread(void *ch_ptr)
 {
-	// int ch = *(int *)ch_ptr; // Get the channel number from the argument
-
 	// Wait until the socket is valid
-	while (g_shared_data.socket_fd < 1)
+	while (1)
 	{
-		continue; // Wait until the socket is valid
+		printf("\r%sWaiting for server initialization...", PT_TITLE);
+		fflush(stdout); // Print count and clear leftovers
+		if (g_shared_data.socket_fd > 0)
+		{
+			break; // Exit loop if socket is valid
+		}
 	}
 
-	printf("%sStart process thread.\n", PT_TITLE);
+	// print socket_fd
+	printf("\n%sServer init confirmed!(socket_fd: %d)\n", PT_TITLE, g_shared_data.socket_fd);
+	int ch = *(int *)ch_ptr; // Get the channel number from the argument
 
 	// --- Outer Loop : Client connection loop ---
 	while (g_shared_data.socket_fd > 0)
@@ -135,26 +140,28 @@ void *pacemaker_thread(void *ch_ptr)
 
 		pthread_mutex_lock(g_shared_data.mutex);
 		// reset timer_ms and buffer count
-		*g_shared_data.timer_ms_ptr = 0.0; // Reset timer_ms
-		g_shared_data.buffer_count = 0;		 // Reset buffer count
+		g_shared_data.buffer_count = 0; // Reset buffer count
 		// Wait for a new client connection
-		printf("%sWaiting for new client connection...\n", PT_TITLE);
-		pthread_cond_wait(g_shared_data.client_connct_cond, g_shared_data.mutex);
-		printf("%sClient connected. Starting processing...\n", PT_TITLE);
+		printf("%sWaiting for Gut model connection...\n", PT_TITLE);
+		while (g_shared_data.client_fd < 1)
+		{
+			pthread_cond_wait(g_shared_data.client_connct_cond, g_shared_data.mutex);
+		}
+		printf("%sGut model connections confirmed!\n", PT_TITLE);
 		pthread_mutex_unlock(g_shared_data.mutex);
 
 		// double curr_buff_copy[SIGNAL_PROCESSING_BUFFER_SIZE];
 		int start_idx = 0;
-		int activations[ACTIVATIONS_ARRAY_SIZE]; // Buffer for activation indices
-		int num_activations = 0;
-		// Inner Loop : Data Reception Loop ---
+		// Processing Loop ---
+		printf("%sEntering processing loop...\n", PT_TITLE);
+
 		while (g_shared_data.client_fd > 0)
 		{
 			pthread_mutex_lock(g_shared_data.mutex);
-			// printf("%sWaiting for buffer to be ready...\n", PT_TITLE);
-			pthread_cond_wait(g_shared_data.ready_to_read_cond, g_shared_data.mutex);
-
-			timer_start(g_shared_data.timer_ptr); // Start the timer for interval processing
+			while (g_shared_data.ch_datas_prt[ch]->ch_rb_ptr->rtr_flag == 0)
+			{
+				pthread_cond_wait(g_shared_data.ready_to_read_cond, g_shared_data.mutex);
+			}
 
 			// printf("%sBuffer is ready. Processing...\n", PT_TITLE);
 
@@ -177,23 +184,11 @@ void *pacemaker_thread(void *ch_ptr)
 
 			// Process the buffer
 			// mutex is unlocked in processing_pipeline via callback function
-			if (run_pacemaker(g_shared_data.pacemaker_data_ptr, g_shared_data.ch_datas_prt[0], g_shared_data.timer_ms_ptr, unlock_mutex))
+			if (run_pacemaker(g_shared_data.pacemaker_data_ptr, g_shared_data.ch_datas_prt[ch], unlock_mutex))
 			{
 				printf("\n%sError occured while processing buffer %d.\n", PT_TITLE, g_shared_data.buffer_count + 1);
 				return NULL;
 			}
-			// Lock the mutex to ensure thread safety
-			timer_stop(g_shared_data.timer_ptr);
-			// Stop the timer to get execution time
-			*g_shared_data.exec_time_ptr = timer_elapsed_ms(g_shared_data.timer_ptr);
-			// Store the execution time in milliseconds
-			if (*g_shared_data.exec_time_ptr > *g_shared_data.wcet_ptr)
-			{
-				*g_shared_data.wcet_ptr = *g_shared_data.exec_time_ptr; // Update the worst-case execution time if current execution time is greater
-			}
-			printf("\r[WC%.2f ET%.2f]", *g_shared_data.wcet_ptr, *g_shared_data.exec_time_ptr); // Print the execution
-			fflush(stdout);
-
 			start_idx += g_buffer_offset;
 
 			// printf("%sFinished process for buffer %d...\n\n", PT_TITLE, g_shared_data.buffer_count + 1);
