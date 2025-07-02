@@ -1,4 +1,5 @@
 # Makefile.arm_linux - Build rules for ARM Linux target
+PLATFORM = arm_linux
 
 ARM_TOOLCHAIN_PATH ?= $(HOME)/toolchains/gcc-linaro-4.9-2016.02-x86_64_arm-linux-gnueabihf
 CC = $(ARM_TOOLCHAIN_PATH)/bin/arm-linux-gnueabihf-gcc
@@ -7,7 +8,7 @@ SYSROOT ?= $(HOME)/toolchains/de1soc_rootfs
 # Directories
 INCDIR = inc
 SRCDIR = src
-OBJDIR_BASE = build/arm_linux
+OBJDIR_BASE = obj/$(PLATFORM)
 BINDIR = .
 
 # Variants
@@ -19,21 +20,27 @@ TARGET := $(BASE_NAME).o
 SRC_FILES = \
   $(wildcard $(SRCDIR)/*.c) \
   $(wildcard $(SRCDIR)/utils/*.c) \
-  $(wildcard $(SRCDIR)/api/linux/*.c) \
-  $(wildcard $(SRCDIR)/platform/linux/*.c) \
-  $(wildcard platforms/linux/*.c) \
-  $(wildcard drivers/arm_linux/*.c) # may need to be create and set to arm_linux specific
+  $(wildcard $(SRCDIR)/linux/*.c) \
+  $(wildcard $(SRCDIR)/linux/api/*.c) \
+  $(wildcard $(SRCDIR)/linux/drivers/*.c)
 
 
 # Object Files
-OBJ_FILES = $(SRC_FILES:%.c=$(OBJDIR)/%.o)
+# OBJ_FILES = $(SRC_FILES:%.c=$(OBJDIR)/%.o)
+# OBJ_NAMES = $(notdir $(SRC_FILES))
+# OBJ_FILES = $(addprefix $(OBJDIR)/, $(OBJ_NAMES:.c=.o))
+
+VPATH = $(sort $(dir $(SRC_FILES)))
+OBJ_FILES = $(patsubst %.c,$(OBJDIR)/%.o,$(notdir $(SRC_FILES)))
+
 
 # Include Paths
 INCLUDES = \
 	-I$(INCDIR)/ \
-	-I$(INCDIR)/api/linux \
 	-I$(INCDIR)/utils \
-	-I$(INCDIR)/platform/linux
+	-I$(INCDIR)/linux \
+	-I$(INCDIR)/linux/api \
+	-I$(INCDIR)/linux/drivers \
 
 # Flags
 CFLAGS = -Wall -O2 -std=gnu99 -fstack-usage -pthread -static $(INCLUDES) -march=armv7-a -mtune=cortex-a9 -mfloat-abi=hard -mfpu=neon
@@ -42,16 +49,16 @@ LDFLAGS = -pthread -static
 # Default build
 all: $(TARGET)
 
+# Compile rules
+$(OBJDIR)/%.o: %.c
+	@mkdir -p $(OBJDIR)
+	$(CC) --sysroot=$(SYSROOT) $(CFLAGS) -c $< -o $@
+
 # Build executable
 $(TARGET): $(OBJ_FILES)
 	@mkdir -p $(BINDIR)
 	@echo "🔧 Linking executable: $@"
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
-
-# Compile rules
-$(OBJDIR)/%.o: %.c
-	@mkdir -p $(dir $@)
-	$(CC) --sysroot=$(SYSROOT) $(CFLAGS) -c $< -o $@
 
 # Targets
 .PHONY: clean
