@@ -4,7 +4,7 @@
 #include "shared_data.h"
 
 int create_tcp_socket(int *server_fd);
-int tcp_server_init(int *socket_fd, int port_num);
+int tcp_server_init(int *comm_fd, int port_num);
 int tcp_server_accept(int *client_fd, int *server_fd);
 int tcp_receive(void *data, int data_size, int *fd);
 int tcp_server_send(double *data, int size, int *client_fd);

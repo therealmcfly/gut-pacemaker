@@ -50,7 +50,7 @@ typedef struct
 	// for Receive Thread
 	// int server_fd;
 	int client_fd;
-	int socket_fd; // for TCP server
+	int comm_fd; // for TCP server
 
 	// // pacemaker thread
 	PacemakerData *pacemaker_data_ptr; // Pacemaker data structure

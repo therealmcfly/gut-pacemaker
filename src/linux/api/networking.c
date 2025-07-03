@@ -56,10 +56,10 @@ int create_tcp_socket(int *server_fd)
 	printf("\tSocket created successfully.\n");
 	return 0;
 }
-int tcp_server_init(int *socket_fd, int port_num)
+int tcp_server_init(int *comm_fd, int port_num)
 {
 	// Create socket
-	if (create_tcp_socket(socket_fd) < 0)
+	if (create_tcp_socket(comm_fd) < 0)
 	{
 		return -1; // Error already handled in create_tcp_socket
 	}
@@ -73,27 +73,27 @@ int tcp_server_init(int *socket_fd, int port_num)
 
 	// Bind socket to address
 	printf("\tBinding to port %d...\n", port_num);
-	if (bind(*socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+	if (bind(*comm_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
 	{
 		perror("Bind failed");
-		close(*socket_fd);
+		close(*comm_fd);
 		return -1;
 	}
 	printf("\t🟢 Socket bound to port %d successfully.\n", port_num);
 
 	// Listen for incoming connections
 	printf("\tAttempting to listen on port %d...\n", port_num);
-	if (listen(*socket_fd, 5) < 0)
+	if (listen(*comm_fd, 5) < 0)
 	{
 		perror("\nError: Listen failed");
-		close(*socket_fd);
+		close(*comm_fd);
 		return -1;
 	}
 
 	printf("\t🟢 Server successfully listening on port %d.\n", port_num);
-	return *socket_fd;
+	return *comm_fd;
 }
-int tcp_server_close(int *client_fd, int *socket_fd)
+int tcp_server_close(int *client_fd, int *comm_fd)
 {
 	if (*client_fd > 0)
 	{
@@ -101,18 +101,18 @@ int tcp_server_close(int *client_fd, int *socket_fd)
 		*client_fd = -1;
 	}
 
-	if (*socket_fd > 0)
+	if (*comm_fd > 0)
 	{
-		close(*socket_fd);
-		*socket_fd = -1;
+		close(*comm_fd);
+		*comm_fd = -1;
 	}
 	printf("\n🔴 Server closed.\n");
 
 	return 0;
 }
-int tcp_server_accept(int *client_fd, int *socket_fd)
+int tcp_server_accept(int *client_fd, int *comm_fd)
 {
-	if (*socket_fd < 0)
+	if (*comm_fd < 0)
 	{
 		fprintf(stderr, "\nError: Server socket is not initialized. Cannot accept client.\n");
 		return -1;
@@ -123,7 +123,7 @@ int tcp_server_accept(int *client_fd, int *socket_fd)
 
 	// Accept incoming connection
 	printf("\tListen for client connection...\n");
-	*client_fd = accept(*socket_fd, (struct sockaddr *)&client_addr, &addr_len);
+	*client_fd = accept(*comm_fd, (struct sockaddr *)&client_addr, &addr_len);
 	if (*client_fd < 0)
 	{
 		perror("\nError: Client acception failed");
@@ -185,7 +185,7 @@ int tcp_server_send(double *data, int size, int *client_fd)
 // 	// Initialize server
 // 	printf("%sRunning TCP server...\n", RT_TITLE);
 // 	signal(SIGINT, handle_sigint);
-// 	if (tcp_server_init(&shared_data->socket_fd) < 0)
+// 	if (tcp_server_init(&shared_data->comm_fd) < 0)
 // 	{
 // 		printf("\nError: Failed to initialize TCP server.\n");
 // 		return -1;
@@ -197,7 +197,7 @@ int tcp_server_send(double *data, int size, int *client_fd)
 // 	// === Outer loop: wait for new client ===
 // 	{
 // 		// Client connection
-// 		if (tcp_server_accept(&shared_data->client_fd, &shared_data->socket_fd) < 0)
+// 		if (tcp_server_accept(&shared_data->client_fd, &shared_data->comm_fd) < 0)
 // 		{
 // 			printf("\nError: Failed while accepting client connection.\n");
 // 			continue;
@@ -340,7 +340,7 @@ int tcp_server_send(double *data, int size, int *client_fd)
 // 		// Go back to outer loop to accept a new connection
 // 	}
 
-// 	tcp_server_close(&shared_data->client_fd, &shared_data->socket_fd); // Only called if outer loop exits (e.g., via SIGINT)
+// 	tcp_server_close(&shared_data->client_fd, &shared_data->comm_fd); // Only called if outer loop exits (e.g., via SIGINT)
 // 	return 0;
 // }
 
@@ -350,7 +350,7 @@ int tcp_server_send(double *data, int size, int *client_fd)
 // 	struct sockaddr_in server_addr;
 
 // 	// Create socket
-// 	if (create_tcp_socket(&shared_data->socket_fd) < 0)
+// 	if (create_tcp_socket(&shared_data->comm_fd) < 0)
 // 	{
 // 		printf("\nError: Failed to create TCP socket.\n");
 // 		handle_invalid_action(shared_data);
@@ -363,21 +363,21 @@ int tcp_server_send(double *data, int size, int *client_fd)
 // 	if (inet_pton(AF_INET, RD_SERVER_IP, &server_addr.sin_addr) <= 0)
 // 	{
 // 		perror("Invalid address / Not supported");
-// 		close(shared_data->socket_fd);
+// 		close(shared_data->comm_fd);
 // 		handle_invalid_action(shared_data);
 // 		return -1;
 // 	}
 // 	// check server address, log the address
 // 	printf("Connecting to gut model server at %s:%d...\n", RD_SERVER_IP, RD_SERVER_PORT);
 
-// 	if (connect(shared_data->socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == 0)
+// 	if (connect(shared_data->comm_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == 0)
 // 	{
 // 		printf("Connected to gut model server.\n");
 // 	}
 // 	else
 // 	{
 // 		perror("Connection failed"); // 👈 add this
-// 		close(shared_data->socket_fd);
+// 		close(shared_data->comm_fd);
 // 		handle_invalid_action(shared_data);
 // 		return -1; // 👈 critical!
 // 	}
@@ -386,7 +386,7 @@ int tcp_server_send(double *data, int size, int *client_fd)
 
 // 	// Step 1: Receive mode (1 byte)
 // 	uint8_t mode;
-// 	if (recv(shared_data->socket_fd, &mode, sizeof(mode), 0) <= 0)
+// 	if (recv(shared_data->comm_fd, &mode, sizeof(mode), 0) <= 0)
 // 	{
 // 		perror("Failed to receive mode");
 // 		handle_invalid_action(shared_data);
@@ -398,7 +398,7 @@ int tcp_server_send(double *data, int size, int *client_fd)
 // 	{
 // 	case 1:
 // 		// Step 2: Receive file name
-// 		if (recv(shared_data->socket_fd, file_name, sizeof(file_name) - 1, 0) <= 0)
+// 		if (recv(shared_data->comm_fd, file_name, sizeof(file_name) - 1, 0) <= 0)
 // 		{
 // 			perror("Failed to receive file name");
 // 			handle_invalid_action(shared_data);
@@ -408,7 +408,7 @@ int tcp_server_send(double *data, int size, int *client_fd)
 // 		file_name[sizeof(file_name) - 1] = '\0'; // Ensure null-termination
 // 		printf("Received file name: %s\n", file_name);
 // 		// Step 3: Receive frequency
-// 		if (recv(shared_data->socket_fd, &cur_data_freq, sizeof(cur_data_freq), 0) != sizeof(cur_data_freq))
+// 		if (recv(shared_data->comm_fd, &cur_data_freq, sizeof(cur_data_freq), 0) != sizeof(cur_data_freq))
 // 		{
 // 			perror("Failed to receive frequency");
 // 			handle_invalid_action(shared_data);
@@ -417,7 +417,7 @@ int tcp_server_send(double *data, int size, int *client_fd)
 // 		}
 // 		printf("Received frequency: %d Hz\n", cur_data_freq);
 // 		// Step 4: Receive channel number
-// 		if (recv(shared_data->socket_fd, &channel_num, sizeof(channel_num), 0) != sizeof(channel_num))
+// 		if (recv(shared_data->comm_fd, &channel_num, sizeof(channel_num), 0) != sizeof(channel_num))
 // 		{
 // 			perror("Failed to receive channel number");
 
@@ -458,7 +458,7 @@ int tcp_server_send(double *data, int size, int *client_fd)
 
 // 	while (1)
 // 	{
-// 		if (recv(shared_data->socket_fd, &gut_signal, sizeof(double), MSG_WAITALL) <= 0)
+// 		if (recv(shared_data->comm_fd, &gut_signal, sizeof(double), MSG_WAITALL) <= 0)
 // 		{
 // 			printf("Server disconnected (recv).");
 // 			handle_invalid_action(shared_data);
@@ -536,7 +536,7 @@ int tcp_server_send(double *data, int size, int *client_fd)
 // 	// sleep(5); // Wait for 5 seconds before starting pacing
 // 	// int count = 1;
 // 	// uint8_t pace = 1;
-// 	// int sock = shared_data->socket_fd; // Use the socket from shared_data
+// 	// int sock = shared_data->comm_fd; // Use the socket from shared_data
 // 	// while (1)
 // 	// {
 // 	// 	if (send(sock, &pace, sizeof(uint8_t), 0) != sizeof(uint8_t))
@@ -559,7 +559,7 @@ int tcp_server_send(double *data, int size, int *client_fd)
 
 // 	// while (attempts < max_attempts)
 // 	// {
-// 	// 	if (connect(shared_data->socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == 0)
+// 	// 	if (connect(shared_data->comm_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == 0)
 // 	// 	{
 // 	// 		printf("Connected to gut model server.\n");
 // 	// 		return 0;
@@ -573,14 +573,14 @@ int tcp_server_send(double *data, int size, int *client_fd)
 // 	// if (attempts == max_attempts)
 // 	// {
 // 	// 	printf("Failed to connect to gut model server after %d attempts.\n", max_attempts);
-// 	// 	close(shared_data->socket_fd);
+// 	// 	close(shared_data->comm_fd);
 // 	// 	return -1;
 // 	// }
 
 // 	pthread_mutex_lock(shared_data->mutex);
 
-// 	close(shared_data->socket_fd);
-// 	shared_data->socket_fd = -1; // Reset socket fd to indicate disconnection
+// 	close(shared_data->comm_fd);
+// 	shared_data->comm_fd = -1; // Reset socket fd to indicate disconnection
 // 	printf("Disconnect from gut model server.\n");
 // 	// check if the any condition variable is waiting and if so signal them to free the waiting threads
 // 	pthread_cond_broadcast(shared_data->client_connct_cond);
@@ -601,7 +601,7 @@ int tcp_server_send(double *data, int size, int *client_fd)
 // 	socklen_t addr_len = sizeof(client_addr);
 
 // 	// Create socket
-// 	if ((shared_data->socket_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+// 	if ((shared_data->comm_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
 // 	{
 // 		perror("socket failed");
 // 		return 1;
@@ -613,14 +613,14 @@ int tcp_server_send(double *data, int size, int *client_fd)
 // 	server_addr.sin_addr.s_addr = INADDR_ANY; // 0.0.0.0
 // 	server_addr.sin_port = htons(PORT);
 
-// 	if (bind(shared_data->socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+// 	if (bind(shared_data->comm_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
 // 	{
 // 		perror("bind failed");
 // 		return 1;
 // 	}
 
 // 	// Listen
-// 	if (listen(shared_data->socket_fd, 1) < 0)
+// 	if (listen(shared_data->comm_fd, 1) < 0)
 // 	{
 // 		perror("listen failed");
 // 		return 1;
@@ -629,7 +629,7 @@ int tcp_server_send(double *data, int size, int *client_fd)
 // 	printf("🟢 Waiting for connection on port %d...\n", PORT);
 
 // 	// Accept client
-// 	if ((shared_data->client_fd = accept(shared_data->socket_fd, (struct sockaddr *)&client_addr, &addr_len)) < 0)
+// 	if ((shared_data->client_fd = accept(shared_data->comm_fd, (struct sockaddr *)&client_addr, &addr_len)) < 0)
 // 	{
 // 		perror("accept failed");
 // 		return 1;
@@ -653,7 +653,7 @@ int tcp_server_send(double *data, int size, int *client_fd)
 // 			{
 // 				printf("🔴 Connection closed or error.\n");
 // 				close(shared_data->client_fd);
-// 				close(shared_data->socket_fd);
+// 				close(shared_data->comm_fd);
 // 				return 0;
 // 			}
 // 			total += r;
