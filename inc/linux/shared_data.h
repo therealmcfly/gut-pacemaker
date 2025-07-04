@@ -49,8 +49,9 @@ typedef struct
 
 	// for Receive Thread
 	// int server_fd;
-	int client_fd;
 	int comm_fd; // for TCP server
+	int gm_fd;
+	int gut_connct_flag; // Flag to indicate if GUT connection is established
 
 	// // pacemaker thread
 	PacemakerData *pacemaker_data_ptr; // Pacemaker data structure

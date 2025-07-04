@@ -395,7 +395,7 @@ void *gm_tcp_thread(void *ch_ptr)
 	// === Outer loop: wait for new client ===
 	{
 		// Client connection
-		if (tcp_server_accept(&g_shared_data.client_fd, &g_shared_data.comm_fd) < 0)
+		if (tcp_server_accept(&g_shared_data.gm_fd, &g_shared_data.comm_fd) < 0)
 		{
 			printf("\nError: Failed while accepting client connection.\n");
 			continue;
@@ -408,11 +408,11 @@ void *gm_tcp_thread(void *ch_ptr)
 		// for some reason, ther is a single double sent from the gut model that offsets the buffer. Below code is to receive that double and discard it.
 
 		double initial_recieve = 0.0; // Initialize sample variable
-		int bytes = tcp_receive(&initial_recieve, sizeof(double), &g_shared_data.client_fd);
+		int bytes = tcp_receive(&initial_recieve, sizeof(double), &g_shared_data.gm_fd);
 		if (bytes <= 0)
 		{
 			printf("Error: Failed to receive initial data from client.\n");
-			close_connection(&g_shared_data.client_fd);
+			close_connection(&g_shared_data.gm_fd);
 			continue;
 		}
 
@@ -437,7 +437,7 @@ void *gm_tcp_thread(void *ch_ptr)
 			pthread_mutex_unlock(g_shared_data.mutex);
 			if (pace_state_buff > 0)
 			{
-				if (!tcp_server_send(&pace_state_buff, sizeof(double), &g_shared_data.client_fd))
+				if (!tcp_server_send(&pace_state_buff, sizeof(double), &g_shared_data.gm_fd))
 				{
 					printf("Error: Failed to send data to client.\n");
 				}
@@ -445,7 +445,7 @@ void *gm_tcp_thread(void *ch_ptr)
 			}
 
 			// receive data from client
-			int bytes_read = tcp_receive(&sample, sizeof(double), &g_shared_data.client_fd);
+			int bytes_read = tcp_receive(&sample, sizeof(double), &g_shared_data.gm_fd);
 
 			if (bytes_read != sizeof(double))
 			{
@@ -531,12 +531,12 @@ void *gm_tcp_thread(void *ch_ptr)
 		}
 
 		// Clean up after client disconnects
-		close_connection(&g_shared_data.client_fd);
+		close_connection(&g_shared_data.gm_fd);
 
 		// Go back to outer loop to accept a new connection
 	}
 
-	tcp_server_close(&g_shared_data.client_fd, &g_shared_data.comm_fd); // Only called if outer loop exits (e.g., via SIGINT)
+	tcp_server_close(&g_shared_data.gm_fd, &g_shared_data.comm_fd); // Only called if outer loop exits (e.g., via SIGINT)
 
 	// if (run_pacemaker_server(&g_shared_data, g_shared_data.ch_datas_prt[ch]) != 0)
 	// {
@@ -581,7 +581,7 @@ void *pm_tcp_thread(void *ch_ptr)
 		g_shared_data.buffer_count = 0; // Reset buffer count
 		// Wait for a new client connection
 		printf("%sWaiting for Gut model connection...\n", PT_TITLE);
-		while (g_shared_data.client_fd < 1)
+		while (g_shared_data.gm_fd < 1)
 		{
 			pthread_cond_wait(g_shared_data.client_connct_cond, g_shared_data.mutex);
 		}
@@ -593,7 +593,7 @@ void *pm_tcp_thread(void *ch_ptr)
 		// Processing Loop ---
 		printf("%sEntering processing loop...\n", PT_TITLE);
 
-		while (g_shared_data.client_fd > 0)
+		while (g_shared_data.gm_fd > 0)
 		{
 			pthread_mutex_lock(g_shared_data.mutex);
 			while (g_shared_data.ch_datas_prt[ch]->ch_rb_ptr->rtr_flag == 0)
@@ -611,7 +611,7 @@ void *pm_tcp_thread(void *ch_ptr)
 				return NULL; // Exit if socket is invalid
 			}
 			// Check if the client is still connected
-			if (g_shared_data.client_fd < 1)
+			if (g_shared_data.gm_fd < 1)
 			{
 				printf("%sConnection lost while waiting for buffer to be ready. Returning waiting for client connection.\n", PT_TITLE);
 				pthread_mutex_unlock(g_shared_data.mutex);
@@ -638,36 +638,67 @@ void *pm_tcp_thread(void *ch_ptr)
 
 void *gm_uart_thread(void *ch_ptr)
 {
-	int ch = *(int *)ch_ptr;															 // Get the channel number from the argument
-	ChannelData *ch_data = g_shared_data.ch_datas_prt[ch]; // Get the channel data pointer
+	const char *uart_name = "/tmp/virtual_uart"; // or /dev/pts/X for PC test
 
-	printf("%sUART Reception thread started...\n", RT_TITLE);
+	printf("%s▶️ Gut signal thread start!\n", RT_TITLE);
 
-	// Start client connect and data reception loop
-	printf("%sEntering UART connection loop...\n", RT_TITLE);
-	while (1)
-	// === Outer loop: wait for new client ===
+	// Initialize UART device
+	signal(SIGINT, handle_sigint); // Handle SIGINT to close UART device gracefully
+
+	printf("%s⌛ Initializing UART device...\n", RT_TITLE);
+	g_shared_data.comm_fd = uart_open(uart_name); // or /dev/pts/X for PC test
+	if (g_shared_data.comm_fd < 0)
 	{
-		g_shared_data.comm_fd = uart_open("/tmp/virtual_uart"); // or /dev/pts/X for PC test
+		printf("\n⚠️ Unexpected: Failed to open UART device.\n");
+		printf("This might mean [%s] doesnt exist.\n", uart_name);
+		printf("Exiting program with status: %d\n\n\n", g_shared_data.comm_fd);
+		exit(g_shared_data.comm_fd); // Exit if UART device cannot be opened
+		return NULL;
+	}
+	while (1)
+	// === Outer loop: wait for gut model connection ===
+	{
 		if (g_shared_data.comm_fd < 0)
 		{
-			printf("Failed to open UART device.\n");
-			return NULL;
+			printf("\n%s⌛ Reinitializing UART device...\n", RT_TITLE);
+			g_shared_data.comm_fd = uart_open(uart_name); // or /dev/pts/X for PC test
+			if (g_shared_data.comm_fd < 0)
+			{
+				printf("\n⚠️ Unexpected: Failed to open UART device.\n");
+				printf("This might mean tes [%s] doesnt exist anymore.\n", uart_name);
+				printf("Exiting program with status: %d\n\n\n", g_shared_data.comm_fd);
+				exit(g_shared_data.comm_fd); // Exit if UART device cannot be opened
+				return NULL;
+			}
 		}
 
-		pthread_mutex_lock(g_shared_data.mutex);
-		pthread_cond_signal(g_shared_data.client_connct_cond);
-		pthread_mutex_unlock(g_shared_data.mutex);
+		printf("%s✅ UART device opened!\n", RT_TITLE);
+
+		// variables
+		int ch = *(int *)ch_ptr;															 // Get the channel number from the argument
+		ChannelData *ch_data = g_shared_data.ch_datas_prt[ch]; // Get the channel data pointer
+
+		// Start gut model connection loop
+		printf("%sEntering gut model UART connection loop...\n", RT_TITLE);
 
 		// for some reason, ther is a single double sent from the gut model that offsets the buffer. Below code is to receive that double and discard it.
 		double dummy;
+		// Wait for initial data from gut model
+		printf("%s⌛ Waiting for initial data from gut model...\n", RT_TITLE);
 		int r = uart_read(&g_shared_data.comm_fd, &dummy, sizeof(double));
 		if (r != sizeof(double))
 		{
-			printf("Error: Failed to receive initial data from Simulink.\n");
-			uart_close(&g_shared_data.comm_fd);
-			continue;
+			// print size of data received
+			printf("\n❌ Error: Failed to receive initial data from Simulink.\n");
+			printf("Exiting program with status: -1\n\n\n");
+			exit(-1); // Exit if initial data cannot be received
 		}
+
+		pthread_mutex_lock(g_shared_data.mutex);
+		g_shared_data.gm_fd = g_shared_data.comm_fd; // Set gm_fd to comm_fd for consistency
+		printf("%s✅ UART connection established!(gm_fd: %d)\n", RT_TITLE, g_shared_data.gm_fd);
+		pthread_cond_signal(g_shared_data.client_connct_cond);
+		pthread_mutex_unlock(g_shared_data.mutex);
 
 		// Initialize variables for receiving data
 		double sample;
@@ -678,48 +709,45 @@ void *gm_uart_thread(void *ch_ptr)
 		// ↓↓↓ var is to show skipped buffers
 		int ready_buffer_count = 0;
 
-		double pace_state_buff; // Initialize pace state
-		int cur_time_buff;			// Current time in seconds
+		int8_t pace_flag;	 // Initialize pace state
+		int cur_time_buff; // Current time in seconds
 
 		while (1)
 		// === Inner loop: receive data from current client ===
 		{
 			pthread_mutex_lock(g_shared_data.mutex);
 			cur_time_buff = *(g_shared_data.timer_ms_ptr); // Convert milliseconds to seconds
-			pace_state_buff = (double)ch_data->pace_state; // Get current pace state
+
+			pace_flag = ch_data->pace_state > 0 ? 1 : 0; // Get current pace state
 			pthread_mutex_unlock(g_shared_data.mutex);
 
-			int sent = uart_write(&g_shared_data.comm_fd, &pace_state_buff, sizeof(double));
-			if (sent != sizeof(double))
+			int sent = uart_write(&g_shared_data.comm_fd, &pace_flag, sizeof(int8_t));
+			if (sent != sizeof(int8_t))
 			{
-				printf("UART send failed.\n");
+				printf("❌ UART send failed.\n");
 			}
 
 			int bytes_read = uart_read(&g_shared_data.comm_fd, &sample, sizeof(double));
 
 			if (bytes_read != sizeof(double))
 			{
+				printf("\n\n--------------------------------------------------------\n");
 				if (bytes_read <= 0)
 				{
-					printf("\n%s🚩 UART disconnected or failed ⛓️‍💥\n", RT_TITLE);
-					pthread_mutex_lock(g_shared_data.mutex);
-					rb_reset(ch_data->ch_rb_ptr);
-					init_full_flg = 0;
-					ready_buffer_count = 0;
-					*(g_shared_data.timer_ms_ptr) = g_samp_interval_ms;
-					pthread_cond_broadcast(g_shared_data.ready_to_read_cond);
-					pthread_mutex_unlock(g_shared_data.mutex);
-					break;
-				}
-				else if (bytes_read < 0)
-				{
-					printf("Receive error. Closing client.\n");
-					break;
+					printf("\n%s❌ Error or disconnected from gut model ⛓️‍💥(recv bytes: %d)\n", RT_TITLE, bytes_read);
 				}
 				else
 				{
-					fprintf(stderr, "Unexpected byte count: %d\n", bytes_read);
+					printf("\n%s❌ Error: Unexpected byte count (recv bytes: %d)\n\n", RT_TITLE, bytes_read);
 				}
+				pthread_mutex_lock(g_shared_data.mutex);
+				rb_reset(ch_data->ch_rb_ptr);
+				init_full_flg = 0;
+				ready_buffer_count = 0;
+				*(g_shared_data.timer_ms_ptr) = g_samp_interval_ms;
+				pthread_cond_broadcast(g_shared_data.ready_to_read_cond);
+				pthread_mutex_unlock(g_shared_data.mutex);
+				break;
 			}
 			// printf("\n[%.2f]Received sample: %.10f\n", (float)cur_time_buff / 1000, sample); // Debugging line
 
@@ -780,42 +808,44 @@ void *gm_uart_thread(void *ch_ptr)
 		}
 
 		// Clean up after client disconnects
+		g_shared_data.gm_fd = -1; // Reset gm_fd to indicate disconnection
+															// Go back to outer loop to accept a new connection
+		printf("\n--------------------------------------------------------\n");
+		printf("\n%sClosing UART device...\n", RT_TITLE);
 		uart_close(&g_shared_data.comm_fd);
-
-		// Go back to outer loop to accept a new connection
 	}
-
-	// if (run_pacemaker_server(&g_shared_data, ch_data) != 0)
-	// {
-	// 	printf("\n%sError occured while running pacemaker server.\n", RT_TITLE);
-	// }
 
 	return NULL;
 }
 
 void *pm_uart_thread(void *ch_ptr)
 {
-	// Wait until the socket is valid
-	while (1)
+	printf("%s▶️ Pacemaker thread start!\n", PT_TITLE);
+	// Wait until UART is initialized
+	if (g_shared_data.comm_fd < 0)
 	{
-		printf("\r%sWaiting for UART init...", PT_TITLE);
-		fflush(stdout); // Print count and clear leftovers
-		if (g_shared_data.comm_fd > 0)
+		printf("%s⌛ Waiting for UART device initialization(comm_fd: %d)...\n", PT_TITLE, g_shared_data.comm_fd);
+		while (1)
 		{
-			break; // Exit loop if socket is valid
+			fflush(stdout); // Print count and clear leftovers
+			if (g_shared_data.comm_fd > 0)
+			{
+				break; // Exit loop if socket is valid
+			}
 		}
 	}
 
 	// print comm_fd
-	printf("\n%sUART connection confirmed!(comm_fd: %d)\n", PT_TITLE, g_shared_data.comm_fd);
+	printf("%s☑️ UART device checked!(comm_fd: %d)\n", PT_TITLE, g_shared_data.comm_fd);
 	int ch = *(int *)ch_ptr;															 // Get the channel number from the argument
 	ChannelData *ch_data = g_shared_data.ch_datas_prt[ch]; // Get the channel data pointer
 
 	// --- Outer Loop : Client connection loop ---
-	while (g_shared_data.comm_fd > 0)
+	while (g_shared_data.comm_fd >= 0)
 	{
-		if (g_shared_data.comm_fd < 1)
+		if (g_shared_data.comm_fd < 0)
 		{
+			printf("\n\n--------------------------------------------------------\n");
 			printf("%sUART connection lost. Exiting pacemaker thread...\n", PT_TITLE);
 			if (pthread_mutex_trylock(g_shared_data.mutex) == 0)
 			{
@@ -824,24 +854,26 @@ void *pm_uart_thread(void *ch_ptr)
 			return NULL; // Exit if socket is invalid
 		}
 
-		// pthread_mutex_lock(g_shared_data.mutex);
-		// // reset timer_ms and buffer count
-		// g_shared_data.buffer_count = 0; // Reset buffer count
-		// // Wait for a new client connection
-		// printf("%sWaiting for Gut model connection...\n", PT_TITLE);
-		// while (g_shared_data.client_fd < 1)
-		// {
-		// 	pthread_cond_wait(g_shared_data.client_connct_cond, g_shared_data.mutex);
-		// }
-		// printf("%sGut model connections confirmed!\n", PT_TITLE);
-		// pthread_mutex_unlock(g_shared_data.mutex);
+		pthread_mutex_lock(g_shared_data.mutex);
+		// reset timer_ms and buffer count
+		g_shared_data.buffer_count = 0; // Reset buffer count
+		// Wait for a new client connection
+		while (g_shared_data.gm_fd < 1)
+		{
+			printf("%s⌛ Waiting for Gut model connection(gm_fd: %d)...\n", PT_TITLE, g_shared_data.gm_fd);
+			pthread_cond_wait(g_shared_data.client_connct_cond, g_shared_data.mutex);
+		}
+		printf("%s☑️ Gut model connection checked!(gm_fd: %d)\n", PT_TITLE, g_shared_data.gm_fd);
+		pthread_mutex_unlock(g_shared_data.mutex);
 
 		// double curr_buff_copy[SIGNAL_PROCESSING_BUFFER_SIZE];
 		int start_idx = 0;
 		// Processing Loop ---
 		printf("%sEntering processing loop...\n", PT_TITLE);
 
-		while (g_shared_data.client_fd > 0)
+		printf("\n------------------- Pacemaker Logs -------------------\n");
+
+		while (g_shared_data.gm_fd >= 0)
 		{
 			pthread_mutex_lock(g_shared_data.mutex);
 			while (ch_data->ch_rb_ptr->rtr_flag == 0)
@@ -852,14 +884,14 @@ void *pm_uart_thread(void *ch_ptr)
 			// printf("%sBuffer is ready. Processing...\n", PT_TITLE);
 
 			// Check if the socket is still valid
-			if (g_shared_data.comm_fd < 1)
+			if (g_shared_data.comm_fd < 0)
 			{
 				printf("%sSocket connection lost while waiting for buffer to be ready. Exiting pacemaker thread...\n", PT_TITLE);
 				pthread_mutex_unlock(g_shared_data.mutex);
 				return NULL; // Exit if socket is invalid
 			}
 			// Check if the client is still connected
-			if (g_shared_data.client_fd < 1)
+			if (g_shared_data.gm_fd < 0)
 			{
 				printf("%sConnection lost while waiting for buffer to be ready. Returning waiting for client connection.\n", PT_TITLE);
 				pthread_mutex_unlock(g_shared_data.mutex);
@@ -872,7 +904,7 @@ void *pm_uart_thread(void *ch_ptr)
 			// mutex is unlocked in processing_pipeline via callback function
 			if (run_pacemaker(g_shared_data.pacemaker_data_ptr, ch_data, unlock_mutex))
 			{
-				printf("\n%sError occured while processing buffer %d.\n", PT_TITLE, g_shared_data.buffer_count + 1);
+				printf("\n%s❌ Error occured while processing buffer %d.\n", PT_TITLE, g_shared_data.buffer_count + 1);
 				return NULL;
 			}
 			start_idx += g_buffer_offset;
@@ -880,6 +912,7 @@ void *pm_uart_thread(void *ch_ptr)
 			// printf("%sFinished process for buffer %d...\n\n", PT_TITLE, g_shared_data.buffer_count + 1);
 		}
 	}
+	printf("\n\n--------------------------------------------------------\n");
 	printf("%sExiting process thread...\n", PT_TITLE);
 	return 0;
 }

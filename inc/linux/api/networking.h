@@ -5,10 +5,10 @@
 
 int create_tcp_socket(int *server_fd);
 int tcp_server_init(int *comm_fd, int port_num);
-int tcp_server_accept(int *client_fd, int *server_fd);
+int tcp_server_accept(int *gm_fd, int *server_fd);
 int tcp_receive(void *data, int data_size, int *fd);
-int tcp_server_send(double *data, int size, int *client_fd);
-int tcp_server_close(int *client_fd, int *server_fd);
+int tcp_server_send(double *data, int size, int *gm_fd);
+int tcp_server_close(int *gm_fd, int *server_fd);
 void handle_sigint(int sig);
 void close_connection(int *fd);
 

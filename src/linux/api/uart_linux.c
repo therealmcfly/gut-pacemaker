@@ -20,7 +20,8 @@ int uart_open(const char *device_path)
 
 	if (fd < 0)
 	{
-		perror("Failed to open UART");
+		fprintf(stderr, "\n\t❌ Failed to open UART device path [%s] (fd: %d)\n", device_path, fd);
+		perror("\t📢 Error Msg");
 		return -1;
 	}
 	// Get the Current UART Settings
@@ -28,7 +29,7 @@ int uart_open(const char *device_path)
 	struct termios tty;
 	if (tcgetattr(fd, &tty) != 0)
 	{
-		perror("tcgetattr");
+		perror("\t❌ Error Msg: tcgetattr");
 		close(fd);
 		return -1;
 	}
@@ -103,10 +104,12 @@ int uart_close(int *fd_ptr)
 	// Close the UART Port
 	if (close(*fd_ptr) < 0)
 	{
-		perror("Failed to close UART");
+		printf("\n\t❌ Failed to close UART(fd: %d)\n", *fd_ptr);
+		perror("\t📢 Error Msg");
 		return -1;
 	}
 	*fd_ptr = -1; // Set fd to -1 to indicate it's closed
+	printf("\t✅ UART device closed successfully!\n");
 	return 0;
 }
 

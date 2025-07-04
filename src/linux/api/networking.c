@@ -93,12 +93,12 @@ int tcp_server_init(int *comm_fd, int port_num)
 	printf("\t🟢 Server successfully listening on port %d.\n", port_num);
 	return *comm_fd;
 }
-int tcp_server_close(int *client_fd, int *comm_fd)
+int tcp_server_close(int *gm_fd, int *comm_fd)
 {
-	if (*client_fd > 0)
+	if (*gm_fd > 0)
 	{
-		close(*client_fd);
-		*client_fd = -1;
+		close(*gm_fd);
+		*gm_fd = -1;
 	}
 
 	if (*comm_fd > 0)
@@ -110,7 +110,7 @@ int tcp_server_close(int *client_fd, int *comm_fd)
 
 	return 0;
 }
-int tcp_server_accept(int *client_fd, int *comm_fd)
+int tcp_server_accept(int *gm_fd, int *comm_fd)
 {
 	if (*comm_fd < 0)
 	{
@@ -123,15 +123,15 @@ int tcp_server_accept(int *client_fd, int *comm_fd)
 
 	// Accept incoming connection
 	printf("\tListen for client connection...\n");
-	*client_fd = accept(*comm_fd, (struct sockaddr *)&client_addr, &addr_len);
-	if (*client_fd < 0)
+	*gm_fd = accept(*comm_fd, (struct sockaddr *)&client_addr, &addr_len);
+	if (*gm_fd < 0)
 	{
 		perror("\nError: Client acception failed");
 
 		return -1;
 	}
 	printf("\t✅ Client connection established: %s:%d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-	return *client_fd;
+	return *gm_fd;
 }
 int tcp_receive(void *data, int data_size, int *fd)
 {
@@ -168,10 +168,10 @@ int tcp_receive(void *data, int data_size, int *fd)
 		return total_read;
 	}
 }
-int tcp_server_send(double *data, int size, int *client_fd)
+int tcp_server_send(double *data, int size, int *gm_fd)
 {
 	// Send data to client
-	int bytes_sent = send(*client_fd, data, size, 0);
+	int bytes_sent = send(*gm_fd, data, size, 0);
 	if (bytes_sent < 0)
 	{
 		perror("\nError: Send failed");
@@ -197,7 +197,7 @@ int tcp_server_send(double *data, int size, int *client_fd)
 // 	// === Outer loop: wait for new client ===
 // 	{
 // 		// Client connection
-// 		if (tcp_server_accept(&shared_data->client_fd, &shared_data->comm_fd) < 0)
+// 		if (tcp_server_accept(&shared_data->gm_fd, &shared_data->comm_fd) < 0)
 // 		{
 // 			printf("\nError: Failed while accepting client connection.\n");
 // 			continue;
@@ -210,11 +210,11 @@ int tcp_server_send(double *data, int size, int *client_fd)
 // 		// for some reason, ther is a single double sent from the gut model that offsets the buffer. Below code is to receive that double and discard it.
 
 // 		double initial_recieve = 0.0; // Initialize sample variable
-// 		int bytes = tcp_receive(&initial_recieve, sizeof(double), &shared_data->client_fd);
+// 		int bytes = tcp_receive(&initial_recieve, sizeof(double), &shared_data->gm_fd);
 // 		if (bytes <= 0)
 // 		{
 // 			printf("Error: Failed to receive initial data from client.\n");
-// 			close_client(&shared_data->client_fd);
+// 			close_client(&shared_data->gm_fd);
 // 			continue;
 // 		}
 
@@ -239,7 +239,7 @@ int tcp_server_send(double *data, int size, int *client_fd)
 // 			pthread_mutex_unlock(shared_data->mutex);
 // 			if (pace_state_buff > 0)
 // 			{
-// 				if (!tcp_server_send(&pace_state_buff, sizeof(double), &shared_data->client_fd))
+// 				if (!tcp_server_send(&pace_state_buff, sizeof(double), &shared_data->gm_fd))
 // 				{
 // 					printf("Error: Failed to send data to client.\n");
 // 				}
@@ -247,7 +247,7 @@ int tcp_server_send(double *data, int size, int *client_fd)
 // 			}
 
 // 			// receive data from client
-// 			int bytes_read = tcp_receive(&sample, sizeof(double), &shared_data->client_fd);
+// 			int bytes_read = tcp_receive(&sample, sizeof(double), &shared_data->gm_fd);
 
 // 			if (bytes_read != sizeof(double))
 // 			{
@@ -255,7 +255,7 @@ int tcp_server_send(double *data, int size, int *client_fd)
 // 				{
 // 					printf("\n%s🚩 Client disconnected ⛓️‍💥\n", RT_TITLE);
 // 					pthread_mutex_lock(shared_data->mutex);
-// 					close_client(&shared_data->client_fd);									 // Close client connection
+// 					close_client(&shared_data->gm_fd);									 // Close client connection
 // 					rb_reset(ch_data->ch_rb_ptr);														 // Reset the ring buffer
 // 					init_full_flg = 0;																			 // Reset initial fill flag
 // 					ready_buffer_count = 0;																	 // Reset ready buffer count
@@ -334,13 +334,13 @@ int tcp_server_send(double *data, int size, int *client_fd)
 // 		}
 
 // 		// Clean up after client disconnects
-// 		close(shared_data->client_fd);
-// 		shared_data->client_fd = -1;
+// 		close(shared_data->gm_fd);
+// 		shared_data->gm_fd = -1;
 
 // 		// Go back to outer loop to accept a new connection
 // 	}
 
-// 	tcp_server_close(&shared_data->client_fd, &shared_data->comm_fd); // Only called if outer loop exits (e.g., via SIGINT)
+// 	tcp_server_close(&shared_data->gm_fd, &shared_data->comm_fd); // Only called if outer loop exits (e.g., via SIGINT)
 // 	return 0;
 // }
 
@@ -629,7 +629,7 @@ int tcp_server_send(double *data, int size, int *client_fd)
 // 	printf("🟢 Waiting for connection on port %d...\n", PORT);
 
 // 	// Accept client
-// 	if ((shared_data->client_fd = accept(shared_data->comm_fd, (struct sockaddr *)&client_addr, &addr_len)) < 0)
+// 	if ((shared_data->gm_fd = accept(shared_data->comm_fd, (struct sockaddr *)&client_addr, &addr_len)) < 0)
 // 	{
 // 		perror("accept failed");
 // 		return 1;
@@ -648,11 +648,11 @@ int tcp_server_send(double *data, int size, int *client_fd)
 // 		// Receive 8 bytes (one double)
 // 		while (total < sizeof(double))
 // 		{
-// 			int r = recv(shared_data->client_fd, p + total, sizeof(double) - total, 0);
+// 			int r = recv(shared_data->gm_fd, p + total, sizeof(double) - total, 0);
 // 			if (r <= 0)
 // 			{
 // 				printf("🔴 Connection closed or error.\n");
-// 				close(shared_data->client_fd);
+// 				close(shared_data->gm_fd);
 // 				close(shared_data->comm_fd);
 // 				return 0;
 // 			}

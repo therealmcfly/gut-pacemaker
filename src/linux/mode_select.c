@@ -35,8 +35,8 @@ RunMode select_mode(void)
 		printf("\nPlease select a mode:\n");
 		printf("\n1. Dataset Mode\n");
 		printf("2. Real-time Mode\n");
-		printf("3. Gut Model Mode\n");
-		printf("4. Test Mode\n");
+		printf("3. Gut Model(TCP) Mode\n");
+		printf("4. Gut Model(UART) Mode\n");
 		printf("\nEnter choice (1-4): ");
 		if (scanf("%d", &choice) != 1)
 		{
@@ -126,7 +126,7 @@ int realtime_dataset_mode(int argc, char *argv[])
 	g_shared_data.ready_to_read_cond = &ready_to_read_cond;
 	g_shared_data.buffer_count = 0; // buffer count
 	g_shared_data.comm_fd = -1;			// server file descriptor
-	g_shared_data.client_fd = -1;		// client file descriptor
+	g_shared_data.gm_fd = -1;				// client file descriptor
 
 	pthread_t recv_thtread, proc_thread;
 
@@ -173,7 +173,6 @@ int gut_model_mode(int argc, char *argv[])
 
 	// Initialize shared data
 	int timer_ms = g_samp_interval_ms;
-	printf("\nTimer  %d ms.\n", timer_ms);
 	g_shared_data.timer_ms_ptr = &timer_ms;
 
 	// shared_data.buffer = &ad_rb;						 // pointer to ring buffer
@@ -183,7 +182,7 @@ int gut_model_mode(int argc, char *argv[])
 	g_shared_data.buffer_count = 0; // buffer count
 	g_shared_data.comm_fd = -1;			// socket file descriptor for TCP server
 	// shared_data.server_fd = -1; // server file descriptor
-	g_shared_data.client_fd = -1; // client file descriptor
+	g_shared_data.gm_fd = -1; // client file descriptor
 
 	// initialize pacemaker data
 	g_shared_data.pacemaker_data_ptr = &pacemaker_data; // pointer to pacemaker data
@@ -245,7 +244,7 @@ int gut_model_mode(int argc, char *argv[])
 	return 0;
 }
 
-int test_mode(int argc, char *argv[])
+int gm_mode_uart(int argc, char *argv[])
 {
 	g_buffer_offset = AD_BUFFER_OFFSET; // Overlap count for ring buffer
 
@@ -259,7 +258,6 @@ int test_mode(int argc, char *argv[])
 
 	// Initialize shared data
 	int timer_ms = g_samp_interval_ms;
-	printf("\nTimer  %d ms.\n", timer_ms);
 	g_shared_data.timer_ms_ptr = &timer_ms;
 
 	// shared_data.buffer = &ad_rb;						 // pointer to ring buffer
@@ -268,8 +266,7 @@ int test_mode(int argc, char *argv[])
 	g_shared_data.ready_to_read_cond = &ready_to_read_cond;
 	g_shared_data.buffer_count = 0; // buffer count
 	g_shared_data.comm_fd = -1;			// socket file descriptor for TCP server
-	// shared_data.server_fd = -1; // server file descriptor
-	g_shared_data.client_fd = -1; // client file descriptor
+	g_shared_data.gm_fd = -1;				// gut model client or gut model file descriptor
 
 	// initialize pacemaker data
 	g_shared_data.pacemaker_data_ptr = &pacemaker_data; // pointer to pacemaker data
@@ -297,7 +294,7 @@ int test_mode(int argc, char *argv[])
 	}
 
 	pthread_t recv_thtread;
-	// pthread_t proc_thread;
+	pthread_t proc_thread;
 
 	int gut_ch_num = 0; // temp channel number for single channel implementation
 
@@ -308,23 +305,23 @@ int test_mode(int argc, char *argv[])
 		return 1;
 	}
 
-	// if (pthread_create(&proc_thread, NULL, pm_tcp_thread, &gut_ch_num) != 0)
-	// // if (pthread_create(&proc_thread, NULL, process_thread, NULL) != 0)
-	// {
-	// 	perror("\nError creating signal buffering thread.\n");
-	// 	return 1;
-	// }
+	if (pthread_create(&proc_thread, NULL, pm_uart_thread, &gut_ch_num) != 0)
+	// if (pthread_create(&proc_thread, NULL, process_thread, NULL) != 0)
+	{
+		perror("\nError creating signal buffering thread.\n");
+		return 1;
+	}
 
 	if (pthread_join(recv_thtread, NULL) != 0)
 	{
 		perror("\nError joining TCP server thread.\n");
 		return 1;
 	}
-	// if (pthread_join(proc_thread, NULL) != 0)
-	// {
-	// 	perror("\nError joining signal buffering thread.\n");
-	// 	return 1;
-	// }
+	if (pthread_join(proc_thread, NULL) != 0)
+	{
+		perror("\nError joining signal buffering thread.\n");
+		return 1;
+	}
 	pthread_mutex_destroy(&buffer_mutex);
 	pthread_cond_destroy(&ready_to_read_cond);
 
