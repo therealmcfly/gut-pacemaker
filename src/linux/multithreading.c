@@ -638,14 +638,14 @@ void *pm_tcp_thread(void *ch_ptr)
 
 void *gm_uart_thread(void *ch_ptr)
 {
-	const char *uart_name = "/tmp/virtual_uart"; // or /dev/pts/X for PC test
+	const char *uart_name = "/dev/virtual_uart"; // or /dev/pts/X for PC test
 
 	printf("%s▶️ Gut signal thread start!\n", RT_TITLE);
 
 	// Initialize UART device
 	signal(SIGINT, handle_sigint); // Handle SIGINT to close UART device gracefully
 
-	printf("%s⌛ Initializing UART device...\n", RT_TITLE);
+	printf("%s⌛ Initializing UART device... [%s]\n", RT_TITLE, uart_name);
 	g_shared_data.comm_fd = uart_open(uart_name); // or /dev/pts/X for PC test
 	if (g_shared_data.comm_fd < 0)
 	{

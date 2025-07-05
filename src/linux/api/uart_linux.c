@@ -16,7 +16,9 @@ int uart_open(const char *device_path)
 	// O_RDWR: Open for reading and writing
 	// O_NOCTTY: This port should not become the controlling terminal for the process
 	// O_SYNC: Writes are synchronized (block until completed)
+	printf("\t⌛ Opening UART device path [%s]...\n", device_path);
 	int fd = open(device_path, O_RDWR | O_NOCTTY | O_SYNC);
+	printf("UART open() returned: %d\n", fd); // Add this line
 
 	if (fd < 0)
 	{
