@@ -19,6 +19,7 @@ static double edge_sig_buffer[NEO_MAF_ED_SIGNAL_SIZE];
 
 int detect_activations(double *in_signal, size_t signal_length, int *channel, char *filename, int *cur_data_freq)
 {
+	int cur_time_ms = 0;										 // Current time in milliseconds
 	int activations[ACTIVATIONS_ARRAY_SIZE]; // Buffer for activation indices
 	int num_activations = 0;								 // Number of activations
 	// if (SIGNAL_PROCESSING_BUFFER_SIZE % 2 != 0)
@@ -41,7 +42,12 @@ int detect_activations(double *in_signal, size_t signal_length, int *channel, ch
 	int last_sample_index = 0;
 	while (j < signal_length) // Keep processing until reaching the signal length
 	{
-
+		if (*cur_data_freq <= 0)
+		{
+			printf("\nError: Invalid data frequency (%d) for time calculation.\n", *cur_data_freq);
+			return ERROR;
+		}
+		cur_time_ms = shift * (1000 / *cur_data_freq); // Calculate current time in milliseconds based on shift and frequency
 		// this is a modification to mirror the logic happening in the MATLAB project. 1st buffer size is 1000 in the first buffer and 1001 in all the rest of the buffers. remove if not needed
 		// cur_buffer_size = MIRROR_MATLAB_LOGIC && (shift == 0) ? SIGNAL_PROCESSING_BUFFER_SIZE : SIGNAL_PROCESSING_BUFFER_SIZE + 1;
 		last_sample_index = j - 1;
@@ -50,7 +56,7 @@ int detect_activations(double *in_signal, size_t signal_length, int *channel, ch
 		// Copy Original Signal into Buffer
 		for (int k = 0; k < SIGNAL_PROCESSING_BUFFER_SIZE; k++)
 		{
-			if (!rb_push_sample(g_shared_data.buffer, in_signal[i + k])) // Push sample to ring buffer
+			if (!rb_push_sample(g_shared_data.buffer, in_signal[i + k], &cur_time_ms)) // Push sample to ring buffer
 			{
 				printf("\nError: Failed to push sample to ring buffer at index %d.\n", i + k);
 				return ERROR;

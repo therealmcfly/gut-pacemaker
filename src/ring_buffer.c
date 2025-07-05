@@ -25,15 +25,15 @@ void rb_init(RingBuffer *rb, double *buffer, int buffer_size)
 	// printf("Ring buffer initialized.\n");
 }
 
-int rb_push_sample(RingBuffer *rb, double data)
+int rb_push_sample(RingBuffer *rb, double new_sample, int *cur_time_ms)
 {
 	if (rb == NULL)
 	{
 		perror("Error: NULL pointer passed to rb_push_sample\n");
 		return 0;
 	}
-	// add data to head
-	*(rb->head) = data;
+	// add new_sample to head
+	*(rb->head) = new_sample;
 
 	// shift head to next index
 	rb->head++;
@@ -45,6 +45,7 @@ int rb_push_sample(RingBuffer *rb, double data)
 	}
 
 	rb->new_signal_count++;
+	rb->cur_time_ms = *cur_time_ms; // update current time
 	return 1;
 }
 
@@ -63,34 +64,40 @@ void rb_reset(RingBuffer *rb)
 	rb->new_signal_count = WRITE_COUNT_INIT_VAL;
 }
 
-int rb_snapshot(RingBuffer *rb, double *buff_copy, int next_overlap_count)
+int rb_snapshot(RingBuffer *rb, double *snapshot_buffer, int offset)
 {
-	if (rb == NULL || buff_copy == NULL)
+	if (rb == NULL || snapshot_buffer == NULL)
 	{
 		perror("Error: NULL pointer passed to rb_snapshot\n");
 		return 0;
 	}
 
-	if (next_overlap_count < 0 || next_overlap_count > rb->size)
+	if (offset < 0 || offset > rb->size)
 	{
-		perror("Error: Invalid overlap count in rb_snapshot\n");
+		perror("Error: Invalid offset in rb_snapshot\n");
 		return 0;
 	}
+	if (rb->rtr_flag != 1)
+	{
+		perror("Error: Ring buffer is not ready for snapshot\n");
+		return 0;
+	}
+
 	rb->rtr_flag = 0; // reset rtr_flag flag
 
 	// printf("Taking snapshot of ring buffer!\n");
 	// rtr_flag is reset outside this function after
-	double *curr = rb->tail;
+	double *curr_ptr = rb->tail;
 	for (int i = 0; i < rb->size; i++)
 	{
-		buff_copy[i] = *curr;
-		curr++;
-		if (curr == rb->end)
-			curr = rb->buffer;
+		snapshot_buffer[i] = *curr_ptr;
+		curr_ptr++;
+		if (curr_ptr == rb->end)
+			curr_ptr = rb->buffer;
 	}
 
 	// tail is set to the start index of the next buffer
-	rb->tail = rb->tail + next_overlap_count;
+	rb->tail = rb->tail + offset;
 	if (rb->tail >= rb->end)
 	{
 		rb->tail = rb->buffer + ((rb->tail - rb->end) % rb->size);

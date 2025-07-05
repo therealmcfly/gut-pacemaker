@@ -32,25 +32,25 @@ int main(int argc, char *argv[])
 
 		break;
 	case MODE_GUT_MODEL:
-		printf("\nRunning in Gut Model Mode...\n");
+		printf("\nRunning in Gut Model Mode(TCP)...\n");
 
 		if (gut_model_mode(argc, argv) != 0)
 		{
-			printf("\nError occured while running Gut Model Mode.\n");
+			printf("\nError occured while running Gut Model Mode(TCP).\n");
 		}
 
-		printf("\nExiting Gut Model Mode...\n");
+		printf("\nExiting Gut Model Mode(TCP)...\n");
 
 		break;
-	case MODE_TEST:
-		printf("\nRunning in Gut Model Mode...\n");
+	case MODE_GUT_MODEL_UART:
+		printf("\nRunning in Gut Model Mode(UART)...\n");
 
-		if (test_mode(argc, argv) != 0)
+		if (gm_mode_uart(argc, argv) != 0)
 		{
-			printf("\nError occured while running Gut Model Mode.\n");
+			printf("\nError occured while running Gut Model Mode(UART).\n");
 		}
 
-		printf("\nExiting Gut Model Mode...\n");
+		printf("\nExiting Gut Model Mode(UART)...\n");
 
 		break;
 	default:

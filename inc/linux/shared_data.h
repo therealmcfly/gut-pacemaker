@@ -30,7 +30,8 @@ typedef struct
 	double lsv_sum; // Sum of lowest slope values
 	double threshold;
 	int lsv_count;
-	int print_interval; // for animation
+	int print_interval;	 // for animation
+	Timer *et_timer_ptr; // Timer for execution time
 } ChannelData;
 
 typedef struct
@@ -42,17 +43,15 @@ typedef struct
 	pthread_cond_t *ready_to_read_cond;
 	int buffer_count;
 	// int buff_offset;
+	int buffer_skipped;
 	int *timer_ms_ptr;
-
-	Timer *timer_ptr;					// Timer for interval processing
-	double *exec_time_ptr; // Execution time in milliseconds
-	double *wcet_ptr;					// Worst-case execution time in milliseconds
 	// int g_samp_interval_ms;
 
 	// for Receive Thread
 	// int server_fd;
-	int client_fd;
-	int socket_fd; // for TCP server
+	int comm_fd; // for TCP server
+	int gm_fd;
+	int gut_connct_flag; // Flag to indicate if GUT connection is established
 
 	// // pacemaker thread
 	PacemakerData *pacemaker_data_ptr; // Pacemaker data structure

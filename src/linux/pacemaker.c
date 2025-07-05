@@ -11,7 +11,9 @@ static void print_waiting(ChannelData *ch_data, int timer, int waiting, int dete
 	if (!waiting)
 	{
 		if (detection)
+		{
 			str = "DETECTION IGNORED";
+		}
 		else
 			str = "Ignoring...";
 	}
@@ -19,26 +21,38 @@ static void print_waiting(ChannelData *ch_data, int timer, int waiting, int dete
 	{
 		str = "Waiting...";
 	}
-	printf("\r\t\t[%.2fsecs] %-*s ACT %d / LRI %d / GRI %d / PACE %d",
-				 (float)timer / 1000.0f, STR_WIDTH, str,
-				 ch_data->activation_flag, ch_data->lri_ms,
-				 ch_data->gri_ms, ch_data->pace_state);
-	// printf("\r%s[%.2fsecs] %s ACT %d / LRI %d / GRI %d / PACE %d", RT_TITLE, (float)timer / (float)1000, str, ch_data->activation_flag, ch_data->lri_ms, ch_data->gri_ms, ch_data->pace_state);
-	// if (!waiting)
-	// {
-	// 	if (detection)
-	// 		printf("\n");
-	// }
+
+	printf("\r[%.2fs][WCET%.2fms][ET%.2fms] %-*s ACT %d / LRI %d / GRI %d / PACE %d", (float)timer / 1000.0f, ch_data->et_timer_ptr->wcet, ch_data->et_timer_ptr->et, STR_WIDTH, str, ch_data->activation_flag, ch_data->lri_ms, ch_data->gri_ms, ch_data->pace_state);
+	if (ch_data->et_timer_ptr->et > 10.0)
+	{
+		printf("\n");
+		perror("Error: ET is greater than 10ms. This may cause problems. Please check your implementation.\n");
+		return;
+	}
+	if (g_shared_data.buffer_skipped || ch_data->et_timer_ptr->wc_flag)
+	{
+		printf("\n");
+		if (g_shared_data.buffer_skipped)
+			g_shared_data.buffer_skipped = 0; // Reset the buffer skipped flag
+		return;
+	}
 
 	if (!detection)
 		fflush(stdout); // Print count and clear leftovers
-
-	// printf("\r%sWaiting at %.2f secs. ACT %d / LRI %d / GRI %d / PACE %d", RT_TITLE, (float)timer / (float)1000, ch_data->activation_flag, ch_data->lri_ms, ch_data->gri_ms, ch_data->pace_state);
-	// fflush(stdout); // Print count and clear leftovers
 }
 
 static void print_detection(ChannelData *ch_data, int timer, int detection, int pacing)
 {
+	// // Lock the mutex to ensure thread safety
+	// timer_stop(g_shared_data.timer_ptr);
+	// // Stop the timer to get execution time
+	// *g_shared_data.exec_time_ptr = timer_elapsed_ms(g_shared_data.timer_ptr);
+	// // Store the execution time in milliseconds
+	// if (*g_shared_data.exec_time_ptr > *g_shared_data.wcet_ptr)
+	// {
+	// 	*g_shared_data.wcet_ptr = *g_shared_data.exec_time_ptr; // Update the worst-case execution time if current execution time is greater
+	// }
+
 	char *str;
 	if (detection)
 	{
@@ -55,23 +69,35 @@ static void print_detection(ChannelData *ch_data, int timer, int detection, int 
 	{
 		str = "PACING!";
 	}
-
-	printf("\r\t\t[%.2fsecs] %-*s ACT %d / LRI %d / GRI %d / PACE %d",
-				 (float)timer / 1000.0f, STR_WIDTH, str,
-				 ch_data->activation_flag, ch_data->lri_ms,
-				 ch_data->gri_ms, ch_data->pace_state);
+	printf("\r[%.2fs][WCET%.2fms][ET%.2fms] %-*s ACT %d / LRI %d / GRI %d / PACE %d", (float)timer / 1000.0f, ch_data->et_timer_ptr->wcet, ch_data->et_timer_ptr->et, STR_WIDTH, str, ch_data->activation_flag, ch_data->lri_ms, ch_data->gri_ms, ch_data->pace_state);
+	if (ch_data->et_timer_ptr->et > 100.0)
+	{
+		printf("\n");
+		perror("Error: ET is greater than 10ms. This may cause problems. Please check your implementation.\n");
+		return;
+	}
+	if (g_shared_data.buffer_skipped)
+	{
+		printf("\n");
+		g_shared_data.buffer_skipped = 0; // Reset the buffer skipped flag
+		return;
+	}
 	fflush(stdout); // Print count and clear leftovers
-
-	// printf("\n%sActivation detected at %.2f seconds.\n\t\t\t\tACT %d\n\t\tLRI %d.\n\t\tGRI %d\n\t\tPACE %d\n", RT_TITLE, (float)timer / (float)1000, ch_data->activation_flag, ch_data->lri_ms, ch_data->gri_ms, ch_data->pace_state);
 }
+
 static void print_pacing(ChannelData *ch_data, int timer)
 {
 	char *str = "PACING!";
-
-	printf("\n\t\t[%.2fsecs] %-*s ACT %d / LRI %d / GRI %d / PACE %d\n",
-				 (float)timer / 1000.0f, STR_WIDTH, str,
-				 ch_data->activation_flag, ch_data->lri_ms,
-				 ch_data->gri_ms, ch_data->pace_state);
+	printf("\n[%.2fs][WCET%.2fms][ET%.2fms] %-*s ACT %d / LRI %d / GRI %d / PACE %d\n", (float)timer / 1000.0f, ch_data->et_timer_ptr->wcet, ch_data->et_timer_ptr->et, STR_WIDTH, str, ch_data->activation_flag, ch_data->lri_ms, ch_data->gri_ms, ch_data->pace_state);
+	if (ch_data->et_timer_ptr->et > 100.0)
+	{
+		perror("Error: ET is greater than 10ms. This may cause problems. Please check your implementation.\n");
+	}
+	if (g_shared_data.buffer_skipped)
+	{
+		g_shared_data.buffer_skipped = 0; // Reset the buffer skipped flag
+		return;
+	}
 
 	// printf("\n%sActivation detected at %.2f seconds.\n\t\t\t\tACT %d\n\t\tLRI %d.\n\t\tGRI %d\n\t\tPACE %d\n", RT_TITLE, (float)timer / (float)1000, ch_data->activation_flag, ch_data->lri_ms, ch_data->gri_ms, ch_data->pace_state);
 }
@@ -124,11 +150,11 @@ static void calculate_threshold(ChannelData *ch_data)
 	ch_data->threshold_flag = 1;																				// Set the threshold flag to indicate that threshold is calculated
 }
 
-int run_pacemaker(PacemakerData *p_data, ChannelData *ch_data, int *timer, void (*callback_unlock_mutex)(void))
+int run_pacemaker(PacemakerData *p_data, ChannelData *ch_data, void (*callback_unlock_mutex)(void))
 {
 	// mutex is locked at this point, hence the mutex callback function is passed to this function to unlock it after processing
-	int timer_ms = *timer;												 // Get the current timer value
-	int pace_state_snapshot = ch_data->pace_state; // Get snapshot of the current pace state
+	int timer_ms = ch_data->ch_rb_ptr->cur_time_ms; // Get the current timer value
+	int pace_state_snapshot = ch_data->pace_state;	// Get snapshot of the current pace state
 	// Take a snapshot of the ring buffer and timer_ms
 
 	if (!rb_snapshot(ch_data->ch_rb_ptr, snapshot_buffer, g_buffer_offset))
@@ -144,7 +170,9 @@ int run_pacemaker(PacemakerData *p_data, ChannelData *ch_data, int *timer, void 
 	{
 		fflush(stdout); // Print count and clear leftovers
 		double lowest_slope = get_lowest_scope(ch_data, snapshot_buffer);
-		printf("\r\t\t[%.2fsecs] Learning slope values...", (float)timer_ms / (float)1000);
+		// Get the execution time
+		get_n_set_execution_time(ch_data->et_timer_ptr); // Extract the execution time
+		printf("\r[%.2fs][WCET%.2fms][ET%.2fms] Learning slope values...", (float)timer_ms / 1000.0f, ch_data->et_timer_ptr->wcet, ch_data->et_timer_ptr->et);
 		fflush(stdout); // Print count and clear leftovers
 		// printf("\t[Buff-%.15f] Lowest s//lope : %f\n", (float)timer_ms / (float)1000, lowest_slope);
 		// printf("%f\n", lowest_slope);
@@ -159,6 +187,8 @@ int run_pacemaker(PacemakerData *p_data, ChannelData *ch_data, int *timer, void 
 		{
 			// Phase 2 : Calculating the threshold value from the lowest slope values
 			calculate_threshold(ch_data);
+			// Get the execution time
+			get_n_set_execution_time(ch_data->et_timer_ptr);
 			printf("\n\t\tActivation detection threshold is: %f\n\n", ch_data->threshold); // %%%%%% why 4.5?
 		}
 		else
@@ -169,6 +199,8 @@ int run_pacemaker(PacemakerData *p_data, ChannelData *ch_data, int *timer, void 
 			// Senario 1 : No detection yet AND (within the lri threshold OR pace_state is 2)
 			if (ch_data->activation_flag == 0 && (ch_data->lri_ms <= p_data->lri_thresh_ms || pace_state_snapshot == 2))
 			{
+				// Get the execution time
+				get_n_set_execution_time(ch_data->et_timer_ptr);
 				// Senario 1.1 : Activation detected within the LRI threshold OR when there was a pacing
 				if (lowest_slope < ch_data->threshold)
 				{
@@ -193,6 +225,8 @@ int run_pacemaker(PacemakerData *p_data, ChannelData *ch_data, int *timer, void 
 			// Senario 2 : after activation AND (within the lri threshold OR pace_state is 2)
 			else if (ch_data->activation_flag != 0 && (ch_data->lri_ms <= p_data->lri_thresh_ms || pace_state_snapshot == 2))
 			{
+				// Get the execution time
+				get_n_set_execution_time(ch_data->et_timer_ptr);
 				// Senario 2.1 : GRI threshold is exceeded AND there was a activation detected
 				// Reset the LRI and GRI timers
 				if (lowest_slope < ch_data->threshold && ch_data->gri_ms <= 0)
@@ -235,9 +269,11 @@ int run_pacemaker(PacemakerData *p_data, ChannelData *ch_data, int *timer, void 
 					ch_data->gri_ms -= g_samp_interval_ms; // decrement gri_ms by samp interval
 				}
 			}
-			// Senario 3 : Exceeded the LRI threshold
 			else
 			{
+				// Get the execution time
+				get_n_set_execution_time(ch_data->et_timer_ptr);
+				// Senario 3 : Exceeded the LRI threshold
 				set_pace_state(ch_data, 2);			 // Reset the pace state
 				print_pacing(ch_data, timer_ms); // Print activation detection
 
