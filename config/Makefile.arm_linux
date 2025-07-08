@@ -1,0 +1,70 @@
+# Makefile.arm_linux - Build rules for ARM Linux target
+PLATFORM = arm_linux
+
+ARM_TOOLCHAIN_PATH ?= $(HOME)/toolchains/gcc-linaro-4.9-2016.02-x86_64_arm-linux-gnueabihf
+CC = $(ARM_TOOLCHAIN_PATH)/bin/arm-linux-gnueabihf-gcc
+SYSROOT ?= $(HOME)/toolchains/de1soc_rootfs
+
+# Directories
+INCDIR = inc
+SRCDIR = src
+OBJDIR_BASE = obj/$(PLATFORM)
+BINDIR = .
+
+# Variants
+OBJDIR = $(OBJDIR_BASE)
+BASE_NAME := pm_arm_linux
+TARGET := $(BASE_NAME).o
+
+# Source Files
+SRC_FILES = \
+  $(wildcard $(SRCDIR)/*.c) \
+  $(wildcard $(SRCDIR)/utils/*.c) \
+  $(wildcard $(SRCDIR)/linux/*.c) \
+  $(wildcard $(SRCDIR)/linux/api/*.c) \
+  $(wildcard $(SRCDIR)/linux/drivers/*.c)
+
+
+# Object Files
+# OBJ_FILES = $(SRC_FILES:%.c=$(OBJDIR)/%.o)
+# OBJ_NAMES = $(notdir $(SRC_FILES))
+# OBJ_FILES = $(addprefix $(OBJDIR)/, $(OBJ_NAMES:.c=.o))
+
+VPATH = $(sort $(dir $(SRC_FILES)))
+OBJ_FILES = $(patsubst %.c,$(OBJDIR)/%.o,$(notdir $(SRC_FILES)))
+
+
+# Include Paths
+INCLUDES = \
+	-I$(INCDIR)/ \
+	-I$(INCDIR)/utils \
+	-I$(INCDIR)/linux \
+	-I$(INCDIR)/linux/api \
+	-I$(INCDIR)/linux/drivers \
+
+# Flags
+CFLAGS = -Wall -O2 -std=gnu99 -fstack-usage -pthread -static $(INCLUDES) -march=armv7-a -mtune=cortex-a9 -mfloat-abi=hard -mfpu=neon
+LDFLAGS = -pthread -static
+
+# Default build
+all: $(TARGET)
+
+# Compile rules
+$(OBJDIR)/%.o: %.c
+	@mkdir -p $(OBJDIR)
+	$(CC) --sysroot=$(SYSROOT) $(CFLAGS) -c $< -o $@
+
+# Build executable
+$(TARGET): $(OBJ_FILES)
+	@mkdir -p $(BINDIR)
+	@echo "🔧 Linking executable: $@"
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+# Targets
+.PHONY: clean
+
+# Clean targets
+clean:
+	@echo "🧹 Cleaning ARM Linux build artifacts..."
+	rm -rf $(OBJDIR_BASE) pm_arm_linux.o
+	@echo "✅ Clean complete."
