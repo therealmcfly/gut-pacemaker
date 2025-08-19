@@ -5,6 +5,8 @@
 #include "global.h"
 #include "mode_select.h"
 
+int logging_enabled = 1; // Flag to enable/disable logging
+
 int main(int argc, char *argv[])
 {
 	RunMode mode = select_mode();
@@ -45,6 +47,17 @@ int main(int argc, char *argv[])
 	case MODE_GUT_MODEL_UART:
 		printf("\nRunning in Gut Model Mode(UART)...\n");
 
+		if (gm_mode_uart(argc, argv) != 0)
+		{
+			printf("\nError occured while running Gut Model Mode(UART).\n");
+		}
+
+		printf("\nExiting Gut Model Mode(UART/Logging Disabled)...\n");
+
+		break;
+	case MODE_GUT_MODEL_UART_NO_LOG:
+		printf("\nRunning in Gut Model Mode(UART/Logging Disabled)...\n");
+		logging_enabled = 0; // Disable logging for this mode
 		if (gm_mode_uart(argc, argv) != 0)
 		{
 			printf("\nError occured while running Gut Model Mode(UART).\n");

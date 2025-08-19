@@ -256,7 +256,10 @@ void *rd_mode_receive_thread(void *data)
 				if (g_shared_data.buffer->new_signal_count < g_buffer_offset)
 				{
 					// Print animation
-					print_received_data(g_shared_data.buffer, ready_buffer_count, NULL);
+					if (logging_enabled)
+					{
+						print_received_data(g_shared_data.buffer, ready_buffer_count, NULL);
+					}
 				}
 				else
 				{
@@ -638,7 +641,8 @@ void *pm_tcp_thread(void *ch_ptr)
 
 void *gm_uart_thread(void *ch_ptr)
 {
-	const char *uart_name = "/dev/virtual_uart"; // or /dev/pts/X for PC test
+	// const char *uart_name = "/dev/virtual_uart"; // for SiL
+	const char *uart_name = "/dev/ttyS0"; // for Hil with DE1SoC
 
 	printf("%s▶️ Gut signal thread start!\n", RT_TITLE);
 

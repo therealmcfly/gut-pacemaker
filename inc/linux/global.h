@@ -17,4 +17,6 @@ extern int g_buffer_offset;		 // Overlap count for ring buffer
 
 extern SharedData g_shared_data; // Global shared data for all threads
 
+extern int logging_enabled; // Flag to enable/disable logging
+
 #endif
