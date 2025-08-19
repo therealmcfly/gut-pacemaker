@@ -37,7 +37,8 @@ RunMode select_mode(void)
 		printf("2. Real-time Mode\n");
 		printf("3. Gut Model(TCP) Mode\n");
 		printf("4. Gut Model(UART) Mode\n");
-		printf("\nEnter choice (1-4): ");
+		printf("5. Gut Model(UART/Logging Disabled) Mode\n");
+		printf("\nEnter choice (1-5): ");
 		if (scanf("%d", &choice) != 1)
 		{
 			while (getchar() != '\n')
@@ -45,7 +46,7 @@ RunMode select_mode(void)
 			printf("Invalid input. Please enter a number.\n");
 			continue;
 		}
-		if (choice >= 1 && choice <= 4)
+		if (choice >= 1 && choice <= 5)
 		{
 			while (getchar() != '\n')
 			{

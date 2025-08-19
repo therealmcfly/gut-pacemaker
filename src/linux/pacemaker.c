@@ -172,8 +172,11 @@ int run_pacemaker(PacemakerData *p_data, ChannelData *ch_data, void (*callback_u
 		double lowest_slope = get_lowest_scope(ch_data, snapshot_buffer);
 		// Get the execution time
 		get_n_set_execution_time(ch_data->et_timer_ptr); // Extract the execution time
-		printf("\r[%.2fs][WCET%.2fms][ET%.2fms] Learning slope values...", (float)timer_ms / 1000.0f, ch_data->et_timer_ptr->wcet, ch_data->et_timer_ptr->et);
-		fflush(stdout); // Print count and clear leftovers
+		if (logging_enabled)
+		{
+			printf("\r[%.2fs][WCET%.2fms][ET%.2fms] Learning slope values...", (float)timer_ms / 1000.0f, ch_data->et_timer_ptr->wcet, ch_data->et_timer_ptr->et);
+			fflush(stdout); // Print count and clear leftovers
+		}
 		// printf("\t[Buff-%.15f] Lowest s//lope : %f\n", (float)timer_ms / (float)1000, lowest_slope);
 		// printf("%f\n", lowest_slope);
 
@@ -189,7 +192,10 @@ int run_pacemaker(PacemakerData *p_data, ChannelData *ch_data, void (*callback_u
 			calculate_threshold(ch_data);
 			// Get the execution time
 			get_n_set_execution_time(ch_data->et_timer_ptr);
-			printf("\n\t\tActivation detection threshold is: %f\n\n", ch_data->threshold); // %%%%%% why 4.5?
+			if (logging_enabled)
+			{
+				printf("\n\t\tActivation detection threshold is: %f\n\n", ch_data->threshold); // %%%%%% why 4.5?
+			}
 		}
 		else
 		{
@@ -204,9 +210,12 @@ int run_pacemaker(PacemakerData *p_data, ChannelData *ch_data, void (*callback_u
 				// Senario 1.1 : Activation detected within the LRI threshold OR when there was a pacing
 				if (lowest_slope < ch_data->threshold)
 				{
-					print_detection(ch_data, timer_ms, 1, pace_state_snapshot); // Print activation detection
-					printf("\n\t\t\t\tResetting timers and pace flag.\n");
-					printf("\t\t\t\tActivation flag ENABLED!\n");
+					if (logging_enabled)
+					{
+						print_detection(ch_data, timer_ms, 1, pace_state_snapshot); // Print activation detection
+						printf("\n\t\t\t\tResetting timers and pace flag.\n");
+						printf("\t\t\t\tActivation flag ENABLED!\n");
+					}
 
 					reset_timers(ch_data, p_data); // Reset the LRI and GRI timers
 					reset_pace_state(ch_data);		 // Reset the pace state
@@ -218,8 +227,10 @@ int run_pacemaker(PacemakerData *p_data, ChannelData *ch_data, void (*callback_u
 				{
 					ch_data->lri_ms += g_samp_interval_ms; // increment lri_ms by samp interval
 					ch_data->gri_ms -= g_samp_interval_ms; // decrement gri_ms by samp interval
-
-					print_waiting(ch_data, timer_ms, 1, 0); // Print animation
+					if (logging_enabled)
+					{
+						print_waiting(ch_data, timer_ms, 1, 0); // Print animation
+					}
 				}
 			}
 			// Senario 2 : after activation AND (within the lri threshold OR pace_state is 2)
@@ -231,9 +242,12 @@ int run_pacemaker(PacemakerData *p_data, ChannelData *ch_data, void (*callback_u
 				// Reset the LRI and GRI timers
 				if (lowest_slope < ch_data->threshold && ch_data->gri_ms <= 0)
 				{
-					print_detection(ch_data, timer_ms, 1, pace_state_snapshot); // Print activation detection
-					printf("\n\t\t\t\tlowest_slope: %f / threshold: %f\n", lowest_slope, ch_data->threshold);
-					printf("\t\t\t\tResetting timers and pace flag.\n");
+					if (logging_enabled)
+					{
+						print_detection(ch_data, timer_ms, 1, pace_state_snapshot); // Print activation detection
+						printf("\n\t\t\t\tlowest_slope: %f / threshold: %f\n", lowest_slope, ch_data->threshold);
+						printf("\t\t\t\tResetting timers and pace flag.\n");
+					}
 
 					reset_timers(ch_data, p_data); // Reset the LRI and GRI timers
 					reset_pace_state(ch_data);		 // Reset the pace state
@@ -244,25 +258,34 @@ int run_pacemaker(PacemakerData *p_data, ChannelData *ch_data, void (*callback_u
 					// Senario 2.2.1 : No activation , but GRI threshold is exceeded
 					if (ch_data->gri_ms <= 0)
 					{
-						print_waiting(ch_data, timer_ms, 1, 0); // Print animation
+						if (logging_enabled)
+						{
+							print_waiting(ch_data, timer_ms, 1, 0); // Print animation
+						}
 					}
 					// Senario 2.2.2 : Activation happened but within the GRI threshold
 					else if (lowest_slope < ch_data->threshold)
 					{
-						print_waiting(ch_data, timer_ms, 0, 1); // Print animation
+						if (logging_enabled)
+						{
+							print_waiting(ch_data, timer_ms, 0, 1); // Print animation
 
-						// printf("\n\t\tlowest_slope: %f / threshold: %f\n", lowest_slope, ch_data->threshold);
+							// printf("\n\t\tlowest_slope: %f / threshold: %f\n", lowest_slope, ch_data->threshold);
 
-						// print_waiting(ch_data, timer_ms); // Print animation
-						// printf("\t\tWithin GRI, IGNORING!\n");
+							// print_waiting(ch_data, timer_ms); // Print animation
+							// printf("\t\tWithin GRI, IGNORING!\n");
+						}
 					}
 					// Senario 2.2.3 : no activation and GRI threshold is not exceeded
 					else
 					{
-						// printf("\r%sIGNORING at %.2f secs. ACT %d / LRI %d / GRI %d / PACE %d", RT_TITLE, (float)timer_ms / (float)1000, ch_data->activation_flag, ch_data->lri_ms, ch_data->gri_ms, ch_data->pace_state);
-						// fflush(stdout); // Flush the output to show the animation
+						if (logging_enabled)
+						{
+							// printf("\r%sIGNORING at %.2f secs. ACT %d / LRI %d / GRI %d / PACE %d", RT_TITLE, (float)timer_ms / (float)1000, ch_data->activation_flag, ch_data->lri_ms, ch_data->gri_ms, ch_data->pace_state);
+							// fflush(stdout); // Flush the output to show the animation
 
-						print_waiting(ch_data, timer_ms, 0, 0); // Print animation
+							print_waiting(ch_data, timer_ms, 0, 0); // Print animation
+						}
 					}
 
 					ch_data->lri_ms += g_samp_interval_ms; // increment lri_ms by samp interval
@@ -274,10 +297,13 @@ int run_pacemaker(PacemakerData *p_data, ChannelData *ch_data, void (*callback_u
 				// Get the execution time
 				get_n_set_execution_time(ch_data->et_timer_ptr);
 				// Senario 3 : Exceeded the LRI threshold
-				set_pace_state(ch_data, 2);			 // Reset the pace state
-				print_pacing(ch_data, timer_ms); // Print activation detection
+				set_pace_state(ch_data, 2); // Reset the pace state
+				if (logging_enabled)
+				{
+					print_pacing(ch_data, timer_ms); // Print activation detection
 
-				// printf("\n%sPACING since No activation after LRI at %.2f seconds.\n\t\tACT %d\n\t\tLRI %d.\n\t\tGRI %d\n\t\tPACE %d\n", RT_TITLE, (float)timer_ms / (float)1000, ch_data->activation_flag, ch_data->lri_ms, ch_data->gri_ms, ch_data->pace_state);
+					// printf("\n%sPACING since No activation after LRI at %.2f seconds.\n\t\tACT %d\n\t\tLRI %d.\n\t\tGRI %d\n\t\tPACE %d\n", RT_TITLE, (float)timer_ms / (float)1000, ch_data->activation_flag, ch_data->lri_ms, ch_data->gri_ms, ch_data->pace_state);
+				}
 			}
 		}
 	}
