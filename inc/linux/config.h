@@ -70,7 +70,7 @@
 // pacemaker thread
 #define SAMPLING_INTERVAL_MS 10 // Sampling interval in seconds
 #define LEARN_TIME_MS 60000			// Learning time in milliseconds
-#define GRI_THRESHOLD_MS 5000		// Default GRI value in milliseconds
+#define GRI_THRESHOLD_MS 12000	// Default GRI value in milliseconds
 #define LRI_THRESHOLD_MS 20500	// Default LRI value in milliseconds
 
 // Thread Constants
