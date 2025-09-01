@@ -5,50 +5,29 @@
 #include <stdio.h>
 #include <micro_timer.h>
 
-#define N_SAMPLES (280u * 100u) // 280 s @ 100 Hz
+// #define N_SAMPLES (280u * 100u) // 280 s @ 100 Hz
+#define N_SAMPLES (280u * 100u) // 10 s @ 100 Hz
 
 typedef struct
 {
-	uint32_t et_us[N_SAMPLES]; // execution time per cycle (µs)
-	uint8_t state[N_SAMPLES];	 // pacemaker state per cycle
-	uint32_t n;								 // current processing cycle number
-	uint8_t s[N_SAMPLES];			 // skipcount per cycle
+	uint32_t proc_et_us[N_SAMPLES];	 // processing-only time
+	uint32_t e2e_et_us[N_SAMPLES];	 // end-to-end latency
+	uint32_t check_et_us[N_SAMPLES]; // end-to-end latency check time
+
+	uint8_t state[N_SAMPLES];		// pacemaker state per cycle
+	uint32_t c_num[N_SAMPLES];	// cycle number at e2e measurement
+	uint8_t skipped[N_SAMPLES]; // 1 if buffer skipped (e2e timer not updated)
+	uint32_t n;									// current processing cycle number
 } EtLog;
 
 static inline void etlog_init(EtLog *L) { L->n = 0; }
 
-static inline int etlog_push(EtLog *L, uint32_t et_us, uint8_t state, uint8_t skip)
-{
-	if (L->n < N_SAMPLES)
-	{
-		L->et_us[L->n] = et_us;
-		L->state[L->n] = state;
-		L->s[L->n] = skip;
-		L->n++;
+int etlog_push(EtLog *L, uint32_t proc_et_us, uint32_t e2e_et_us, uint32_t check_et_us, uint8_t state, uint32_t c_num, uint8_t skipped);
 
-		return 0; // success
-	}
-	else
-	{
-		return 1; // buffer full
-	}
-}
+void etlog_dump_csv(const char *path, const EtLog *L);
 
-static inline void etlog_dump_csv(const char *path, const EtLog *L)
-{
-	FILE *f = fopen(path, "w");
-	if (!f)
-	{
-		perror("fopen");
-		return;
-	}
-	setvbuf(f, NULL, _IOFBF, 1 << 20); // big buffered write
-	fputs("idx,et_us,state,skip\n", f);
-	for (uint32_t i = 0; i < L->n; i++)
-		fprintf(f, "%u,%u,%u,%u\n", i, L->et_us[i], L->state[i], L->s[i]);
-	fclose(f);
-}
+void et_log_or_dump(uint32_t proc_et_us, uint32_t check_et_us, uint32_t e2e_et_us, EtLog *et_log_ptr, int *et_csv_dumped_ptr, int *et_buffer_full_ptr, uint8_t pm_state, uint32_t c_num, uint8_t skipped);
 
-void et_log_or_dump(MicroTimer *mt_ptr, EtLog *et_log, int timer_overhead, int *et_csv_dumped, int *et_buffer_full, uint8_t pm_state, uint8_t skip);
+void save_csv_on_exit(EtLog *et_log_ptr);
 
 #endif // ET_LOG_H

@@ -11,6 +11,7 @@
 
 #include "micro_timer.h" // for MicroTimer
 #include <et_log.h>			 // for EtLog
+#include <stdatomic.h>
 
 typedef struct
 {
@@ -27,18 +28,20 @@ typedef struct
 	uint8_t pm_state;			 // 0 = learning, 1 = detecting, 2 = Ignore
 	RingBuffer *ch_rb_ptr; // pointer to ring buffer
 	int ch_num;						 // Channel number
-	int pace_flag;
+	atomic_int pace_flag;	 // 0 = no pace, 1 = pace requested
 
-	int print_interval;	 // for animation
-	Timer *et_timer_ptr; // Timer for execution time
-	MicroTimer *mt_ptr;	 // Optional: Microsecond timer for high precision
+	int print_interval;		 // for animation
+	Timer *et_timer_ptr;	 // Timer for execution time
+	MicroTimer *et_mt_ptr; // MicroTimer for execution time
+	uint8_t skip;					 // count of skipped buffers
+	uint8_t et_count;
 
 	// et timer vars
 	EtLog *et_log_ptr;
 	int et_buffer_full;
 	int et_csv_dumped;
 	uint32_t timer_overhead;
-	uint8_t proc_flag; // Indicates if processing pipeline ongoing execution
+	uint8_t proc_et_flag; // Indicates if processing pipeline ongoing execution
 
 	// Unsynchronized Data
 	int threshold_flag; // Flag to indicate if threshold is calculated

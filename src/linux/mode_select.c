@@ -20,9 +20,9 @@ SharedData g_shared_data; // Global shared data for all threads
 // Declare shared data components(Declare here so memory is not allocated in stack)
 PacemakerData pacemaker_data; // Pacemaker data structure
 ChannelData ch_datas[NUM_CHANNELS];
-RingBuffer ad_rbs[NUM_CHANNELS];				 // Ring buffer for artifact detection
-Timer ch_et_timer[NUM_CHANNELS];				 // Execution time timer for each channel
-MicroTimer ch_micro_timer[NUM_CHANNELS]; // Microsecond timer for each channel
+RingBuffer ad_rbs[NUM_CHANNELS]; // Ring buffer for artifact detection
+Timer ch_et_timer[NUM_CHANNELS]; // Execution time timer for each channel
+MicroTimer et_mts[NUM_CHANNELS]; // Microsecond timer for each channel
 
 double sp_buffer[SIGNAL_PROCESSING_BUFFER_SIZE];									// Buffer for signal processing
 double ad_buffer[NUM_CHANNELS][ACTIVATION_DETECTION_BUFFER_SIZE]; // Buffer for artifact detection
@@ -207,7 +207,7 @@ int sil_mode_tcp(int argc, char *argv[])
 		g_shared_data.ch_datas_prt[i]->lsv_sum = 0.0;
 		g_shared_data.ch_datas_prt[i]->lsv_count = 0;
 		g_shared_data.ch_datas_prt[i]->threshold = 0;
-		g_shared_data.ch_datas_prt[i]->pace_flag = 0;
+		atomic_init(&g_shared_data.ch_datas_prt[i]->pace_flag, 0);
 		g_shared_data.ch_datas_prt[i]->threshold_flag = 0; // Initialize threshold flag
 	}
 
@@ -291,23 +291,22 @@ int hil_mode_uart(int argc, char *argv[])
 			initialize_et_timer(g_shared_data.ch_datas_prt[i]->et_timer_ptr); // Initialize execution
 		}
 
-		// initialize micro timer & et log
-		g_shared_data.ch_datas_prt[i]->timer_overhead = mt_measure_overhead_us(1000);
+		// initialize proc and e2e micro timer & et_log
 		EtLog L;
 		g_shared_data.ch_datas_prt[i]->et_log_ptr = &L;
 		etlog_init(g_shared_data.ch_datas_prt[i]->et_log_ptr);
 		g_shared_data.ch_datas_prt[i]->et_buffer_full = 0;
 		g_shared_data.ch_datas_prt[i]->et_csv_dumped = 0;
-
-		g_shared_data.ch_datas_prt[i]->mt_ptr = &ch_micro_timer[i]; // pointer to microsecond timer
-		mt_init(g_shared_data.ch_datas_prt[i]->mt_ptr);							// Initialize microsecond timer
+		g_shared_data.ch_datas_prt[i]->et_mt_ptr = &et_mts[i]; // pointer for et micro timer
+		mt_init(g_shared_data.ch_datas_prt[i]->et_mt_ptr);		 // Init for et micro timer
 
 		g_shared_data.ch_datas_prt[i]->activation_flag = 0; // Initialize activation flag
 		g_shared_data.ch_datas_prt[i]->gri_ms = 0;					// Initialize GRI
 		g_shared_data.ch_datas_prt[i]->lsv_sum = 0.0;
 		g_shared_data.ch_datas_prt[i]->lsv_count = 0;
 		g_shared_data.ch_datas_prt[i]->threshold = 0;
-		g_shared_data.ch_datas_prt[i]->pace_flag = 0;
+		atomic_init(&g_shared_data.ch_datas_prt[i]->pace_flag, 0);
+
 		g_shared_data.ch_datas_prt[i]->threshold_flag = 0; // Initialize threshold flag
 		g_shared_data.ch_datas_prt[i]->pm_state = 0;			 // Initialize state
 	}

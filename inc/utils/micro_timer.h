@@ -14,49 +14,86 @@
 
 typedef struct
 {
-	struct timespec t0, t1;
-	uint8_t running;
-	uint8_t wc_updated; // set if wcet_us updated on last stop
-	uint32_t et_us;			// last elapsed in microseconds
-	uint32_t wcet_us;		// worst-case elapsed in microseconds
+	struct timespec t_start, t_proc, t_check, t_e2e;
+	uint8_t proc_running;
+	uint8_t check_running;
+	uint8_t e2e_running;
+	uint32_t proc_et_us;
+	uint32_t check_et_us;
+	uint32_t e2e_et_us;
 } MicroTimer;
 
 /* tiny hot-path helpers as header inlines */
 static inline void mt_init(MicroTimer *mt)
 {
-	mt->running = 0;
-	mt->wc_updated = 0;
-	mt->et_us = 0;
-	mt->wcet_us = 0;
+	mt->proc_running = 0;
+	mt->check_running = 0;
+	mt->e2e_running = 0;
+
+	mt->proc_et_us = 0;
+	mt->check_et_us = 0;
+	mt->e2e_et_us = 0;
 }
 static inline void mt_start(MicroTimer *mt)
 {
-	mt->running = 1;
-	clock_gettime(MT_CLOCK_ID, &mt->t0);
+	mt->proc_running = 1;
+	mt->check_running = 1;
+	mt->e2e_running = 1;
+	clock_gettime(MT_CLOCK_ID, &mt->t_start);
 }
-static inline void mt_stop(MicroTimer *mt)
+
+static inline void mt_proc_stop(MicroTimer *mt)
 {
-	clock_gettime(MT_CLOCK_ID, &mt->t1);
-	mt->running = 0;
+	mt->proc_running = 0;
+	clock_gettime(MT_CLOCK_ID, &mt->t_proc);
 }
-static inline uint32_t mt_elapsed_us(const MicroTimer *mt)
+static inline void mt_check_stop(MicroTimer *mt)
 {
-	int64_t ds = (int64_t)mt->t1.tv_sec - (int64_t)mt->t0.tv_sec;
-	int64_t dns = (int64_t)mt->t1.tv_nsec - (int64_t)mt->t0.tv_nsec;
-	int64_t ns = ds * 1000000000LL + dns;
-	if (ns < 0)
-		ns = 0;
-	return (uint32_t)(ns / 1000LL);
+	mt->check_running = 0;
+	clock_gettime(MT_CLOCK_ID, &mt->t_check);
 }
-static inline void mt_update(MicroTimer *mt)
+
+static inline void mt_e2e_stop(MicroTimer *mt)
 {
-	mt->wc_updated = 0;
-	mt->et_us = mt_elapsed_us(mt);
-	if (mt->et_us > mt->wcet_us)
-	{
-		mt->wcet_us = mt->et_us;
-		mt->wc_updated = 1;
-	}
+	mt->e2e_running = 0;
+	clock_gettime(MT_CLOCK_ID, &mt->t_e2e);
+}
+
+static inline void proc_elapsed_us(MicroTimer *mt)
+{
+	int64_t proc_ds = (int64_t)mt->t_proc.tv_sec - (int64_t)mt->t_start.tv_sec;
+	int64_t proc_dns = (int64_t)mt->t_proc.tv_nsec - (int64_t)mt->t_start.tv_nsec;
+	int64_t proc_ns = proc_ds * 1000000000LL + proc_dns;
+	if (proc_ns < 0)
+		proc_ns = 0;
+	mt->proc_et_us = (uint32_t)(proc_ns / 1000LL);
+}
+
+static inline void check_elapsed_us(MicroTimer *mt)
+{
+	int64_t check_ds = (int64_t)mt->t_check.tv_sec - (int64_t)mt->t_start.tv_sec;
+	int64_t check_dns = (int64_t)mt->t_check.tv_nsec - (int64_t)mt->t_start.tv_nsec;
+	int64_t check_ns = check_ds * 1000000000LL + check_dns;
+	if (check_ns < 0)
+		check_ns = 0;
+	mt->check_et_us = (uint32_t)(check_ns / 1000LL);
+}
+
+static inline void e2e_elapsed_us(MicroTimer *mt)
+{
+	int64_t e2e_ds = (int64_t)mt->t_e2e.tv_sec - (int64_t)mt->t_start.tv_sec;
+	int64_t e2e_dns = (int64_t)mt->t_e2e.tv_nsec - (int64_t)mt->t_start.tv_nsec;
+	int64_t e2e_ns = e2e_ds * 1000000000LL + e2e_dns;
+	if (e2e_ns < 0)
+		e2e_ns = 0;
+	mt->e2e_et_us = (uint32_t)(e2e_ns / 1000LL);
+}
+
+static inline void mt_elapsed_update(MicroTimer *mt)
+{
+	proc_elapsed_us(mt);
+	check_elapsed_us(mt);
+	e2e_elapsed_us(mt);
 }
 
 /* heavier helper lives in .c */

@@ -139,16 +139,18 @@ static void reset_timers(ChannelData *ch_data, PacemakerData *p_data)
 
 static void reset_pace_flag(ChannelData *ch_data)
 {
-	pthread_mutex_lock(g_shared_data.mutex);
-	ch_data->pace_flag = 0; // Reset the pace state
-	pthread_mutex_unlock(g_shared_data.mutex);
+	atomic_store(&ch_data->pace_flag, 0);
+	// pthread_mutex_lock(g_shared_data.mutex);
+	// ch_data->pace_flag = 0; // Reset the pace state
+	// pthread_mutex_unlock(g_shared_data.mutex);
 }
 
 static void set_pace_flag(ChannelData *ch_data, int pace_flag)
 {
-	pthread_mutex_lock(g_shared_data.mutex);
-	ch_data->pace_flag = pace_flag; // Set the pace state
-	pthread_mutex_unlock(g_shared_data.mutex);
+	atomic_store(&ch_data->pace_flag, pace_flag);
+	// pthread_mutex_lock(g_shared_data.mutex);
+	// ch_data->pace_flag = pace_flag; // Set the pace state
+	// pthread_mutex_unlock(g_shared_data.mutex);
 }
 
 static void calculate_threshold(ChannelData *ch_data)

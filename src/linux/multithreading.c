@@ -433,23 +433,23 @@ void *tcp_comm_thread(void *ch_ptr)
 		// ↓↓↓ var is to show skipped buffers
 		int ready_buffer_count = 0;
 
-		double pace_flag_buff; // Initialize pace state
-		int cur_time_buff;		 // Current time in seconds
+		double pace_signal_buff; // Initialize pace state
+		int cur_time_buff;			 // Current time in seconds
 
 		while (1)
 		// === Inner loop: receive data from current client ===
 		{
 			pthread_mutex_lock(g_shared_data.mutex);
-			cur_time_buff = *(g_shared_data.timer_ms_ptr);											// Convert milliseconds to seconds
-			pace_flag_buff = (double)g_shared_data.ch_datas_prt[ch]->pace_flag; // Get current pace state
+			cur_time_buff = *(g_shared_data.timer_ms_ptr);																			// Convert milliseconds to seconds
+			pace_signal_buff = (double)atomic_load(&g_shared_data.ch_datas_prt[ch]->pace_flag); // Get current pace state
 			pthread_mutex_unlock(g_shared_data.mutex);
-			if (pace_flag_buff > 0)
+			if (pace_signal_buff > 0)
 			{
-				if (!tcp_server_send(&pace_flag_buff, sizeof(double), &g_shared_data.gm_fd))
+				if (!tcp_server_send(&pace_signal_buff, sizeof(double), &g_shared_data.gm_fd))
 				{
 					printf("Error: Failed to send data to client.\n");
 				}
-				// printf("[%.2f]Pace state sent: %.2f\n", timer, pace_flag);
+				// printf("[%.2f]Pace state sent: %.2f\n", timer, pace_signal_buff);
 			}
 
 			// receive data from client
@@ -650,6 +650,12 @@ void *tcp_proc_thread(void *ch_ptr)
 	return 0;
 }
 
+void handle_sigint_with_save(int sig)
+{
+	save_csv_on_exit(g_shared_data.ch_datas_prt[0]->et_log_ptr);
+	handle_sigint(sig);
+}
+
 void *uart_comm_thread(void *ch_ptr)
 {
 
@@ -725,20 +731,61 @@ void *uart_comm_thread(void *ch_ptr)
 		// ↓↓↓ var is to show skipped buffers
 		int ready_buffer_count = 0;
 
-		int8_t pace_flag;	 // Initialize pace state
-		int cur_time_buff; // Current time in seconds
+		int8_t pace_signal; // Initialize pace state
+		int cur_time_buff;	// Current time in seconds
+		ch_data_ptr->skip = 0;
 
 		while (1)
 		// === Inner loop: receive data from current client ===
 		{
-			pthread_mutex_lock(g_shared_data.mutex);
 
+			pthread_mutex_lock(g_shared_data.mutex);
 			cur_time_buff = *(g_shared_data.timer_ms_ptr); // Convert milliseconds to seconds
 
-			pace_flag = ch_data_ptr->pace_flag > 0 ? 1 : 0; // Get current pace state
 			pthread_mutex_unlock(g_shared_data.mutex);
 
-			int sent = uart_write(&g_shared_data.comm_fd, &pace_flag, sizeof(int8_t));
+			// ET logging
+			if (init_full_flg)
+			{
+
+				if (ch_data_ptr->et_mt_ptr->proc_running == 0 && ch_data_ptr->et_mt_ptr->e2e_running == 1)
+				{
+					if (ch_data_ptr->skip == 0)
+					{
+						mt_check_stop(ch_data_ptr->et_mt_ptr);		// Stop check timer if running
+						check_elapsed_us(ch_data_ptr->et_mt_ptr); // Calculate elapsed time for check timer
+																											// ch_data_ptr->et_count++;
+																											// printf("(%d)check time: %u us\n", ch_data_ptr->et_count, ch_data_ptr->et_mt_ptr->check_et_us);
+					}
+
+					mt_e2e_stop(ch_data_ptr->et_mt_ptr);		// Stop the end-to-end timer
+					e2e_elapsed_us(ch_data_ptr->et_mt_ptr); // Calculate elapsed time for end-to-end timer
+					// ch_data_ptr->et_count++;
+					// printf("(%d)(skip count :%d)e2e time: %u us\n", ch_data_ptr->et_count, ch_data_ptr->skip, ch_data_ptr->et_mt_ptr->e2e_et_us);
+					// Log or dump ET data
+
+					et_log_or_dump(ch_data_ptr->et_mt_ptr->proc_et_us, ch_data_ptr->et_mt_ptr->check_et_us, ch_data_ptr->et_mt_ptr->e2e_et_us, ch_data_ptr->et_log_ptr, &ch_data_ptr->et_csv_dumped, &ch_data_ptr->et_buffer_full, ch_data_ptr->pm_state, (uint32_t)g_shared_data.buffer_count, ch_data_ptr->skip); // et log processing and end-to-end timer values
+					ch_data_ptr->skip = 0;
+					mt_init(ch_data_ptr->et_mt_ptr); // re-initialize the ET measurement struct for the next measurement
+					ch_data_ptr->et_count = 0;
+					// printf("\n");
+				}
+				else
+				{
+					mt_check_stop(ch_data_ptr->et_mt_ptr);		// Stop the processing timer
+					check_elapsed_us(ch_data_ptr->et_mt_ptr); // Calculate elapsed time for processing timer
+					ch_data_ptr->skip++;
+
+					// ch_data_ptr->et_count++;
+					// printf("(%d)\t\t(skip count :%d)check time: %u us\n", ch_data_ptr->et_count, ch_data_ptr->skip, ch_data_ptr->et_mt_ptr->check_et_us);
+				}
+			}
+
+			pthread_mutex_unlock(g_shared_data.mutex);
+
+			pace_signal = atomic_load(&ch_data_ptr->pace_flag) > 0 ? 1 : 0; // Get current pace state
+
+			int sent = uart_write(&g_shared_data.comm_fd, &pace_signal, sizeof(int8_t));
 			if (sent != sizeof(int8_t))
 			{
 				printf("❌ UART send failed.\n");
@@ -775,6 +822,18 @@ void *uart_comm_thread(void *ch_ptr)
 			rb_push_sample(ch_data_ptr->ch_rb_ptr, sample, &cur_time_buff);
 			// increment timer_ms (by sampling interval)
 			*(g_shared_data.timer_ms_ptr) += g_samp_interval_ms;
+
+			// Start ET timers
+			if (ch_data_ptr->et_mt_ptr->e2e_running == 0)
+			{
+				mt_start(g_shared_data.ch_datas_prt[ch]->et_mt_ptr); // Start the timer for processing-only) execution time
+																														 // ch_data_ptr->et_count++;
+																														 // printf("(%d)procesing ET timer started!!\n", ch_data_ptr->et_count);
+			}
+			else
+			{
+				// printf("\tprocesing ET timer was still running!!\n");
+			}
 
 			if (!init_full_flg) // before ring buffer is initially filled
 			{
@@ -909,20 +968,19 @@ void *uart_proc_thread(void *ch_ptr)
 		{
 			pthread_mutex_lock(g_shared_data.mutex);
 
-			ch_data_ptr->proc_flag = 0; // set processing to low, indicating processing has ended
-
-			if (ch_data_ptr->mt_ptr->running == 1 && ch_data_ptr->proc_flag == 0)
+			ch_data_ptr->proc_et_flag = 0; // set proc et flag to low, indicating processing et timer has ended
+			if (g_shared_data.ch_datas_prt[ch]->et_mt_ptr->proc_running == 1)
 			{
-				et_log_or_dump(ch_data_ptr->mt_ptr, ch_data_ptr->et_log_ptr, ch_data_ptr->timer_overhead, &ch_data_ptr->et_csv_dumped, &ch_data_ptr->et_buffer_full, ch_data_ptr->pm_state, 0); // et log or dump
+				mt_proc_stop(g_shared_data.ch_datas_prt[ch]->et_mt_ptr);		// Stop the timer for processing-only execution time
+				proc_elapsed_us(g_shared_data.ch_datas_prt[ch]->et_mt_ptr); // Calculate elapsed time for processing-only timer
+																																		// ch_data_ptr->et_count++;
+																																		// printf("(%d)proc time: %u us\n", ch_data_ptr->et_count, g_shared_data.ch_datas_prt[ch]->et_mt_ptr->proc_et_us);
 			}
 
 			while (ch_data_ptr->ch_rb_ptr->rtr_flag == 0)
 			{
 				pthread_cond_wait(g_shared_data.ready_to_read_cond, g_shared_data.mutex); // wait for RTR signal
 			}
-
-			ch_data_ptr->proc_flag = 1;												// set processing to high, indicating processing is ongoing
-			mt_start(g_shared_data.ch_datas_prt[ch]->mt_ptr); // Start the timer for interval processing
 
 			// printf("%sBuffer is ready. Processing...\n", PT_TITLE);
 
@@ -950,6 +1008,7 @@ void *uart_proc_thread(void *ch_ptr)
 				printf("\n%s❌ Error occured while processing buffer %d.\n", PT_TITLE, g_shared_data.buffer_count + 1);
 				return NULL;
 			}
+
 			start_idx += g_buffer_offset;
 
 			// printf("%sFinished process for buffer %d...\n\n", PT_TITLE, g_shared_data.buffer_count + 1);
