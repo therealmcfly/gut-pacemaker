@@ -4,6 +4,7 @@
 #include "shared_data.h"
 #include "config.h"
 #include "timer_util.h"
+#include <stdint.h>
 
 // Global vars (for static dataset mode, can remove for embedded implimentaion)
 extern size_t signal_length;

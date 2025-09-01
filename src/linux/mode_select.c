@@ -22,6 +22,7 @@ PacemakerData pacemaker_data; // Pacemaker data structure
 ChannelData ch_datas[NUM_CHANNELS];
 RingBuffer ad_rbs[NUM_CHANNELS]; // Ring buffer for artifact detection
 Timer ch_et_timer[NUM_CHANNELS]; // Execution time timer for each channel
+MicroTimer et_mts[NUM_CHANNELS]; // Microsecond timer for each channel
 
 double sp_buffer[SIGNAL_PROCESSING_BUFFER_SIZE];									// Buffer for signal processing
 double ad_buffer[NUM_CHANNELS][ACTIVATION_DETECTION_BUFFER_SIZE]; // Buffer for artifact detection
@@ -35,9 +36,9 @@ RunMode select_mode(void)
 		printf("\nPlease select a mode:\n");
 		printf("\n1. Dataset Mode\n");
 		printf("2. Real-time Mode\n");
-		printf("3. Gut Model(TCP) Mode\n");
-		printf("4. Gut Model(UART) Mode\n");
-		printf("5. Gut Model(UART/Logging Disabled) Mode\n");
+		printf("3. Software-in-the-loop(TCP) Mode\n");
+		printf("4. Hardware-in-the-loop(UART) Mode\n");
+		printf("5. Hardware-in-the-loop(UART) Mode(no logging)\n");
 		printf("\nEnter choice (1-5): ");
 		if (scanf("%d", &choice) != 1)
 		{
@@ -160,7 +161,7 @@ int realtime_dataset_mode(int argc, char *argv[])
 	return 0;
 }
 
-int gut_model_mode(int argc, char *argv[])
+int sil_mode_tcp(int argc, char *argv[])
 {
 	g_buffer_offset = AD_BUFFER_OFFSET; // Overlap count for ring buffer
 
@@ -206,7 +207,7 @@ int gut_model_mode(int argc, char *argv[])
 		g_shared_data.ch_datas_prt[i]->lsv_sum = 0.0;
 		g_shared_data.ch_datas_prt[i]->lsv_count = 0;
 		g_shared_data.ch_datas_prt[i]->threshold = 0;
-		g_shared_data.ch_datas_prt[i]->pace_state = 0;
+		atomic_init(&g_shared_data.ch_datas_prt[i]->pace_flag, 0);
 		g_shared_data.ch_datas_prt[i]->threshold_flag = 0; // Initialize threshold flag
 	}
 
@@ -214,14 +215,14 @@ int gut_model_mode(int argc, char *argv[])
 
 	int gut_ch_num = 0; // temp channel number for single channel implementation
 
-	if (pthread_create(&recv_thtread, NULL, gm_tcp_thread, &gut_ch_num) != 0)
+	if (pthread_create(&recv_thtread, NULL, tcp_comm_thread, &gut_ch_num) != 0)
 	{
 		perror("\nError creating TCP server thread.\n");
 
 		return 1;
 	}
 
-	if (pthread_create(&proc_thread, NULL, pm_tcp_thread, &gut_ch_num) != 0)
+	if (pthread_create(&proc_thread, NULL, tcp_proc_thread, &gut_ch_num) != 0)
 	// if (pthread_create(&proc_thread, NULL, process_thread, NULL) != 0)
 	{
 		perror("\nError creating signal buffering thread.\n");
@@ -245,8 +246,9 @@ int gut_model_mode(int argc, char *argv[])
 	return 0;
 }
 
-int gm_mode_uart(int argc, char *argv[])
+int hil_mode_uart(int argc, char *argv[])
 {
+
 	g_buffer_offset = AD_BUFFER_OFFSET; // Overlap count for ring buffer
 
 	// Initialize mutex and condition variable
@@ -256,8 +258,6 @@ int gm_mode_uart(int argc, char *argv[])
 	pthread_mutex_init(&buffer_mutex, NULL);
 	pthread_cond_init(&client_connct_cond, NULL);
 	pthread_cond_init(&ready_to_read_cond, NULL);
-
-	// Initialize shared data
 	int timer_ms = g_samp_interval_ms;
 	g_shared_data.timer_ms_ptr = &timer_ms;
 
@@ -283,15 +283,32 @@ int gm_mode_uart(int argc, char *argv[])
 
 		g_shared_data.ch_datas_prt[i]->ch_rb_ptr = &ad_rbs[i]; // pointer to ring buffer
 		rb_init(g_shared_data.ch_datas_prt[i]->ch_rb_ptr, ad_buffer[0], ad_buffer_size);
-		g_shared_data.ch_datas_prt[i]->et_timer_ptr = &ch_et_timer[i];		// pointer to execution time timer
-		initialize_et_timer(g_shared_data.ch_datas_prt[i]->et_timer_ptr); // Initialize execution
-		g_shared_data.ch_datas_prt[i]->activation_flag = 0;								// Initialize activation flag
-		g_shared_data.ch_datas_prt[i]->gri_ms = 0;												// Initialize GRI
+
+		// Initialize shared data
+		if (logging_enabled)
+		{
+			g_shared_data.ch_datas_prt[i]->et_timer_ptr = &ch_et_timer[i];		// pointer to execution time timer
+			initialize_et_timer(g_shared_data.ch_datas_prt[i]->et_timer_ptr); // Initialize execution
+		}
+
+		// initialize proc and e2e micro timer & et_log
+		EtLog L;
+		g_shared_data.ch_datas_prt[i]->et_log_ptr = &L;
+		etlog_init(g_shared_data.ch_datas_prt[i]->et_log_ptr);
+		g_shared_data.ch_datas_prt[i]->et_buffer_full = 0;
+		g_shared_data.ch_datas_prt[i]->et_csv_dumped = 0;
+		g_shared_data.ch_datas_prt[i]->et_mt_ptr = &et_mts[i]; // pointer for et micro timer
+		mt_init(g_shared_data.ch_datas_prt[i]->et_mt_ptr);		 // Init for et micro timer
+
+		g_shared_data.ch_datas_prt[i]->activation_flag = 0; // Initialize activation flag
+		g_shared_data.ch_datas_prt[i]->gri_ms = 0;					// Initialize GRI
 		g_shared_data.ch_datas_prt[i]->lsv_sum = 0.0;
 		g_shared_data.ch_datas_prt[i]->lsv_count = 0;
 		g_shared_data.ch_datas_prt[i]->threshold = 0;
-		g_shared_data.ch_datas_prt[i]->pace_state = 0;
+		atomic_init(&g_shared_data.ch_datas_prt[i]->pace_flag, 0);
+
 		g_shared_data.ch_datas_prt[i]->threshold_flag = 0; // Initialize threshold flag
+		g_shared_data.ch_datas_prt[i]->pm_state = 0;			 // Initialize state
 	}
 
 	pthread_t recv_thtread;
@@ -299,14 +316,14 @@ int gm_mode_uart(int argc, char *argv[])
 
 	int gut_ch_num = 0; // temp channel number for single channel implementation
 
-	if (pthread_create(&recv_thtread, NULL, gm_uart_thread, &gut_ch_num) != 0)
+	if (pthread_create(&recv_thtread, NULL, uart_comm_thread, &gut_ch_num) != 0)
 	{
 		perror("\nError creating TCP server thread.\n");
 
 		return 1;
 	}
 
-	if (pthread_create(&proc_thread, NULL, pm_uart_thread, &gut_ch_num) != 0)
+	if (pthread_create(&proc_thread, NULL, uart_proc_thread, &gut_ch_num) != 0)
 	// if (pthread_create(&proc_thread, NULL, process_thread, NULL) != 0)
 	{
 		perror("\nError creating signal buffering thread.\n");

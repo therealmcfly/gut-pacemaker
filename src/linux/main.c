@@ -33,37 +33,37 @@ int main(int argc, char *argv[])
 		printf("\nExiting Real-time Dataset Mode...\n");
 
 		break;
-	case MODE_GUT_MODEL:
-		printf("\nRunning in Gut Model Mode(TCP)...\n");
+	case MODE_SIL:
+		printf("\nRunning in Software-in-the-loop(TCP) Mode...\n");
 
-		if (gut_model_mode(argc, argv) != 0)
+		if (sil_mode_tcp(argc, argv) != 0)
 		{
-			printf("\nError occured while running Gut Model Mode(TCP).\n");
+			printf("\nError occured while running Software-in-the-loop(TCP) Mode.\n");
 		}
 
-		printf("\nExiting Gut Model Mode(TCP)...\n");
+		printf("\nExiting Software-in-the-loop(TCP) Mode...\n");
 
 		break;
-	case MODE_GUT_MODEL_UART:
-		printf("\nRunning in Gut Model Mode(UART)...\n");
+	case MODE_HIL:
+		printf("\nRunning Hardware-in-the-loop(UART) Mode...\n");
 
-		if (gm_mode_uart(argc, argv) != 0)
+		if (hil_mode_uart(argc, argv) != 0)
 		{
-			printf("\nError occured while running Gut Model Mode(UART).\n");
+			printf("\nError occured while running Hardware-in-the-loop(UART) Mode.\n");
 		}
 
-		printf("\nExiting Gut Model Mode(UART/Logging Disabled)...\n");
+		printf("\nExiting Hardware-in-the-loop(UART) Mode...\n");
 
 		break;
-	case MODE_GUT_MODEL_UART_NO_LOG:
-		printf("\nRunning in Gut Model Mode(UART/Logging Disabled)...\n");
+	case MODE_HIL_NO_LOG:
+		printf("\nRunning Hardware-in-the-loop(UART) Mode(no logging)...\n");
 		logging_enabled = 0; // Disable logging for this mode
-		if (gm_mode_uart(argc, argv) != 0)
+		if (hil_mode_uart(argc, argv) != 0)
 		{
-			printf("\nError occured while running Gut Model Mode(UART).\n");
+			printf("\nError occured while running Hardware-in-the-loop(UART) Mode(no logging).\n");
 		}
 
-		printf("\nExiting Gut Model Mode(UART)...\n");
+		printf("\nExiting Hardware-in-the-loop(UART) Mode(no logging)...\n");
 
 		break;
 	default:
